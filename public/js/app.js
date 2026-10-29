@@ -326,6 +326,7 @@ const el = {
   // Clue View
   clueCatIcon: document.getElementById('clue-cat-icon'),
   clueCatName: document.getElementById('clue-cat-name'),
+  clueModifierBadge: document.getElementById('clue-modifier-badge'),
   clueValuePill: document.getElementById('clue-value-pill'),
   clueTimerFill: document.getElementById('clue-timer-fill'),
   ddWagerBox: document.getElementById('dd-wager-box'),
@@ -346,6 +347,9 @@ const el = {
   buzzedSpectatorBanner: document.getElementById('buzzed-spectator-banner'),
   clueAnswerForm: document.getElementById('clue-answer-form'),
   clueAnswerInput: document.getElementById('clue-answer-input'),
+  chaosAnswerForm: document.getElementById('chaos-answer-form'),
+  chaosAnswerInput: document.getElementById('chaos-answer-input'),
+  chaosStatusMsg: document.getElementById('chaos-status-msg'),
   hostJudgeBox: document.getElementById('host-judge-box'),
   hostRefAnswerText: document.getElementById('host-ref-answer-text'),
   hostRuleCorrectBtn: document.getElementById('host-rule-correct-btn'),
@@ -376,6 +380,9 @@ const el = {
   finalBreakdownWrap: document.getElementById('final-breakdown-wrap'),
   finalRevealAnswer: document.getElementById('final-reveal-answer'),
   finalBreakdownList: document.getElementById('final-breakdown-list'),
+  superlativesSection: document.getElementById('superlatives-section'),
+  superlativesGrid: document.getElementById('superlatives-grid'),
+  reactionParticlesContainer: document.getElementById('reaction-particles-container'),
   playAgainBtn: document.getElementById('play-again-btn'),
   backToLobbyBtn: document.getElementById('back-to-lobby-btn'),
   gameoverLeaveBtn: document.getElementById('gameover-leave-btn'),
@@ -914,6 +921,14 @@ function handleServerMessage(msg) {
       break;
     }
 
+    case 'reaction_spawn': {
+      sfx.play('reaction');
+      if (msg.playerId !== state.playerId) {
+        spawnReactionParticle(msg.emoji, msg.playerName);
+      }
+      break;
+    }
+
     case 'chat': {
       appendChatMessage(msg.message);
       break;
@@ -960,7 +975,7 @@ function returnToHomeScreen({ clearInvite = true } = {}) {
 function appendChatMessage(m) {
   if (!m) return;
   const div = document.createElement('div');
-  div.className = `chat-line c-${m.color || 'chat'}`;
+  div.className = `chat-line c-${m.color || 'chat'}${m.color === 'bot' ? ' chat-msg-bot' : ''}`;
 
   if (m.kind === 'chat' && m.author) {
     const authorSpan = document.createElement('span');
@@ -1078,12 +1093,16 @@ function renderPlayersSidebar(room, amHost) {
   ranked.forEach((p, idx) => {
     const row = document.createElement('div');
     const isBuzzed = room.activeClue?.buzzedPlayerId === p.id;
-    const isSolved = room.activeClue?.solvedIds?.includes(p.id);
+    const isSolved =
+      room.activeClue?.solvedIds?.includes(p.id) ||
+      room.activeClue?.chaosSolvedIds?.includes(p.id);
+    const isOnFire = p.onFire || p.streak >= 2;
     row.className = [
       'player-row',
       p.id === state.playerId ? 'is-me' : '',
       isBuzzed ? 'is-buzzed' : '',
       isSolved ? 'is-solved' : '',
+      isOnFire ? 'is-on-fire' : '',
     ]
       .filter(Boolean)
       .join(' ');
@@ -1110,6 +1129,13 @@ function renderPlayersSidebar(room, amHost) {
     const nameText = document.createElement('span');
     nameText.textContent = `${p.name}${p.id === state.playerId ? ' (You)' : ''}`;
     nameLine.appendChild(nameText);
+
+    if (isOnFire) {
+      const streakBadge = document.createElement('span');
+      streakBadge.className = 'player-streak-badge';
+      streakBadge.textContent = `🔥 x${p.streak || 2}`;
+      nameLine.appendChild(streakBadge);
+    }
 
     const scoreEl = document.createElement('div');
     scoreEl.className = `player-score ${p.score < 0 ? 'is-negative' : ''}`;
@@ -1340,6 +1366,21 @@ function renderBoardStage(room) {
         btn.type = 'button';
         btn.className = `j-tile-btn ${myTurn ? 'can-pick' : 'not-my-turn'}`;
         btn.textContent = `$${tile.value}`;
+
+        if (tile.modifier) {
+          btn.classList.add('tile-with-modifier');
+          const modTag = document.createElement('span');
+          const MOD_INFO = {
+            speed_blitz: { label: '⚡ BLITZ', cls: 'mod-blitz' },
+            steal: { label: '🦹 STEAL', cls: 'mod-steal' },
+            chaos_all_play: { label: '💥 CHAOS', cls: 'mod-chaos' },
+            double_trouble: { label: '🍀 2X', cls: 'mod-double' },
+          };
+          const info = MOD_INFO[tile.modifier] || { label: '✨ PERK', cls: 'mod-blitz' };
+          modTag.className = `tile-modifier-tag ${info.cls}`;
+          modTag.textContent = info.label;
+          btn.appendChild(modTag);
+        }
         btn.addEventListener('click', () => {
           if (state.room?.pickerId !== state.playerId) {
             const curPicker = findPlayer(state.room, state.room?.pickerId);
@@ -1379,8 +1420,25 @@ function renderClueStage(room, amHost, phaseChanged) {
   const isDDAnswer = room.phase === 'daily_double_answer';
   const isClueOpen = room.phase === 'clue_open';
   const isClueBuzzed = room.phase === 'clue_buzzed';
+  const isChaosMode = room.phase === 'clue_chaos';
   const isSkribblMode = room.phase === 'clue_skribbl';
   const isResult = room.phase === 'clue_result';
+
+  // 0. Modifier Badge on Clue Card Top
+  if (ac.modifier) {
+    el.clueModifierBadge.hidden = false;
+    const MOD_INFO = {
+      speed_blitz: { label: '⚡ SPEED BLITZ (+50% Pts)', cls: 'mod-blitz' },
+      steal: { label: '🦹 STEAL TILE (-$200 Leader)', cls: 'mod-steal' },
+      chaos_all_play: { label: '💥 CHAOS ALL-PLAY', cls: 'mod-chaos' },
+      double_trouble: { label: '🍀 DOUBLE TROUBLE (2X)', cls: 'mod-double' },
+    };
+    const m = MOD_INFO[ac.modifier] || { label: '✨ PERK', cls: 'mod-blitz' };
+    el.clueModifierBadge.className = `clue-modifier-badge ${m.cls}`;
+    el.clueModifierBadge.textContent = m.label;
+  } else {
+    el.clueModifierBadge.hidden = true;
+  }
 
   // 1. Daily Double Wager Box
   el.ddWagerBox.hidden = !isDDWager;
@@ -1402,10 +1460,10 @@ function renderClueStage(room, amHost, phaseChanged) {
     }
   }
 
-  // 2. Clue Text & Skribbl Letter Mask
+  // 2. Clue Text & Progressive Letter Mask
   el.clueTextArea.hidden = isDDWager;
   el.cluePromptText.textContent = ac.clue || '';
-  if (isSkribblMode && ac.hintMask) {
+  if (ac.hintMask) {
     el.skribblHintMask.hidden = false;
     el.skribblHintMask.textContent = ac.hintMask;
   } else {
@@ -1463,6 +1521,21 @@ function renderClueStage(room, amHost, phaseChanged) {
   if (iAmAnswering && phaseChanged) {
     el.clueAnswerInput.value = '';
     setTimeout(() => el.clueAnswerInput.focus(), 30);
+  }
+
+  // 6b. Chaos All-Play Mode UI
+  el.chaosAnswerForm.hidden = !isChaosMode;
+  if (isChaosMode) {
+    const alreadySolved = ac.chaosSolvedIds?.includes(state.playerId);
+    el.chaosAnswerInput.disabled = alreadySolved;
+    el.chaosAnswerForm.querySelector('button[type="submit"]').disabled = alreadySolved;
+    el.chaosStatusMsg.textContent = alreadySolved
+      ? '✅ Answer solved! Waiting for others...'
+      : 'Type your answer and press Enter!';
+    if (phaseChanged && !alreadySolved) {
+      el.chaosAnswerInput.value = '';
+      setTimeout(() => el.chaosAnswerInput.focus(), 40);
+    }
   }
 
   // 7. Host Judge Controls
@@ -1617,6 +1690,37 @@ function renderGameoverStage(room, amHost) {
     }
   } else {
     el.finalBreakdownWrap.hidden = true;
+  }
+
+  // Render Match Superlatives & Awards
+  if (Array.isArray(room.superlatives) && room.superlatives.length > 0) {
+    el.superlativesSection.hidden = false;
+    el.superlativesGrid.innerHTML = '';
+    for (const sup of room.superlatives) {
+      const card = document.createElement('div');
+      card.className = 'superlative-card';
+
+      const icon = document.createElement('span');
+      icon.className = 'superlative-badge-icon';
+      icon.textContent = sup.badge;
+
+      const name = document.createElement('span');
+      name.className = 'superlative-name';
+      name.textContent = sup.title;
+
+      const player = document.createElement('span');
+      player.className = 'superlative-player';
+      player.textContent = sup.playerName;
+
+      const detail = document.createElement('span');
+      detail.className = 'superlative-detail';
+      detail.textContent = sup.detail;
+
+      card.append(icon, name, player, detail);
+      el.superlativesGrid.appendChild(card);
+    }
+  } else {
+    el.superlativesSection.hidden = true;
   }
 
   el.playAgainBtn.disabled = !amHost;
@@ -2080,6 +2184,54 @@ function bindEvents() {
     if (!txt) return;
     sendWs({ type: 'chat', text: txt });
     el.chatInput.value = '';
+  });
+
+  // Chaos All-Play Form
+  el.chaosAnswerForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = el.chaosAnswerInput.value.trim();
+    if (!val) return;
+    sfx.play('click');
+    sendWs({ type: 'submit_chaos_answer', answer: val });
+  });
+
+  // Floating Pixel Reaction Buttons
+  document.querySelectorAll('.reaction-trigger-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const emoji = btn.getAttribute('data-emoji');
+      if (!emoji) return;
+      sfx.play('reaction');
+      sendWs({ type: 'reaction', emoji });
+      spawnReactionParticle(emoji, state.name || 'You');
+    });
+  });
+}
+
+function spawnReactionParticle(emoji, playerName) {
+  if (!el.reactionParticlesContainer) return;
+  const particle = document.createElement('div');
+  particle.className = 'floating-particle';
+
+  const startX = 15 + Math.random() * 65;
+  particle.style.left = `${startX}%`;
+
+  const rot = (Math.random() * 14 - 7).toFixed(1);
+  particle.style.setProperty('--rot', `${rot}deg`);
+
+  const emojiSpan = document.createElement('span');
+  emojiSpan.className = 'particle-emoji';
+  emojiSpan.textContent = emoji;
+
+  const authorSpan = document.createElement('span');
+  authorSpan.className = 'particle-author';
+  authorSpan.textContent = playerName || '';
+
+  particle.append(emojiSpan, authorSpan);
+  el.reactionParticlesContainer.appendChild(particle);
+
+  particle.addEventListener('animationend', () => {
+    particle.remove();
   });
 }
 

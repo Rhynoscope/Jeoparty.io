@@ -334,7 +334,10 @@
                 <span id="clue-cat-icon" class="cat-pixel-icon" aria-hidden="true"></span>
                 <span id="clue-cat-name">CATEGORY</span>
               </div>
-              <span id="clue-value-pill" class="clue-value-pill">$600</span>
+              <div class="clue-top-right-group">
+                <span id="clue-modifier-badge" class="clue-modifier-badge" hidden></span>
+                <span id="clue-value-pill" class="clue-value-pill">$600</span>
+              </div>
             </div>
 
             <div class="clue-timer-track" aria-hidden="true">
@@ -407,6 +410,25 @@
                 <button type="submit" class="btn-skribbl btn-green">
                   Submit
                 </button>
+              </form>
+
+              <!-- Chaos All-Play Simultaneous Answer Input -->
+              <form id="chaos-answer-form" class="clue-answer-form chaos-answer-form" hidden>
+                <div class="chaos-headline-banner">💥 CHAOS ALL-PLAY! No buzzer — everyone answers at once!</div>
+                <div class="chaos-input-row">
+                  <input
+                    type="text"
+                    id="chaos-answer-input"
+                    class="skribbl-input answer-big-input"
+                    placeholder="Quick! Type your answer..."
+                    maxlength="100"
+                    aria-label="Chaos answer"
+                  />
+                  <button type="submit" class="btn-skribbl btn-green">
+                    Submit
+                  </button>
+                </div>
+                <p id="chaos-status-msg" class="chaos-status-msg"></p>
               </form>
 
               <!-- Host Ruling Controls (Host-Judge Mode) -->
@@ -508,6 +530,12 @@
               <div id="final-breakdown-list" class="final-breakdown-list"></div>
             </div>
 
+            <!-- Match Awards & Fun Superlatives -->
+            <div id="superlatives-section" class="superlatives-section" hidden>
+              <h3 class="superlatives-title">🎖️ Match Awards & Superlatives</h3>
+              <div id="superlatives-grid" class="superlatives-grid"></div>
+            </div>
+
             <div class="gameover-actions">
               <button type="button" id="play-again-btn" class="btn-skribbl btn-green">
                 Play Again
@@ -520,6 +548,16 @@
               </button>
             </div>
           </div>
+        </div>
+        <!-- Live Floating Pixel Reaction Bar -->
+        <div id="floating-reaction-bar" class="floating-reaction-bar" aria-label="Live Reactions">
+          <button type="button" class="reaction-trigger-btn" data-emoji="😂" title="Laugh">😂</button>
+          <button type="button" class="reaction-trigger-btn" data-emoji="🔥" title="On Fire!">🔥</button>
+          <button type="button" class="reaction-trigger-btn" data-emoji="💀" title="Dead">💀</button>
+          <button type="button" class="reaction-trigger-btn" data-emoji="🎉" title="Party!">🎉</button>
+          <button type="button" class="reaction-trigger-btn" data-emoji="😱" title="Shock!">😱</button>
+          <button type="button" class="reaction-trigger-btn" data-emoji="🤔" title="Thinking">🤔</button>
+          <button type="button" class="reaction-trigger-btn" data-emoji="💩" title="Poop">💩</button>
         </div>
       </section>
 
@@ -674,6 +712,9 @@
       </div>
     </form>
   </dialog>
+
+  <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
+  <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
   <script type="module" src="/js/app.js"></script>
 </body>

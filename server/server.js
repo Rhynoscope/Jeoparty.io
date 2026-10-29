@@ -346,6 +346,7 @@ function serializeRoomForPlayer(room, viewerId) {
           col: t.col,
           value: t.value,
           used: t.used,
+          modifier: t.modifier || null,
         })),
       })),
     };
@@ -373,12 +374,15 @@ function serializeRoomForPlayer(room, viewerId) {
       wager: ac.wager,
       maxWager: ac.maxWager,
       dailyDouble: ac.dailyDouble,
+      modifier: ac.modifier || null,
       clue: hideClueTextYet ? null : ac.clueObj.clue,
+      clueText: hideClueTextYet ? null : ac.clueObj.clue,
       hintMask: ac.hintMask || null,
       buzzedPlayerId: ac.buzzedPlayerId || null,
       buzzedGuessText: ac.buzzedGuessText || null,
       attemptedIds: Array.from(ac.attemptedIds || []),
       solvedIds: Array.from(ac.solvedIds || []),
+      chaosSolvedIds: ac.chaosSolvedList ? ac.chaosSolvedList.map((s) => s.playerId) : [],
       winnerName: ac.winnerName || null,
       winnerDelta: ac.winnerDelta || 0,
       lastWrongText: ac.lastWrongText || null,
@@ -397,7 +401,9 @@ function serializeRoomForPlayer(room, viewerId) {
 
     finalView = {
       category: fsState.clueObj.category,
+      categoryName: fsState.clueObj.category,
       clue: showClue ? fsState.clueObj.clue : null,
+      clueText: showClue ? fsState.clueObj.clue : null,
       answer: showResults ? fsState.clueObj.answer : null,
       wagerLockedIds: Object.keys(fsState.wagers),
       answerLockedIds: Object.keys(fsState.answers),
@@ -440,10 +446,13 @@ function serializeRoomForPlayer(room, viewerId) {
       score: p.score,
       connected: p.connected,
       isBot: p.isBot,
+      streak: p.stats?.currentStreak || 0,
+      onFire: Boolean(p.stats?.currentStreak >= 2),
     })),
     board: boardView,
     activeClue: activeClueView,
     finalState: finalView,
+    superlatives: room.phase === 'game_over' ? (room.superlatives || []) : [],
   };
 }
 
@@ -615,6 +624,22 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
     }
   }
 
+  // Assign Party Wildcard Modifiers to 2-3 non-Daily-Double tiles
+  const nonDDTiles = [];
+  for (let c = 0; c < categories.length; c++) {
+    for (let r = 0; r < categories[c].tiles.length; r++) {
+      if (!categories[c].tiles[r].dailyDouble) {
+        nonDDTiles.push(categories[c].tiles[r]);
+      }
+    }
+  }
+  const MODIFIERS = ['speed_blitz', 'steal', 'chaos_all_play', 'double_trouble'];
+  const shuffledNonDD = shuffle(nonDDTiles);
+  const modCount = Math.min(3, Math.max(2, Math.floor(nonDDTiles.length / 4)));
+  for (let i = 0; i < modCount; i++) {
+    shuffledNonDD[i].modifier = MODIFIERS[i % MODIFIERS.length];
+  }
+
   return { categories };
 }
 
@@ -626,6 +651,14 @@ function startNewGame(room) {
   room.gameId = 'game_' + randomId(6);
   for (const p of room.players) {
     p.score = 0;
+    p.stats = {
+      correctCount: 0,
+      wrongCount: 0,
+      maxStreak: 0,
+      currentStreak: 0,
+      fastestBuzzMs: 99999,
+      reactionsSent: 0,
+    };
   }
   room.round = 1;
   room.usedCategoryIds = new Set();
@@ -765,6 +798,7 @@ function handleSelectTile(room, player, col, row) {
   const maxBoardVal = room.round === 2 ? 2000 : 1000;
   const maxWager = Math.max(player.score, maxBoardVal);
 
+  const modifier = tile.modifier || null;
   room.activeClue = {
     col,
     row,
@@ -775,19 +809,60 @@ function handleSelectTile(room, player, col, row) {
     wager: tile.value,
     maxWager,
     dailyDouble: tile.dailyDouble,
+    modifier,
     clueObj: tile.clueObj,
     buzzedPlayerId: null,
     buzzedGuessText: null,
     attemptedIds: new Set(),
     solvedIds: new Set(),
     hintMask: null,
+    revealedLetterIndices: new Set(),
     winnerName: null,
     winnerDelta: 0,
     lastWrongText: null,
+    clueStartedAt: Date.now(),
   };
 
   if (tile.dailyDouble) {
     enterDailyDoubleWagerPhase(room, player);
+    return;
+  }
+
+  // Handle Party Wildcard Modifiers
+  if (modifier === 'speed_blitz') {
+    room.activeClue.value = Math.round(tile.value * 1.5);
+    sendChat(room, {
+      color: 'gold',
+      text: `⚡ SPEED BLITZ! 8s rapid buzzer with +50% bonus points ($${room.activeClue.value})!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'blitz' });
+    enterBuzzerClueOpenPhase(room, 8000, true);
+    return;
+  }
+
+  if (modifier === 'steal') {
+    sendChat(room, {
+      color: 'gold',
+      text: `🦹 STEAL TILE! Correct buzz earns $${room.activeClue.value} AND steals $200 from the leader!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'steal' });
+    enterBuzzerClueOpenPhase(room, room.settings.clueTimeSec * 1000, true);
+    return;
+  }
+
+  if (modifier === 'double_trouble') {
+    room.activeClue.value = tile.value * 2;
+    sendChat(room, {
+      color: 'gold',
+      text: `🍀 DOUBLE TROUBLE! 2X points ($${room.activeClue.value}), but 2X penalty for incorrect guesses!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
+    enterBuzzerClueOpenPhase(room, room.settings.clueTimeSec * 1000, true);
+    return;
+  }
+
+  if (modifier === 'chaos_all_play') {
+    enterChaosAllPlayPhase(room);
     return;
   }
 
@@ -943,8 +1018,24 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
 
   if (isFirstOpen) {
     broadcastRoomEvent(room, { type: 'sfx', sound: 'clue_reveal' });
+    if (!ac.revealedLetterIndices) ac.revealedLetterIndices = new Set();
+    if (!ac.hintMask) {
+      ac.hintMask = renderMaskFromRevealed(ac.clueObj.answer, ac.revealedLetterIndices);
+    }
   }
   broadcastRoomState(room);
+
+  // Progressive letter hint at 50% time remaining
+  if (durationMs > 4500) {
+    scheduleRoomTimer(room, () => {
+      if (room.phase === 'clue_open' && room.activeClue === ac) {
+        if (revealOneLetterHint(ac)) {
+          broadcastRoomEvent(room, { type: 'sfx', sound: 'hint' });
+          broadcastRoomState(room);
+        }
+      }
+    }, durationMs * 0.5);
+  }
 
   for (const bot of eligible.filter((p) => p.isBot)) {
     const difficultyPenalty = (ac.row / 5) * 0.22;
@@ -982,11 +1073,28 @@ function handlePlayerBuzz(room, player) {
   clearRoomTimers(room);
   room.mainTimerRemainingMs = remainingMain;
 
+  // Track buzz reaction latency
+  const buzzElapsed = Date.now() - (ac.clueStartedAt || (room.phaseEndsAt - room.settings.clueTimeSec * 1000));
+  player.stats = player.stats || {
+    correctCount: 0,
+    wrongCount: 0,
+    maxStreak: 0,
+    currentStreak: 0,
+    fastestBuzzMs: 99999,
+    reactionsSent: 0,
+  };
+  if (buzzElapsed > 200 && buzzElapsed < player.stats.fastestBuzzMs) {
+    player.stats.fastestBuzzMs = buzzElapsed;
+  }
+  player.stats.buzzCount = (player.stats.buzzCount || 0) + 1;
+
   ac.buzzedPlayerId = player.id;
   ac.buzzedGuessText = null;
   room.phase = 'clue_buzzed';
   const buzzAnswerMs = 11000;
   room.phaseEndsAt = Date.now() + buzzAnswerMs;
+
+  triggerBotBanter(room, player, 'buzz');
 
   sendChat(room, {
     color: 'info',
@@ -1025,6 +1133,25 @@ function applyCorrectBuzz(room, player) {
   ac.winnerDelta = ac.value;
   ac.lastWrongText = null;
 
+  // Handle Steal tile modifier
+  if (ac.modifier === 'steal') {
+    const leader = room.players
+      .filter((p) => p.id !== player.id && p.connected && p.score > 0)
+      .sort((a, b) => b.score - a.score)[0];
+    if (leader) {
+      const stolen = Math.min(200, leader.score);
+      leader.score -= stolen;
+      player.score += stolen;
+      sendChat(room, {
+        color: 'gold',
+        text: `🦹 STEAL! ${player.name} stole $${stolen.toLocaleString()} from ${leader.name}!`,
+      });
+    }
+  }
+
+  recordCorrectAnswer(room, player, ac.value);
+  triggerBotBanter(room, player, 'correct');
+
   sendChat(room, {
     color: 'success',
     text: `${player.name} got it right! (+$${ac.value.toLocaleString()})`,
@@ -1040,6 +1167,12 @@ function applyWrongBuzz(room, player, displayGuess) {
   ac.attemptedIds.add(player.id);
   const penalty = room.settings.wrongPenalty ? ac.value : 0;
   player.score -= penalty;
+
+  recordWrongAnswer(player);
+  triggerBotBanter(room, player, 'wrong');
+
+  // Progressive letter hint: reveal another letter!
+  revealOneLetterHint(ac);
 
   const penaltyText = penalty > 0 ? ` (-$${penalty.toLocaleString()})` : '';
   ac.lastWrongText = `${player.name}: "${displayGuess}"${penaltyText}`;
@@ -1109,12 +1242,42 @@ function handleHostJudge(room, hostPlayer, ruling) {
 
 /* ---------------- Skribbl Speed-Guessing Mode ---------------- */
 
+function getAnswerLetterIndices(answer) {
+  const indices = [];
+  for (let i = 0; i < answer.length; i++) {
+    if (/[a-zA-Z0-9]/.test(answer[i])) indices.push(i);
+  }
+  return indices;
+}
+
+function renderMaskFromRevealed(answer, revealedIndices) {
+  return answer
+    .split('')
+    .map((ch, idx) => {
+      if (ch === ' ') return '   ';
+      if (!/[a-zA-Z0-9]/.test(ch)) return ch;
+      return revealedIndices.has(idx) ? ch : '_';
+    })
+    .join(' ');
+}
+
+function revealOneLetterHint(ac) {
+  if (!ac || !ac.clueObj?.answer) return false;
+  if (!ac.revealedLetterIndices) ac.revealedLetterIndices = new Set();
+  const allIndices = getAnswerLetterIndices(ac.clueObj.answer);
+  const unrevealed = allIndices.filter((i) => !ac.revealedLetterIndices.has(i));
+  if (unrevealed.length > 1) {
+    const pick = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+    ac.revealedLetterIndices.add(pick);
+    ac.hintMask = renderMaskFromRevealed(ac.clueObj.answer, ac.revealedLetterIndices);
+    return true;
+  }
+  return false;
+}
+
 function buildLetterMask(answer, revealRatio = 0) {
   const chars = answer.split('');
-  const letterIndices = [];
-  chars.forEach((ch, idx) => {
-    if (/[a-zA-Z0-9]/.test(ch)) letterIndices.push(idx);
-  });
+  const letterIndices = getAnswerLetterIndices(answer);
   const revealCount = Math.floor(letterIndices.length * revealRatio);
   const revealedSet = new Set(shuffle(letterIndices).slice(0, revealCount));
 
@@ -1125,6 +1288,288 @@ function buildLetterMask(answer, revealRatio = 0) {
       return revealedSet.has(idx) ? ch : '_';
     })
     .join(' ');
+}
+
+function recordCorrectAnswer(room, player, basePoints) {
+  player.stats = player.stats || {
+    correctCount: 0,
+    wrongCount: 0,
+    maxStreak: 0,
+    currentStreak: 0,
+    fastestBuzzMs: 99999,
+    reactionsSent: 0,
+  };
+  player.stats.correctCount++;
+  player.stats.currentStreak++;
+  if (player.stats.currentStreak > player.stats.maxStreak) {
+    player.stats.maxStreak = player.stats.currentStreak;
+  }
+
+  // Check if someone else had a streak to claim a bounty!
+  for (const other of room.players) {
+    if (other.id !== player.id && other.stats && other.stats.currentStreak >= 2) {
+      const bounty = other.stats.currentStreak * 150;
+      player.score += bounty;
+      sendChat(room, {
+        color: 'gold',
+        text: `🎯 BOUNTY CLAIMED! ${player.name} broke ${other.name}'s streak and claimed a +$${bounty} bounty!`,
+      });
+      broadcastRoomEvent(room, { type: 'sfx', sound: 'victory' });
+      other.stats.currentStreak = 0;
+    }
+  }
+
+  // Check if this player is now on fire!
+  if (player.stats.currentStreak === 2) {
+    sendChat(room, {
+      color: 'gold',
+      text: `🔥 ${player.name} is ON FIRE! (2 in a row!)`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'streak' });
+  } else if (player.stats.currentStreak >= 3) {
+    const comboBonus = Math.round(basePoints * 0.25);
+    player.score += comboBonus;
+    sendChat(room, {
+      color: 'gold',
+      text: `🔥 MEGA COMBO! ${player.name} gets +$${comboBonus} streak bonus! (${player.stats.currentStreak} in a row!)`,
+    });
+  }
+}
+
+function recordWrongAnswer(player) {
+  player.stats = player.stats || {
+    correctCount: 0,
+    wrongCount: 0,
+    maxStreak: 0,
+    currentStreak: 0,
+    fastestBuzzMs: 99999,
+    reactionsSent: 0,
+  };
+  player.stats.wrongCount++;
+  player.stats.currentStreak = 0;
+}
+
+const BOT_BANTER = {
+  buzz: [
+    "Hold my coffee, I know this! ☕",
+    "Beep boop, calculating answer... 🤖",
+    "I was programmed for this moment! ⚡",
+    "Too slow, humans! 💨",
+    "Let a real intelligence handle this. 🧠",
+  ],
+  correct: [
+    "100% calculation accuracy! 😎",
+    "Neural networks never lie. ✨",
+    "Easy points for the bot squad!",
+    "That was practically in my BIOS. 💻",
+  ],
+  wrong: [
+    "Does not compute! 💀",
+    "Who programmed that clue?! 😭",
+    "I blame high network latency! 📶",
+    "Error 404: Brain not found.",
+    "My database was bribed! 🫠",
+  ],
+  streak: [
+    "I am unstoppable! 🔥",
+    "Bow down to your new pixel overlord! 👑",
+    "Try to break my streak if you dare! 😈",
+  ],
+  reaction: ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'],
+};
+
+function triggerBotBanter(room, bot, category) {
+  if (!bot || !bot.isBot) return;
+  if (Math.random() > 0.38) return;
+  const list = BOT_BANTER[category];
+  if (!list || list.length === 0) return;
+  const quote = list[Math.floor(Math.random() * list.length)];
+  setTimeout(() => {
+    if (room && !room.terminated) {
+      sendChat(room, {
+        color: 'bot',
+        text: `[${bot.name}]: ${quote}`,
+      });
+      if (Math.random() < 0.45) {
+        const emoji = BOT_BANTER.reaction[Math.floor(Math.random() * BOT_BANTER.reaction.length)];
+        broadcastRoomEvent(room, {
+          type: 'reaction_spawn',
+          playerId: bot.id,
+          playerName: bot.name,
+          emoji,
+          avatarConfig: bot.avatar,
+        });
+      }
+    }
+  }, 400 + Math.random() * 800);
+}
+
+function computeSuperlatives(room) {
+  const superlatives = [];
+  const players = room.players || [];
+  if (players.length === 0) return superlatives;
+
+  // 1. Speed Demon (fastest buzz)
+  const speedDemons = players
+    .filter((p) => p.stats?.fastestBuzzMs && p.stats.fastestBuzzMs < 10000)
+    .sort((a, b) => a.stats.fastestBuzzMs - b.stats.fastestBuzzMs);
+  if (speedDemons.length > 0) {
+    const p = speedDemons[0];
+    const sec = (p.stats.fastestBuzzMs / 1000).toFixed(2);
+    superlatives.push({
+      badge: '⚡',
+      title: 'Speed Demon',
+      playerName: p.name,
+      avatarConfig: p.avatar,
+      detail: `Fastest buzz in ${sec}s!`,
+    });
+  }
+
+  // 2. Hot Streak (highest streak)
+  const streakKings = players
+    .filter((p) => p.stats?.maxStreak && p.stats.maxStreak >= 2)
+    .sort((a, b) => b.stats.maxStreak - a.stats.maxStreak);
+  if (streakKings.length > 0) {
+    const p = streakKings[0];
+    superlatives.push({
+      badge: '🔥',
+      title: 'Streak King',
+      playerName: p.name,
+      avatarConfig: p.avatar,
+      detail: `${p.stats.maxStreak} correct in a row!`,
+    });
+  }
+
+  // 3. Sharpshooter (highest accuracy)
+  const shooters = players
+    .filter((p) => (p.stats?.correctCount || 0) + (p.stats?.wrongCount || 0) >= 2)
+    .map((p) => {
+      const total = p.stats.correctCount + p.stats.wrongCount;
+      const acc = Math.round((p.stats.correctCount / total) * 100);
+      return { p, acc, total };
+    })
+    .sort((a, b) => b.acc - a.acc);
+  if (shooters.length > 0 && shooters[0].acc >= 50) {
+    const s = shooters[0];
+    superlatives.push({
+      badge: '🎯',
+      title: 'Sharpshooter',
+      playerName: s.p.name,
+      avatarConfig: s.p.avatar,
+      detail: `${s.acc}% accuracy (${s.p.stats.correctCount}/${s.total})`,
+    });
+  }
+
+  // 4. Party Animal (most reactions)
+  const partiers = players
+    .filter((p) => p.stats?.reactionsSent && p.stats.reactionsSent >= 3)
+    .sort((a, b) => b.stats.reactionsSent - a.stats.reactionsSent);
+  if (partiers.length > 0) {
+    const p = partiers[0];
+    superlatives.push({
+      badge: '🎪',
+      title: 'Party Animal',
+      playerName: p.name,
+      avatarConfig: p.avatar,
+      detail: `${p.stats.reactionsSent} reactions sent!`,
+    });
+  }
+
+  return superlatives;
+}
+
+function enterChaosAllPlayPhase(room) {
+  if (!room || room.terminated) return;
+  clearRoomTimers(room);
+  const ac = room.activeClue;
+  room.phase = 'clue_chaos';
+  const durationMs = 14000;
+  room.phaseEndsAt = Date.now() + durationMs;
+  ac.chaosSolvedList = [];
+  ac.attemptedIds = new Set();
+  ac.revealedLetterIndices = new Set();
+  ac.hintMask = renderMaskFromRevealed(ac.clueObj.answer, ac.revealedLetterIndices);
+
+  sendChat(room, {
+    color: 'danger',
+    text: `💥 CHAOS ALL-PLAY! No buzzer — EVERYONE can answer at once for 14 seconds!`,
+  });
+  broadcastRoomEvent(room, { type: 'sfx', sound: 'chaos' });
+  broadcastRoomState(room);
+
+  // Progressive letter hint at 50% time
+  scheduleRoomTimer(room, () => {
+    if (room.phase !== 'clue_chaos') return;
+    if (revealOneLetterHint(ac)) {
+      broadcastRoomEvent(room, { type: 'sfx', sound: 'hint' });
+      broadcastRoomState(room);
+    }
+  }, durationMs * 0.5);
+
+  // Bots in chaos all-play
+  for (const bot of room.players.filter((p) => p.isBot && p.connected)) {
+    const knows = Math.random() < bot.botSkill;
+    if (knows) {
+      const delay = 3500 + Math.random() * (durationMs * 0.65);
+      scheduleRoomTimer(room, () => {
+        if (room.phase === 'clue_chaos') {
+          handleChaosAnswer(room, bot, ac.clueObj.answer);
+        }
+      }, delay);
+    }
+  }
+
+  scheduleRoomTimer(room, () => {
+    if (room.phase !== 'clue_chaos') return;
+    if (ac.chaosSolvedList.length === 0) {
+      sendChat(room, {
+        color: 'warn',
+        text: `Time's up! The answer was: ${ac.clueObj.answer}`,
+      });
+      broadcastRoomEvent(room, { type: 'sfx', sound: 'timeout' });
+    }
+    enterClueResultPhase(room);
+  }, durationMs);
+}
+
+function handleChaosAnswer(room, player, text) {
+  if (!room || room.terminated || room.phase !== 'clue_chaos') return;
+  const ac = room.activeClue;
+  if (!ac) return;
+  if (ac.chaosSolvedList.some((s) => s.playerId === player.id)) return; // already solved
+
+  const result = evaluateAnswer(text, ac.clueObj);
+  if (result.status === 'correct') {
+    const order = ac.chaosSolvedList.length;
+    const points = order === 0 ? ac.value : Math.round(ac.value * 0.5);
+    player.score += points;
+    ac.chaosSolvedList.push({ playerId: player.id, name: player.name, points });
+    if (order === 0) {
+      ac.winnerName = player.name;
+      ac.winnerDelta = points;
+      room.pickerId = player.id;
+    }
+    recordCorrectAnswer(room, player, points);
+    sendChat(room, {
+      color: 'success',
+      text: `💥 ${player.name} solved it! (+${points}) [${order + 1}${order === 0 ? 'st' : order === 1 ? 'nd' : 'rd'}]`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
+    broadcastRoomState(room);
+
+    // If all connected players solved, finish immediately
+    const connectedCount = room.players.filter((p) => p.connected).length;
+    if (ac.chaosSolvedList.length >= connectedCount) {
+      enterClueResultPhase(room);
+    }
+  } else {
+    recordWrongAnswer(player);
+    sendPrivateChat(player, {
+      color: 'danger',
+      text: `"${text}" is incorrect!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
+  }
 }
 
 function enterSkribblCluePhase(room) {
@@ -1383,6 +1828,7 @@ function enterGameOverPhase(room) {
   clearRoomTimers(room);
   room.phase = 'game_over';
   room.phaseEndsAt = 0;
+  room.superlatives = computeSuperlatives(room);
 
   const sorted = [...room.players].sort((a, b) => b.score - a.score);
   const winner = sorted[0];
@@ -2077,6 +2523,8 @@ attachWebSocketServer(server, (ws) => {
           handleBuzzedAnswerSubmit(currentRoom, currentPlayer, msg.answer);
         } else if (currentRoom.phase === 'daily_double_answer') {
           handleSubmitDailyDoubleAnswer(currentRoom, currentPlayer, msg.answer);
+        } else if (currentRoom.phase === 'clue_chaos') {
+          handleChaosAnswer(currentRoom, currentPlayer, msg.answer);
         } else if (currentRoom.phase === 'clue_skribbl') {
           const consumed = handleSkribblGuessOrChat(
             currentRoom,
@@ -2092,6 +2540,43 @@ attachWebSocketServer(server, (ws) => {
             });
           }
         }
+        break;
+      }
+
+      case 'submit_chaos_answer': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        handleChaosAnswer(currentRoom, currentPlayer, msg.answer);
+        break;
+      }
+
+      case 'reaction': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        const emoji = String(msg.emoji || '').slice(0, 10);
+        const ALLOWED_REACTIONS = ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'];
+        if (!ALLOWED_REACTIONS.includes(emoji)) return;
+
+        const now = Date.now();
+        if (currentPlayer.lastReactionAt && now - currentPlayer.lastReactionAt < 250) {
+          return;
+        }
+        currentPlayer.lastReactionAt = now;
+        currentPlayer.stats = currentPlayer.stats || {
+          correctCount: 0,
+          wrongCount: 0,
+          maxStreak: 0,
+          currentStreak: 0,
+          fastestBuzzMs: 99999,
+          reactionsSent: 0,
+        };
+        currentPlayer.stats.reactionsSent++;
+
+        broadcastRoomEvent(currentRoom, {
+          type: 'reaction_spawn',
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          emoji,
+          avatarConfig: currentPlayer.avatar,
+        });
         break;
       }
 
@@ -2144,6 +2629,11 @@ attachWebSocketServer(server, (ws) => {
         if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
         const text = String(msg.text || '').trim().slice(0, 160);
         if (!text) return;
+
+        if (currentRoom.phase === 'clue_chaos') {
+          handleChaosAnswer(currentRoom, currentPlayer, text);
+          return;
+        }
 
         if (currentRoom.phase === 'clue_skribbl') {
           const consumed = handleSkribblGuessOrChat(

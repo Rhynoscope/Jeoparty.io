@@ -102,6 +102,33 @@ class SoundEngine {
           this._tone(f, i * 0.11, d, 'triangle', 0.16);
         });
         break;
+      case 'blitz':
+        this._tone(880, 0, 0.06, 'sawtooth', 0.12, 1400);
+        this._tone(1174, 0.05, 0.1, 'sawtooth', 0.14, 1760);
+        break;
+      case 'steal':
+        this._tone(600, 0, 0.08, 'triangle', 0.12, 450);
+        this._tone(450, 0.07, 0.08, 'triangle', 0.12, 700);
+        this._tone(800, 0.14, 0.16, 'triangle', 0.14);
+        break;
+      case 'streak':
+        this._tone(440, 0, 0.08, 'triangle', 0.12);
+        this._tone(554.37, 0.07, 0.08, 'triangle', 0.13);
+        this._tone(659.25, 0.14, 0.08, 'triangle', 0.14);
+        this._tone(880, 0.21, 0.22, 'triangle', 0.16);
+        break;
+      case 'reaction':
+        this._tone(620, 0, 0.07, 'sine', 0.1, 950);
+        break;
+      case 'hint':
+        this._tone(784, 0, 0.06, 'sine', 0.08);
+        this._tone(1046.5, 0.05, 0.1, 'sine', 0.09);
+        break;
+      case 'chaos':
+        [440, 554, 659, 880, 1108].forEach((f, i) => {
+          this._tone(f, i * 0.05, 0.08, 'triangle', 0.12);
+        });
+        break;
       case 'tick':
         this._tone(800, 0, 0.035, 'sine', 0.05);
         break;
