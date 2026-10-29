@@ -1358,24 +1358,23 @@ const BOT_BANTER = {
     "Let a real intelligence handle this. 🧠",
   ],
   correct: [
-    "100% calculation accuracy! 😎",
+    "100% calculation accuracy! 🎯",
     "Neural networks never lie. ✨",
     "Easy points for the bot squad!",
     "That was practically in my BIOS. 💻",
   ],
   wrong: [
-    "Does not compute! 💀",
-    "Who programmed that clue?! 😭",
-    "I blame high network latency! 📶",
+    "Does not compute! 💥",
+    "Who programmed that clue?! 💢",
+    "I blame high network latency! 📡",
     "Error 404: Brain not found.",
     "My database was bribed! 🫠",
   ],
   streak: [
     "I am unstoppable! 🔥",
     "Bow down to your new pixel overlord! 👑",
-    "Try to break my streak if you dare! 😈",
+    "Try to break my streak if you dare! 🏆",
   ],
-  reaction: ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'],
 };
 
 function triggerBotBanter(room, bot, category) {
@@ -1467,7 +1466,7 @@ function computeSuperlatives(room) {
   if (partiers.length > 0) {
     const p = partiers[0];
     superlatives.push({
-      badge: '🎪',
+      badge: '🎉',
       title: 'Party Animal',
       playerName: p.name,
       avatarConfig: p.avatar,
