@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jeoparty.io - Multiplayer MS Paint Jeopardy Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Patrick+Hand&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="preload" as="image" href="/assets/logo-sheet.png" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <!-- Toast Banner for quick feedback -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- =====================================================================
+       SIMPLIFIED MAIN MENU (Skribbl.io Clarity + Animated MS Paint Pixel Art)
+       ===================================================================== -->
+  <main id="home-screen" class="home-screen">
+    <!-- Compact Top Utility Controls (keeps secondary options out of the way) -->
+    <header class="home-utility-bar">
+      <button type="button" id="home-sound-btn" class="utility-pill-btn" aria-label="Toggle sound effects">
+        Sound: On
+      </button>
+      <button type="button" id="home-motion-btn" class="utility-pill-btn" aria-label="Toggle pixel animations">
+        Animations: On
+      </button>
+      <button type="button" id="open-howto-btn" class="utility-pill-btn">
+        ? How to Play
+      </button>
+    </header>
+
+    <section class="home-hero" aria-label="Main Menu">
+      <!-- Hand-Drawn Animated MS Paint Pixel-Art Logo + Mascot Row -->
+      <div class="logo-wrap">
+        <h1 class="logo-heading">
+          <span class="pixel-logo" role="img" aria-label="jeoparty.io!"></span>
+        </h1>
+        <div id="home-mascot-row" class="home-mascot-row" aria-hidden="true"></div>
+      </div>
+
+      <!-- Focused Skribbl-Clean Start Card -->
+      <div class="login-card">
+        <div id="invite-room-banner" class="invite-room-banner" hidden>
+          <span>Invited to Room <strong id="invite-room-code-label"></strong></span>
+          <button type="button" id="cancel-invite-btn" class="tiny-link-btn" aria-label="Clear room invite">✕</button>
+        </div>
+
+        <input
+          type="text"
+          id="player-name-input"
+          class="skribbl-input name-main-input"
+          placeholder="Enter your name"
+          maxlength="18"
+          autocomplete="nickname"
+          aria-label="Enter your name"
+        />
+
+        <!-- Animated MS Paint Avatar Customizer (Eyes, Mouth, Color, Hat + Pixel Dice) -->
+        <div class="avatar-customizer-stage">
+          <button
+            type="button"
+            id="avatar-random-btn"
+            class="dice-btn"
+            aria-label="Randomize avatar"
+          >
+            <img src="/assets/dice.png" width="28" height="28" alt="" class="pixel-img" />
+          </button>
+
+          <div class="avatar-arrows-col">
+            <button type="button" class="arrow-btn" data-part="hat" data-dir="-1" aria-label="Previous hat">&lt;</button>
+            <button type="button" class="arrow-btn" data-part="eyes" data-dir="-1" aria-label="Previous eyes">&lt;</button>
+            <button type="button" class="arrow-btn" data-part="mouth" data-dir="-1" aria-label="Previous mouth">&lt;</button>
+            <button type="button" class="arrow-btn" data-part="color" data-dir="-1" aria-label="Previous color">&lt;</button>
+          </div>
+
+          <div class="avatar-preview-center">
+            <div id="home-avatar-preview" class="home-avatar-preview"></div>
+            <span id="avatar-part-hint" class="avatar-part-hint">MS Paint Buddy</span>
+          </div>
+
+          <div class="avatar-arrows-col">
+            <button type="button" class="arrow-btn" data-part="hat" data-dir="1" aria-label="Next hat">&gt;</button>
+            <button type="button" class="arrow-btn" data-part="eyes" data-dir="1" aria-label="Next eyes">&gt;</button>
+            <button type="button" class="arrow-btn" data-part="mouth" data-dir="1" aria-label="Next mouth">&gt;</button>
+            <button type="button" class="arrow-btn" data-part="color" data-dir="1" aria-label="Next color">&gt;</button>
+          </div>
+        </div>
+
+        <div class="home-actions-stack">
+          <button type="button" id="play-btn" class="btn-skribbl btn-green btn-lg">
+            Play!
+          </button>
+          <div class="home-secondary-actions">
+            <button type="button" id="create-private-btn" class="btn-skribbl btn-blue">
+              Create Private Room
+            </button>
+            <button type="button" id="open-public-browser-btn" class="btn-skribbl btn-yellow">
+              Public Rooms
+            </button>
+            <button type="button" id="open-join-dialog-btn" class="btn-skribbl btn-purple">
+              Join Room
+            </button>
+          </div>
+        </div>
+
+        <!-- Phone Access Helper Banner (shown when hosting on PC via localhost) -->
+        <div id="home-lan-banner" class="home-lan-banner" hidden>
+          <div class="home-lan-inner">
+            <span class="home-lan-badge" aria-hidden="true">📱 PHONE</span>
+            <div class="home-lan-text-col">
+              <span class="home-lan-sub">Connect phone on same Wi-Fi:</span>
+              <button type="button" id="home-lan-copy-btn" class="home-lan-pill-btn" title="Click to copy address">
+                <span id="home-lan-url-text">http://...</span>
+                <span class="home-lan-copy-tag">Copy</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =====================================================================
+       IN-GAME & PRIVATE ROOM ARENA (Clean 3-Column Layout)
+       ===================================================================== -->
+  <div id="game-screen" class="game-screen" hidden>
+    <!-- Clean Top Status Bar -->
+    <header class="arena-topbar">
+      <div class="topbar-left">
+        <span class="mini-brand">jeoparty.io</span>
+        <button type="button" id="room-code-pill" class="room-code-pill" aria-label="Copy room code">
+          CODE: <strong id="topbar-room-code">------</strong>
+        </button>
+        <span id="topbar-round-badge" class="round-badge">Lobby</span>
+      </div>
+
+      <div class="topbar-center">
+        <div id="timer-badge" class="timer-badge" hidden>
+          <img src="/assets/clock.png" width="22" height="22" alt="" class="pixel-img" />
+          <span id="timer-seconds">20</span>
+        </div>
+        <div id="topbar-status-text" class="topbar-status-text">
+          Waiting for players...
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button type="button" id="sound-toggle-btn" class="btn-top-tool" aria-label="Toggle sound effects">
+          Sound: On
+        </button>
+        <button type="button" id="motion-toggle-btn" class="btn-top-tool" aria-label="Toggle animations">
+          Anim: On
+        </button>
+        <button type="button" id="leave-room-btn" class="btn-top-tool btn-top-leave">
+          Leave
+        </button>
+      </div>
+    </header>
+
+    <!-- 3-Column Arena: Left Players | Center Stage | Right Chat -->
+    <div class="arena-columns">
+      <!-- LEFT: Player List & Scoreboard -->
+      <aside class="players-sidebar" aria-label="Players Scoreboard">
+        <div class="sidebar-header">Players</div>
+        <div id="players-list" class="players-list"></div>
+        <div id="host-bot-controls" class="host-bot-controls" hidden>
+          <button type="button" id="add-bot-btn" class="btn-skribbl btn-small btn-purple">
+            + Add Bot
+          </button>
+        </div>
+      </aside>
+
+      <!-- CENTER: Dynamic Stage (Lobby / Board / Question / Final / Results) -->
+      <section class="center-stage" aria-label="Game Stage">
+        <!-- 1. SIMPLIFIED LOBBY (Grouped into ROOM, GAME SETTINGS, ACTIONS) -->
+        <div id="stage-lobby" class="stage-panel lobby-panel">
+          <div class="lobby-scroll-area">
+            <!-- GROUP 1: ROOM -->
+            <section class="lobby-group lobby-room-group" aria-labelledby="lobby-room-heading">
+              <div class="lobby-room-main">
+                <div>
+                  <h2 id="lobby-room-heading" class="group-kicker">ROOM</h2>
+                  <div class="room-code-hero-line">
+                    <span id="lobby-room-code-display" class="room-code-display">------</span>
+                    <span id="lobby-role-badge" class="role-pill">Host</span>
+                  </div>
+                  <p id="lan-hint-text" class="lan-hint-text"></p>
+                </div>
+                <button type="button" id="copy-invite-main-btn" class="btn-skribbl btn-blue">
+                  Copy Invite Link
+                </button>
+              </div>
+            </section>
+
+            <!-- GROUP 2: GAME SETTINGS -->
+            <section class="lobby-group" aria-labelledby="lobby-settings-heading">
+              <div class="group-title-row">
+                <h2 id="lobby-settings-heading" class="group-kicker">GAME SETTINGS</h2>
+              </div>
+
+              <!-- Essential Primary Controls (3 simple choices) -->
+              <div class="settings-grid-primary">
+                <label class="setting-field">
+                  <span>Game Mode</span>
+                  <select id="set-answer-mode" class="skribbl-select">
+                    <option value="buzzer">Classic Buzzer (Buzz + Type)</option>
+                    <option value="skribbl">Everyone Answers (Speed Mode)</option>
+                    <option value="host">Host Judges (Party / Voice)</option>
+                  </select>
+                </label>
+
+                <label class="setting-field">
+                  <span>Match Length &amp; Difficulty</span>
+                  <select id="set-clues-per-cat" class="skribbl-select">
+                    <option value="3">Quick (3 rows: $200–$600)</option>
+                    <option value="4">Medium (4 rows: $200–$800)</option>
+                    <option value="5" selected>Classic (5 rows: $200–$1000)</option>
+                  </select>
+                </label>
+
+                <label class="setting-field">
+                  <span>Question Timer</span>
+                  <select id="set-clue-time" class="skribbl-select">
+                    <option value="12">12s (Blitz)</option>
+                    <option value="15">15s (Fast)</option>
+                    <option value="20" selected>20s (Standard)</option>
+                    <option value="30">30s (Relaxed)</option>
+                    <option value="45">45s (Party)</option>
+                  </select>
+                </label>
+              </div>
+
+              <!-- Prominent Category Selection (Never Buried!) -->
+              <div class="cat-customizer-box">
+                <div class="cat-customizer-top">
+                  <div class="cat-title-cluster">
+                    <h3>Select Categories</h3>
+                    <span id="included-counter-badge" class="included-counter-badge">24 / 24</span>
+                  </div>
+                  <button type="button" id="open-custom-cat-btn" class="preset-chip preset-chip-gold">
+                    + Custom Category
+                  </button>
+                </div>
+
+                <div class="cat-toolbar-row">
+                  <search class="cat-search-wrap">
+                    <input
+                      type="search"
+                      id="cat-filter-input"
+                      class="skribbl-input cat-search-input"
+                      placeholder="Search categories..."
+                      aria-label="Filter categories"
+                    />
+                  </search>
+                  <div class="cat-presets-bar">
+                    <button type="button" class="preset-chip" data-preset="all">All</button>
+                    <button type="button" class="preset-chip" data-preset="none">None</button>
+                    <button type="button" class="preset-chip" data-preset="random6">Random 6</button>
+                    <button type="button" class="preset-chip" data-preset="pop">Pop &amp; Memes</button>
+                    <button type="button" class="preset-chip" data-preset="nerdy">Games &amp; Sci</button>
+                    <button type="button" class="preset-chip" data-preset="weird">Weird</button>
+                    <button type="button" class="preset-chip" data-preset="everyday">Food &amp; Words</button>
+                  </div>
+                </div>
+
+                <div id="lobby-categories-grid" class="lobby-categories-grid"></div>
+              </div>
+
+              <!-- Collapsible Disclosure for Less Frequently Changed Rules -->
+              <details class="advanced-rules-details">
+                <summary class="advanced-rules-summary">Optional Special Rounds &amp; Board Columns</summary>
+                <div class="advanced-rules-body">
+                  <label class="setting-field">
+                    <span>Categories on Board</span>
+                    <select id="set-board-cols" class="skribbl-select">
+                      <option value="4">4 Categories</option>
+                      <option value="5" selected>5 Categories</option>
+                      <option value="6">6 Categories (Full TV Grid)</option>
+                    </select>
+                  </label>
+
+                  <div class="switches-row">
+                    <label class="rule-toggle-pill">
+                      <input type="checkbox" id="set-double-jeopardy" class="rule-check" checked />
+                      <span>Double Jeoparty (Round 2)</span>
+                    </label>
+                    <label class="rule-toggle-pill">
+                      <input type="checkbox" id="set-daily-doubles" class="rule-check" checked />
+                      <span>Hidden Daily Doubles</span>
+                    </label>
+                    <label class="rule-toggle-pill">
+                      <input type="checkbox" id="set-final-jeopardy" class="rule-check" checked />
+                      <span>Final Jeoparty Round</span>
+                    </label>
+                    <label class="rule-toggle-pill">
+                      <input type="checkbox" id="set-wrong-penalty" class="rule-check" checked />
+                      <span>Wrong Answer Penalty</span>
+                    </label>
+                  </div>
+                </div>
+              </details>
+            </section>
+          </div>
+
+          <!-- GROUP 3: ACTIONS -->
+          <footer class="lobby-footer-bar" aria-label="Lobby Actions">
+            <button type="button" id="lobby-leave-btn" class="btn-skribbl btn-gray">
+              Leave Room
+            </button>
+            <div class="lobby-start-cluster">
+              <span id="guest-waiting-dots" class="pixel-sprite sprite-loading" aria-hidden="true" hidden></span>
+              <button type="button" id="start-game-btn" class="btn-skribbl btn-green btn-start-big">
+                Start Game
+              </button>
+            </div>
+          </footer>
+        </div>
+
+        <!-- 2. CLEAN JEOPARDY BOARD VIEW -->
+        <div id="stage-board" class="stage-panel board-panel" hidden>
+          <div id="board-turn-banner" class="board-turn-banner">
+            Pick a clue from the board!
+          </div>
+          <div id="jeopardy-board-grid" class="jeopardy-board-grid"></div>
+        </div>
+
+        <!-- 3. FOCUSED QUESTION / DAILY DOUBLE / RESULT VIEW -->
+        <div id="stage-clue" class="stage-panel clue-panel" hidden>
+          <div class="clue-card-doodle">
+            <div class="clue-card-top">
+              <div class="clue-cat-pill">
+                <span id="clue-cat-icon" class="cat-pixel-icon" aria-hidden="true"></span>
+                <span id="clue-cat-name">CATEGORY</span>
+              </div>
+              <span id="clue-value-pill" class="clue-value-pill">$600</span>
+            </div>
+
+            <div class="clue-timer-track" aria-hidden="true">
+              <div id="clue-timer-fill" class="clue-timer-fill"></div>
+            </div>
+
+            <!-- Daily Double Wager Sub-panel -->
+            <div id="dd-wager-box" class="dd-wager-box" hidden>
+              <div class="dd-header-row">
+                <span class="pixel-sprite sprite-dd-star" aria-hidden="true"></span>
+                <div class="dd-banner">DAILY DOUBLE!</div>
+                <span class="pixel-sprite sprite-dd-star" aria-hidden="true"></span>
+              </div>
+              <p id="dd-status-msg" class="dd-status-msg"></p>
+              <div id="dd-controls" class="dd-controls" hidden>
+                <div class="wager-slider-row">
+                  <input type="range" id="dd-wager-range" min="5" max="1000" step="50" value="400" aria-label="Daily Double wager slider" />
+                  <input type="number" id="dd-wager-number" class="skribbl-input wager-num-input" min="5" max="1000" value="400" aria-label="Daily Double wager amount" />
+                </div>
+                <div class="wager-quick-btns">
+                  <button type="button" class="preset-chip" data-dd-quick="min">$100 Safe</button>
+                  <button type="button" class="preset-chip" data-dd-quick="half">Half Max</button>
+                  <button type="button" class="preset-chip preset-chip-gold" data-dd-quick="max">ALL IN!</button>
+                </div>
+                <button type="button" id="dd-lock-wager-btn" class="btn-skribbl btn-green">
+                  Lock Wager
+                </button>
+              </div>
+            </div>
+
+            <!-- Main Readable Clue Text -->
+            <div id="clue-text-area" class="clue-text-area">
+              <p id="clue-prompt-text" class="clue-prompt-text"></p>
+              <div id="skribbl-hint-mask" class="skribbl-hint-mask" hidden></div>
+            </div>
+
+            <!-- Compact Inline Wrong-Attempt Feedback (Never Covers the Clue!) -->
+            <div id="clue-inline-feedback" class="clue-inline-feedback" hidden>
+              <span id="clue-feedback-sprite" class="pixel-sprite sprite-wrong" aria-hidden="true"></span>
+              <span id="clue-feedback-text"></span>
+            </div>
+
+            <!-- Focused Action Zone -->
+            <div class="clue-action-zone">
+              <!-- Tactile MS Paint Buzzer -->
+              <div id="buzzer-wrap" class="buzzer-wrap" hidden>
+                <button type="button" id="buzz-btn" class="buzz-giant-btn">
+                  <span class="buzz-btn-inner">
+                    <span class="pixel-sprite sprite-buzzer" aria-hidden="true"></span>
+                    <span>BUZZ IN!</span>
+                  </span>
+                  <small>Spacebar or Tap to Buzz</small>
+                </button>
+                <p id="buzz-eligibility-note" class="buzz-note"></p>
+              </div>
+
+              <!-- Buzzed Status for Spectators -->
+              <div id="buzzed-spectator-banner" class="buzzed-spectator-banner" hidden></div>
+
+              <!-- Answer Input Form -->
+              <form id="clue-answer-form" class="clue-answer-form" hidden>
+                <input
+                  type="text"
+                  id="clue-answer-input"
+                  class="skribbl-input answer-big-input"
+                  placeholder="Type your answer..."
+                  maxlength="100"
+                  aria-label="Your answer"
+                />
+                <button type="submit" class="btn-skribbl btn-green">
+                  Submit
+                </button>
+              </form>
+
+              <!-- Host Ruling Controls (Host-Judge Mode) -->
+              <div id="host-judge-box" class="host-judge-box" hidden>
+                <p class="host-ref-answer">Answer Key: <strong id="host-ref-answer-text"></strong></p>
+                <div class="host-judge-btns">
+                  <button type="button" id="host-rule-correct-btn" class="btn-skribbl btn-green">Correct</button>
+                  <button type="button" id="host-rule-wrong-btn" class="btn-skribbl btn-red">Incorrect</button>
+                </div>
+              </div>
+
+              <!-- Post-Clue Result Reveal with Animated Pixel Check / Cross -->
+              <div id="clue-result-box" class="clue-result-box" hidden>
+                <div class="result-top-row">
+                  <span id="result-badge-sprite" class="pixel-sprite sprite-correct" aria-hidden="true"></span>
+                  <div>
+                    <div class="official-answer-label">Correct Answer</div>
+                    <div id="official-answer-text" class="official-answer-text"></div>
+                  </div>
+                </div>
+                <div id="clue-winner-line" class="clue-winner-line"></div>
+                <button type="button" id="next-clue-btn" class="btn-skribbl btn-blue btn-small" hidden>
+                  Next Clue →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. FINAL JEOPARDY VIEW -->
+        <div id="stage-final" class="stage-panel final-panel" hidden>
+          <div class="clue-card-doodle final-card">
+            <div class="dd-header-row">
+              <span class="pixel-sprite sprite-trophy" aria-hidden="true"></span>
+              <div class="dd-banner">FINAL JEOPARTY!</div>
+            </div>
+            <div class="final-category-banner">
+              Category: <strong id="final-category-name"></strong>
+            </div>
+
+            <!-- Final Wager Step -->
+            <div id="final-wager-step" class="final-step-box" hidden>
+              <p class="final-helper-line">Choose your secret wager before the clue is revealed:</p>
+              <div id="final-wager-form-wrap" class="final-wager-controls">
+                <div class="wager-slider-row">
+                  <input type="range" id="final-wager-range" min="0" max="1000" step="50" value="0" aria-label="Final wager slider" />
+                  <input type="number" id="final-wager-number" class="skribbl-input wager-num-input" min="0" max="1000" value="0" aria-label="Final wager amount" />
+                </div>
+                <button type="button" id="final-lock-wager-btn" class="btn-skribbl btn-green">
+                  Lock Wager
+                </button>
+              </div>
+              <p id="final-wager-locked-msg" class="locked-confirm-msg" hidden>
+                Wager locked! Waiting for other players...
+              </p>
+            </div>
+
+            <!-- Final Clue Step -->
+            <div id="final-clue-step" class="final-step-box" hidden>
+              <p id="final-clue-text" class="clue-prompt-text"></p>
+              <form id="final-answer-form" class="clue-answer-form">
+                <input
+                  type="text"
+                  id="final-answer-input"
+                  class="skribbl-input answer-big-input"
+                  placeholder="Type your final answer..."
+                  maxlength="100"
+                  aria-label="Final Jeoparty answer"
+                />
+                <button type="submit" class="btn-skribbl btn-green">
+                  Lock Answer
+                </button>
+              </form>
+              <p id="final-answer-locked-msg" class="locked-confirm-msg" hidden>
+                Final answer locked! Reveal coming up...
+              </p>
+            </div>
+
+            <div id="final-players-lock-status" class="final-lock-pills"></div>
+          </div>
+        </div>
+
+        <!-- 5. WINNER PODIUM & RESULTS VIEW -->
+        <div id="stage-gameover" class="stage-panel gameover-panel" hidden>
+          <div class="podium-card">
+            <div class="podium-celebration-header">
+              <span class="pixel-sprite sprite-confetti" aria-hidden="true"></span>
+              <div class="podium-title-stack">
+                <span class="pixel-sprite sprite-trophy" aria-hidden="true"></span>
+                <h2 class="podium-headline">FINAL RESULTS</h2>
+              </div>
+              <span class="pixel-sprite sprite-confetti" aria-hidden="true"></span>
+            </div>
+
+            <div id="podium-stage" class="podium-stage"></div>
+
+            <div id="final-breakdown-wrap" class="final-breakdown-wrap" hidden>
+              <h3>Final Clue Answer: <span id="final-reveal-answer" class="gold-text"></span></h3>
+              <div id="final-breakdown-list" class="final-breakdown-list"></div>
+            </div>
+
+            <div class="gameover-actions">
+              <button type="button" id="play-again-btn" class="btn-skribbl btn-green">
+                Play Again
+              </button>
+              <button type="button" id="back-to-lobby-btn" class="btn-skribbl btn-blue">
+                Room Settings
+              </button>
+              <button type="button" id="gameover-leave-btn" class="btn-skribbl btn-gray">
+                Main Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Live Chat & Guess Feed -->
+      <aside class="chat-sidebar" aria-label="Room Chat">
+        <div class="sidebar-header">Chat</div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form" class="chat-form">
+          <input
+            type="text"
+            id="chat-input"
+            class="skribbl-input chat-input"
+            placeholder="Type to chat..."
+            maxlength="150"
+            aria-label="Chat message"
+          />
+        </form>
+      </aside>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       NATIVE <dialog> MODALS (modern-web-guidance `dialog` compliant)
+       ===================================================================== -->
+
+  <!-- Modal 0: Public Rooms Browser -->
+  <dialog id="public-rooms-dialog" class="skribbl-dialog skribbl-dialog-wide" closedby="any" aria-labelledby="public-rooms-dialog-title">
+    <div class="dialog-header-row">
+      <h2 id="public-rooms-dialog-title">Public Matchmaking</h2>
+      <button type="button" id="refresh-public-rooms-btn" class="btn-skribbl btn-blue btn-sm">Refresh</button>
+    </div>
+    <p class="dialog-sub">Join an active public game waiting for players around the world:</p>
+    <div id="public-rooms-container" class="public-rooms-container">
+      <div id="public-rooms-empty" class="public-rooms-empty">
+        <p>No open public rooms waiting right now.</p>
+        <button type="button" id="create-public-from-dialog-btn" class="btn-skribbl btn-green">Create a Public Room</button>
+      </div>
+      <div id="public-rooms-list" class="public-rooms-list" hidden></div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="close-public-rooms-btn" class="btn-skribbl btn-gray">Close</button>
+    </div>
+  </dialog>
+
+  <!-- Modal 1: Join Room by Code -->
+  <dialog id="join-code-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="join-code-dialog-title">
+    <h2 id="join-code-dialog-title">Join a Room</h2>
+    <p class="dialog-sub">Enter the 6-character room code from your friend:</p>
+    <form id="join-code-form" class="dialog-stack">
+      <input
+        type="text"
+        id="join-code-input"
+        class="skribbl-input code-big-input"
+        placeholder="K7P4M9"
+        maxlength="8"
+        autofocus
+        required
+        aria-label="6-character room code"
+      />
+      <div class="dialog-actions">
+        <button type="button" id="close-join-dialog-btn" class="btn-skribbl btn-gray">Cancel</button>
+        <button type="submit" class="btn-skribbl btn-green">Join Room</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal 2: How to Play (Clean 4-Step Quick Guide off the main menu) -->
+  <dialog id="howto-dialog" class="skribbl-dialog skribbl-dialog-wide" closedby="any" aria-labelledby="howto-dialog-title">
+    <h2 id="howto-dialog-title">How to Play jeoparty.io</h2>
+    <ol class="howto-steps-list">
+      <li>
+        <strong>Start or Join:</strong> Click <strong>Play!</strong> for an instant match with bots, or <strong>Create Private Room</strong> to share a code/link with friends.
+      </li>
+      <li>
+        <strong>Pick Categories:</strong> In the lobby, check any of the 24 built-in trivia categories (or write your own custom category!).
+      </li>
+      <li>
+        <strong>Answer Clues:</strong> Take turns picking dollar tiles. Slam <strong>Spacebar / BUZZ IN!</strong> first (or race simultaneously in <em>Everyone Answers</em> mode).
+      </li>
+      <li>
+        <strong>Win the Crown:</strong> Bet big on hidden <strong>Daily Doubles</strong> and <strong>Final Jeoparty</strong> to finish with the highest score!
+      </li>
+    </ol>
+    <form method="dialog" class="dialog-actions">
+      <button value="close" class="btn-skribbl btn-green" autofocus>Got It!</button>
+    </form>
+  </dialog>
+
+  <!-- Modal 3: Match Ended / Host Left Notification -->
+  <dialog id="room-ended-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="room-ended-title">
+    <div class="room-ended-header">
+      <span class="pixel-sprite sprite-wrong" aria-hidden="true"></span>
+      <h2 id="room-ended-title">Match Ended</h2>
+    </div>
+    <p id="room-ended-message" class="dialog-sub">
+      The host left the game, so this match has ended.
+    </p>
+    <form method="dialog" class="dialog-actions">
+      <button value="ok" class="btn-skribbl btn-green" autofocus>Back to Main Menu</button>
+    </form>
+  </dialog>
+
+  <!-- Modal 4: Create Custom Jeopardy Category -->
+  <dialog id="custom-cat-dialog" class="skribbl-dialog skribbl-dialog-wide" aria-labelledby="custom-cat-dialog-title">
+    <h2 id="custom-cat-dialog-title">Create Custom Category</h2>
+    <p class="dialog-sub">Write 5 clues ($200 to $1000) for your room:</p>
+    <form id="custom-cat-form" class="dialog-stack">
+      <label class="setting-field">
+        <span>Category Title</span>
+        <input
+          type="text"
+          id="custom-cat-title"
+          class="skribbl-input"
+          placeholder="e.g. OUR GROUP CHAT LORE"
+          maxlength="32"
+          autofocus
+          required
+        />
+      </label>
+
+      <div class="custom-clues-list">
+        <div class="custom-clue-row">
+          <span class="custom-val-tag">$200</span>
+          <input type="text" class="skribbl-input cc-clue" placeholder="Clue for $200..." aria-label="Clue for 200" required />
+          <input type="text" class="skribbl-input cc-ans" placeholder="Answer..." aria-label="Answer for 200" required />
+        </div>
+        <div class="custom-clue-row">
+          <span class="custom-val-tag">$400</span>
+          <input type="text" class="skribbl-input cc-clue" placeholder="Clue for $400..." aria-label="Clue for 400" required />
+          <input type="text" class="skribbl-input cc-ans" placeholder="Answer..." aria-label="Answer for 400" required />
+        </div>
+        <div class="custom-clue-row">
+          <span class="custom-val-tag">$600</span>
+          <input type="text" class="skribbl-input cc-clue" placeholder="Clue for $600..." aria-label="Clue for 600" required />
+          <input type="text" class="skribbl-input cc-ans" placeholder="Answer..." aria-label="Answer for 600" required />
+        </div>
+        <div class="custom-clue-row">
+          <span class="custom-val-tag">$800</span>
+          <input type="text" class="skribbl-input cc-clue" placeholder="Clue for $800..." aria-label="Clue for 800" required />
+          <input type="text" class="skribbl-input cc-ans" placeholder="Answer..." aria-label="Answer for 800" required />
+        </div>
+        <div class="custom-clue-row">
+          <span class="custom-val-tag">$1000</span>
+          <input type="text" class="skribbl-input cc-clue" placeholder="Clue for $1000..." aria-label="Clue for 1000" required />
+          <input type="text" class="skribbl-input cc-ans" placeholder="Answer..." aria-label="Answer for 1000" required />
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancel-custom-cat-btn" class="btn-skribbl btn-gray">Cancel</button>
+        <button type="submit" class="btn-skribbl btn-green">Add Category</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

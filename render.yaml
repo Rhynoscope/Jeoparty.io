@@ -1,0 +1,20 @@
+# Render Blueprint for Jeoparty.io
+# Deploys as a free Node.js Web Service with WebSockets and HTTPS support.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: jeoparty-io
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: ""
+    startCommand: node server/server.js
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST_RECONNECT_GRACE_MS
+        value: 15000

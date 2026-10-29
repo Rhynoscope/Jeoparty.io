@@ -1,0 +1,13 @@
+{
+  "name": "jeoparty-io",
+  "version": "1.0.0",
+  "description": "Skribbl.io-styled online multiplayer Jeopardy web game with private rooms and customizable categories",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}

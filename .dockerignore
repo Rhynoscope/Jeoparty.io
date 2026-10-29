@@ -1,0 +1,10 @@
+.git
+.gitignore
+*.bat
+*.ps1
+cloudflared.exe
+scratch/
+brain/
+tests/
+verified-*.png
+*.log
