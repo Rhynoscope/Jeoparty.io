@@ -624,7 +624,7 @@ summary:focus-visible {
 
 .home-secondary-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
@@ -2723,3 +2723,251 @@ dialog::backdrop {
   font-style: italic;
   color: #c8ffff;
 }
+
+/* ==========================================================================
+   VOICE CHAT DOCK & SPEAKING ANIMATIONS
+   ========================================================================== */
+.voice-chat-dock {
+  background: #141b4d;
+  border: 2px solid #000000;
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 2px 0 #000000;
+}
+
+.voice-dock-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.voice-dock-icon {
+  font-size: 0.95rem;
+}
+
+.voice-dock-label {
+  flex: 1;
+  letter-spacing: 0.5px;
+  color: #a8d5ff;
+}
+
+.voice-dock-count {
+  background: #2a357d;
+  border: 1px solid #000000;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  color: #ffffff;
+}
+
+.voice-dock-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.btn-voice {
+  border: 2px solid #000000;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.08s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.btn-voice:active {
+  transform: translate(1px, 1px);
+}
+
+.btn-voice-primary,
+.btn-voice-join {
+  background: #2ecc71;
+  color: #000000;
+  width: 100%;
+}
+
+.btn-voice-primary:hover,
+.btn-voice-join:hover {
+  background: #27ae60;
+}
+
+.btn-voice-mute {
+  background: #2ecc71;
+  color: #000000;
+  flex: 1;
+}
+
+.btn-voice-mute.is-muted {
+  background: #e74c3c;
+  color: #ffffff;
+}
+
+.btn-voice-deafen {
+  background: #3498db;
+  color: #ffffff;
+  flex: 1;
+}
+
+.btn-voice-deafen.is-deafened {
+  background: #e67e22;
+  color: #ffffff;
+}
+
+.btn-voice-ptt {
+  background: #f1c40f;
+  color: #000000;
+  flex: 1;
+}
+
+.btn-voice-ptt.is-active {
+  background: #2ecc71;
+  color: #000000;
+}
+
+.btn-voice-leave {
+  background: #95a5a6;
+  color: #000000;
+  padding: 4px 6px;
+}
+
+.btn-voice-leave:hover {
+  background: #7f8c8d;
+}
+
+/* Speaking Halo & Pulsing Wave */
+@keyframes speakingPulseHalo {
+  0% {
+    box-shadow: 0 0 0 2px #2ecc71;
+  }
+  50% {
+    box-shadow: 0 0 0 5px #27ae60, 0 0 10px rgba(46, 204, 113, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 2px #2ecc71;
+  }
+}
+
+.player-row.is-speaking {
+  background: rgba(46, 204, 113, 0.12);
+  border-color: #2ecc71;
+}
+
+.player-avatar-cell.is-speaking {
+  border-radius: 50%;
+  animation: speakingPulseHalo 1.1s infinite;
+}
+
+.player-voice-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.player-voice-badge.is-speaking {
+  animation: speakingPulseHalo 1.1s infinite;
+}
+
+.player-peer-mute-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.75;
+}
+
+.player-peer-mute-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
+   AUDIO & VOICE SETTINGS MODAL STYLING
+   ========================================================================== */
+.audio-settings-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+.audio-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #111111;
+  padding: 6px 0;
+  border-bottom: 1px dashed #dddddd;
+}
+
+.audio-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audio-slider-group label {
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: #222222;
+}
+
+.slider-val-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skribbl-range {
+  flex: 1;
+  height: 8px;
+  accent-color: #5f27cd;
+  cursor: pointer;
+}
+
+.slider-badge {
+  min-width: 44px;
+  text-align: right;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #5f27cd;
+}
+
+.mic-help-instructions {
+  background: #f7f9fc;
+  border: 2px solid #000000;
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 0.85rem;
+  color: #222222;
+}
+
+.mic-help-instructions ol {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+
+.mic-help-instructions li {
+  margin-bottom: 4px;
+}
+

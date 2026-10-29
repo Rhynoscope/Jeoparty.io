@@ -29,6 +29,9 @@ const MIME_TYPES = {
   '.png': 'image/png',
   '.gif': 'image/gif',
   '.ico': 'image/x-icon',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
 };
 
 const BOT_PROFILES = [
@@ -214,6 +217,7 @@ function createRoom({ isPrivate, preferredSettings = null }) {
     timers: new Set(),
     hostDisconnectTimer: null,
     hostDisconnectedAt: 0,
+    voiceMembers: new Map(),
   };
 
   if (preferredSettings && typeof preferredSettings === 'object') {
@@ -309,6 +313,7 @@ function terminateRoom(room, reason, { excludePlayerId = null } = {}) {
       p.clearConnectionRoomRef(room);
     }
     if (p.id !== excludePlayerId && p.connected && p.ws) {
+      p.ws.send({ type: 'voice_session_ended' });
       p.ws.send({
         type: 'room_closed',
         roomCode: room.code,
@@ -323,6 +328,7 @@ function terminateRoom(room, reason, { excludePlayerId = null } = {}) {
     p.clearConnectionRoomRef = null;
   }
 
+  if (room.voiceMembers) room.voiceMembers.clear();
   room.players = [];
 }
 
@@ -448,6 +454,9 @@ function serializeRoomForPlayer(room, viewerId) {
       isBot: p.isBot,
       streak: p.stats?.currentStreak || 0,
       onFire: Boolean(p.stats?.currentStreak >= 2),
+      inVoice: room.voiceMembers ? room.voiceMembers.has(p.id) : false,
+      voiceMuted: room.voiceMembers?.get(p.id)?.muted ?? false,
+      voiceSpeaking: room.voiceMembers?.get(p.id)?.speaking ?? false,
     })),
     board: boardView,
     activeClue: activeClueView,
@@ -489,6 +498,141 @@ function sendChat(room, { kind = 'system', color = 'info', text, author = null }
       text,
       ts: Date.now(),
     },
+  });
+}
+
+
+/* ---------------- Real-Time WebRTC Voice Signaling ---------------- */
+
+const DEFAULT_ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+];
+
+function getIceServers() {
+  const servers = [...DEFAULT_ICE_SERVERS];
+  if (process.env.TURN_URL) {
+    servers.push({
+      urls: process.env.TURN_URL,
+      username: process.env.TURN_USERNAME || '',
+      credential: process.env.TURN_CREDENTIAL || '',
+    });
+  }
+  return servers;
+}
+
+function broadcastToVoiceMembers(room, payload, { excludePlayerId = null } = {}) {
+  if (!room || room.terminated || !room.voiceMembers) return;
+  for (const peerId of room.voiceMembers.keys()) {
+    if (peerId === excludePlayerId) continue;
+    const p = room.players.find((pl) => pl.id === peerId);
+    if (p && p.connected && p.ws && !p.isBot) {
+      p.ws.send(payload);
+    }
+  }
+}
+
+function handleVoiceJoin(room, player, msg) {
+  if (!room || !player || room.terminated) return;
+  if (!room.voiceMembers) room.voiceMembers = new Map();
+
+  const muted = Boolean(msg.muted);
+  room.voiceMembers.set(player.id, {
+    id: player.id,
+    name: player.name,
+    avatar: player.avatar,
+    muted,
+    speaking: false,
+    joinedAt: Date.now(),
+  });
+
+  const existingPeers = Array.from(room.voiceMembers.values()).filter((m) => m.id !== player.id);
+  player.ws.send({
+    type: 'voice_session_joined',
+    iceServers: getIceServers(),
+    peers: existingPeers,
+    selfMuted: muted,
+  });
+
+  broadcastToVoiceMembers(
+    room,
+    {
+      type: 'voice_peer_joined',
+      peer: {
+        id: player.id,
+        name: player.name,
+        avatar: player.avatar,
+        muted,
+        speaking: false,
+      },
+    },
+    { excludePlayerId: player.id }
+  );
+
+  broadcastRoomEvent(room, {
+    type: 'voice_peer_status',
+    peerId: player.id,
+    inVoice: true,
+    muted,
+    speaking: false,
+  });
+}
+
+function handleVoiceLeave(room, player) {
+  if (!room || !player || !room.voiceMembers) return;
+  if (!room.voiceMembers.has(player.id)) return;
+
+  room.voiceMembers.delete(player.id);
+
+  broadcastToVoiceMembers(
+    room,
+    {
+      type: 'voice_peer_left',
+      peerId: player.id,
+    },
+    { excludePlayerId: player.id }
+  );
+
+  broadcastRoomEvent(room, {
+    type: 'voice_peer_status',
+    peerId: player.id,
+    inVoice: false,
+    muted: true,
+    speaking: false,
+  });
+}
+
+function handleVoiceSignal(room, player, msg) {
+  if (!room || !player || room.terminated || !room.voiceMembers) return;
+  const targetPeerId = msg.targetPeerId;
+  if (!targetPeerId || !room.voiceMembers.has(targetPeerId)) return;
+
+  const targetPlayer = room.players.find((p) => p.id === targetPeerId);
+  if (targetPlayer && targetPlayer.connected && targetPlayer.ws && !targetPlayer.isBot) {
+    targetPlayer.ws.send({
+      type: 'voice_signal',
+      fromPeerId: player.id,
+      signal: msg.signal,
+    });
+  }
+}
+
+function handleVoiceStatus(room, player, msg) {
+  if (!room || !player || room.terminated || !room.voiceMembers) return;
+  const mem = room.voiceMembers.get(player.id);
+  if (!mem) return;
+
+  if (typeof msg.muted === 'boolean') mem.muted = msg.muted;
+  if (typeof msg.speaking === 'boolean') mem.speaking = msg.speaking;
+
+  broadcastRoomEvent(room, {
+    type: 'voice_peer_status',
+    peerId: player.id,
+    inVoice: true,
+    muted: mem.muted,
+    speaking: mem.speaking,
   });
 }
 
@@ -1885,6 +2029,14 @@ const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
 
+  if (pathname === '/api/ice-servers' && req.method === 'GET') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ iceServers: getIceServers() }));
+    return;
+  }
+
   if (pathname === '/api/categories' && req.method === 'GET') {
     const meta = BUILTIN_CATEGORIES.map((c) => ({
       id: c.id,
@@ -2024,6 +2176,7 @@ attachWebSocketServer(server, (ws) => {
     player.connected = false;
     player.ws = null;
     player.clearConnectionRoomRef = null;
+    handleVoiceLeave(room, player);
 
     if (room.terminated) {
       return { code: room.code, roomId: room.roomId };
@@ -2059,6 +2212,7 @@ attachWebSocketServer(server, (ws) => {
     if (!currentRoom || !currentPlayer) return;
     const room = currentRoom;
     const player = currentPlayer;
+    handleVoiceLeave(room, player);
     currentRoom = null;
     currentPlayer = null;
 
@@ -2694,6 +2848,31 @@ attachWebSocketServer(server, (ws) => {
         });
         break;
       }
+
+      case 'voice_join': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        handleVoiceJoin(currentRoom, currentPlayer, msg);
+        break;
+      }
+
+      case 'voice_leave': {
+        if (!currentRoom || !currentPlayer) return;
+        handleVoiceLeave(currentRoom, currentPlayer);
+        break;
+      }
+
+      case 'voice_signal': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        handleVoiceSignal(currentRoom, currentPlayer, msg);
+        break;
+      }
+
+      case 'voice_status': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        handleVoiceStatus(currentRoom, currentPlayer, msg);
+        break;
+      }
+
     }
   });
 

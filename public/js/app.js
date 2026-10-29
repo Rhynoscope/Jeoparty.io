@@ -7,6 +7,7 @@ import {
   randomAvatar,
 } from './avatar.js';
 import { sfx } from './audio.js';
+import { voiceChat } from './voice.js';
 
 /* =========================================================================
    MODERN WEB GUIDANCE POLYFILLS / FALLBACKS
@@ -290,6 +291,40 @@ const el = {
   playersList: document.getElementById('players-list'),
   hostBotControls: document.getElementById('host-bot-controls'),
   addBotBtn: document.getElementById('add-bot-btn'),
+
+  // Voice Chat Dock
+  voiceChatDock: document.getElementById('voice-chat-dock'),
+  voiceDockIcon: document.getElementById('voice-dock-icon'),
+  voiceDockLabel: document.getElementById('voice-dock-label'),
+  voiceDockCount: document.getElementById('voice-dock-count'),
+  voiceJoinBtn: document.getElementById('voice-join-btn'),
+  voiceMuteBtn: document.getElementById('voice-mute-btn'),
+  voiceDeafenBtn: document.getElementById('voice-deafen-btn'),
+  voicePttBtn: document.getElementById('voice-ptt-btn'),
+  voiceLeaveBtn: document.getElementById('voice-leave-btn'),
+
+  // Audio & Voice Settings Dialog
+  audioSettingsBtn: document.getElementById('audio-settings-btn'),
+  audioSettingsDialog: document.getElementById('audio-settings-dialog'),
+  closeAudioSettingsBtn: document.getElementById('close-audio-settings-btn'),
+  settingMasterMute: document.getElementById('setting-master-mute'),
+  settingSfxVolume: document.getElementById('setting-sfx-volume'),
+  settingSfxVal: document.getElementById('setting-sfx-val'),
+  settingMusicVolume: document.getElementById('setting-music-volume'),
+  settingMusicVal: document.getElementById('setting-music-val'),
+  settingVoiceVolume: document.getElementById('setting-voice-volume'),
+  settingVoiceVal: document.getElementById('setting-voice-val'),
+  settingVoicePtt: document.getElementById('setting-voice-ptt'),
+  settingVoiceAutoMute: document.getElementById('setting-voice-automute'),
+
+  // Mic Permission Dialog
+  micHelpDialog: document.getElementById('mic-help-dialog'),
+  micHelpMessage: document.getElementById('mic-help-message'),
+  micHelpRetryBtn: document.getElementById('mic-help-retry-btn'),
+  micHelpCloseBtn: document.getElementById('mic-help-close-btn'),
+
+  // Public matchmaking header button
+  createPublicFromHeaderBtn: document.getElementById('create-public-from-header-btn'),
 
   // Stages
   stageLobby: document.getElementById('stage-lobby'),
@@ -833,6 +868,14 @@ function leaveActiveRoomToMenu() {
 }
 
 function handleServerMessage(msg) {
+  if (msg.type && msg.type.startsWith('voice_')) {
+    voiceChat.handleVoiceMessage(msg);
+    if (state.room) {
+      renderPlayersSidebar(state.room, isMeHost(state.room));
+    }
+    return;
+  }
+
   switch (msg.type) {
     case 'joined': {
       clearTimeout(state.reconnectTimer);
@@ -868,6 +911,7 @@ function handleServerMessage(msg) {
     }
 
     case 'room_closed': {
+      voiceChat.leaveVoice(false);
       sfx.play('timeout');
       if (msg.roomCode) clearRoomToken(msg.roomCode);
       popAnySavedRoomToken();
@@ -880,6 +924,7 @@ function handleServerMessage(msg) {
     }
 
     case 'room_terminated': {
+      voiceChat.leaveVoice(false);
       sfx.play('wrong');
       if (msg.roomCode) clearRoomToken(msg.roomCode);
       state.intentionalLeave = true;
@@ -952,6 +997,8 @@ function handleServerMessage(msg) {
 
 function returnToHomeScreen({ clearInvite = true } = {}) {
   clearTimeout(state.reconnectTimer);
+  voiceChat.leaveVoice(false);
+  sfx.stopWaitingMusic();
   state.room = null;
   state.lastRenderedPhase = null;
   el.timerBadge.hidden = true;
@@ -1075,6 +1122,27 @@ function renderRoomState() {
   if (showFinal) renderFinalStage(room, phaseChanged);
   if (showGameover) renderGameoverStage(room, amHost);
 
+  // Synchronize Voice Chat Dock Visibility
+  if (el.voiceChatDock) {
+    el.voiceChatDock.hidden = room.phase === 'terminated';
+  }
+
+  // Synchronize Authentic Jeopardy Waiting / Think Music
+  const WAITING_MUSIC_PHASES = ['clue_reading', 'clue_open', 'clue_skribbl', 'daily_double_answer', 'final_clue'];
+  if (WAITING_MUSIC_PHASES.includes(room.phase)) {
+    if (room.phase === 'clue_buzzed') {
+      sfx.stopWaitingMusic();
+    } else if (room.activeClue) {
+      const clueKey = `${room.phase}_${room.activeClue.col}_${room.activeClue.row}`;
+      sfx.startWaitingMusic(clueKey);
+    } else if (room.phase === 'final_clue') {
+      sfx.startWaitingMusic('final_clue');
+    }
+  } else {
+    sfx.stopWaitingMusic();
+  }
+
+
   el.chatInput.placeholder =
     room.phase === 'clue_skribbl'
       ? 'Type your answer guess here...'
@@ -1137,6 +1205,35 @@ function renderPlayersSidebar(room, amHost) {
       nameLine.appendChild(streakBadge);
     }
 
+    // Real-Time Voice Chat Status Indicator & Individual Peer Controls
+    if (p.inVoice) {
+      const voiceBadge = document.createElement('span');
+      const isSpeaking = p.voiceSpeaking || (p.id === state.playerId && voiceChat.isSpeaking);
+      voiceBadge.className = `player-voice-badge ${isSpeaking ? 'is-speaking' : ''}`;
+      voiceBadge.title = isSpeaking
+        ? `${p.name} is speaking`
+        : (p.voiceMuted ? `${p.name} is muted` : `${p.name} is in voice chat`);
+      voiceBadge.textContent = isSpeaking ? '🗣️' : (p.voiceMuted ? '🔇' : '🎙️');
+      nameLine.appendChild(voiceBadge);
+
+      if (p.id !== state.playerId && !p.isBot) {
+        const peerMuteBtn = document.createElement('button');
+        peerMuteBtn.type = 'button';
+        peerMuteBtn.className = 'player-peer-mute-btn';
+        const isMutedByMe = voiceChat.peerMutes.get(p.id) || false;
+        peerMuteBtn.title = isMutedByMe ? `Unmute ${p.name}` : `Mute ${p.name}`;
+        peerMuteBtn.textContent = isMutedByMe ? '🔇' : '🔊';
+        peerMuteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const mutedNow = voiceChat.togglePeerMute(p.id);
+          peerMuteBtn.textContent = mutedNow ? '🔇' : '🔊';
+          peerMuteBtn.title = mutedNow ? `Unmute ${p.name}` : `Mute ${p.name}`;
+        });
+        nameLine.appendChild(peerMuteBtn);
+      }
+    }
+
+
     const scoreEl = document.createElement('div');
     scoreEl.className = `player-score ${p.score < 0 ? 'is-negative' : ''}`;
     scoreEl.textContent = formatCash(p.score);
@@ -1167,6 +1264,11 @@ function renderPlayersSidebar(room, amHost) {
       size: 44,
       crown: wearsLeaderCrown,
     });
+    const isSpeakingAvatar = p.voiceSpeaking || (p.id === state.playerId && voiceChat.isSpeaking);
+    if (isSpeakingAvatar) {
+      avatarCell.classList.add('is-speaking');
+      row.classList.add('is-speaking');
+    }
 
     if (amHost && p.id !== state.playerId) {
       const kickBtn = document.createElement('button');
@@ -1859,7 +1961,7 @@ function bindEvents() {
     el.howtoDialog.showModal();
   });
 
-  // Home Primary Actions
+  // Home Primary Actions: 1. PLAY (Opens Public Matchmaking Browser)
   el.playBtn.addEventListener('click', () => {
     sfx.play('click');
     if (state.invitedRoomCode) {
@@ -1872,7 +1974,12 @@ function bindEvents() {
         { roomCodeForToken: state.invitedRoomCode }
       );
     } else {
-      startFreshRoomSession('quick_play', { matchExisting: true });
+      if (el.publicRoomsDialog && typeof el.publicRoomsDialog.showModal === 'function') {
+        el.publicRoomsDialog.showModal();
+        fetchAndRenderPublicRooms();
+      } else {
+        startFreshRoomSession('quick_play', { matchExisting: true });
+      }
     }
   });
 
@@ -1902,6 +2009,170 @@ function bindEvents() {
       el.publicRoomsDialog.close();
     });
   }
+
+  // Public Matchmaking Header "Create Public Room" Button
+  if (el.createPublicFromHeaderBtn) {
+    el.createPublicFromHeaderBtn.addEventListener('click', () => {
+      sfx.play('click');
+      if (el.publicRoomsDialog && typeof el.publicRoomsDialog.close === 'function') {
+        el.publicRoomsDialog.close();
+      }
+      startFreshRoomSession('create_public');
+    });
+  }
+
+  // Voice Chat Manager Initialization
+  voiceChat.init({
+    sendWs: (payload) => sendWs(payload),
+    onStatusChange: (status) => updateVoiceDockUI(status),
+    onPermissionError: (msg) => {
+      if (el.micHelpMessage) el.micHelpMessage.textContent = msg;
+      if (el.micHelpDialog && typeof el.micHelpDialog.showModal === 'function') {
+        el.micHelpDialog.showModal();
+      } else {
+        showToast(msg, 'warn');
+      }
+    },
+  });
+
+  // Voice Dock Controls
+  if (el.voiceJoinBtn) {
+    el.voiceJoinBtn.addEventListener('click', async () => {
+      sfx.play('click');
+      await voiceChat.joinVoice();
+    });
+  }
+
+  if (el.voiceMuteBtn) {
+    el.voiceMuteBtn.addEventListener('click', () => {
+      sfx.play('click');
+      voiceChat.toggleMute();
+    });
+  }
+
+  if (el.voiceDeafenBtn) {
+    el.voiceDeafenBtn.addEventListener('click', () => {
+      sfx.play('click');
+      voiceChat.toggleDeafen();
+    });
+  }
+
+  if (el.voiceLeaveBtn) {
+    el.voiceLeaveBtn.addEventListener('click', () => {
+      sfx.play('click');
+      voiceChat.leaveVoice(true);
+    });
+  }
+
+  // Push-to-Talk Mobile Button
+  if (el.voicePttBtn) {
+    const startPtt = (e) => {
+      e.preventDefault();
+      voiceChat.setPttPressed(true);
+      el.voicePttBtn.classList.add('is-active');
+    };
+    const endPtt = (e) => {
+      e.preventDefault();
+      voiceChat.setPttPressed(false);
+      el.voicePttBtn.classList.remove('is-active');
+    };
+    el.voicePttBtn.addEventListener('mousedown', startPtt);
+    el.voicePttBtn.addEventListener('mouseup', endPtt);
+    el.voicePttBtn.addEventListener('mouseleave', endPtt);
+    el.voicePttBtn.addEventListener('touchstart', startPtt, { passive: false });
+    el.voicePttBtn.addEventListener('touchend', endPtt, { passive: false });
+  }
+
+  // Audio & Voice Settings Modal
+  if (el.audioSettingsBtn && el.audioSettingsDialog) {
+    el.audioSettingsBtn.addEventListener('click', () => {
+      sfx.play('click');
+      if (el.settingMasterMute) el.settingMasterMute.checked = sfx.muted;
+      if (el.settingSfxVolume) {
+        el.settingSfxVolume.value = Math.round(sfx.sfxVolume * 100);
+        if (el.settingSfxVal) el.settingSfxVal.textContent = `${el.settingSfxVolume.value}%`;
+      }
+      if (el.settingMusicVolume) {
+        el.settingMusicVolume.value = Math.round(sfx.musicVolume * 100);
+        if (el.settingMusicVal) el.settingMusicVal.textContent = `${el.settingMusicVolume.value}%`;
+      }
+      if (el.settingVoiceVolume) {
+        el.settingVoiceVolume.value = Math.round(voiceChat.masterVoiceVolume * 100);
+        if (el.settingVoiceVal) el.settingVoiceVal.textContent = `${el.settingVoiceVolume.value}%`;
+      }
+      if (el.settingVoicePtt) el.settingVoicePtt.checked = voiceChat.usePushToTalk;
+      if (el.settingVoiceAutoMute) el.settingVoiceAutoMute.checked = voiceChat.autoMuteOnJoin;
+      el.audioSettingsDialog.showModal();
+    });
+  }
+
+  if (el.closeAudioSettingsBtn && el.audioSettingsDialog) {
+    el.closeAudioSettingsBtn.addEventListener('click', () => {
+      sfx.play('click');
+      el.audioSettingsDialog.close();
+    });
+  }
+
+  if (el.settingMasterMute) {
+    el.settingMasterMute.addEventListener('change', () => {
+      sfx.setMuted(el.settingMasterMute.checked);
+      if (el.soundToggleBtn) {
+        el.soundToggleBtn.textContent = sfx.muted ? 'Sound: Off' : 'Sound: On';
+      }
+    });
+  }
+
+  if (el.settingSfxVolume) {
+    el.settingSfxVolume.addEventListener('input', () => {
+      const pct = el.settingSfxVolume.value;
+      if (el.settingSfxVal) el.settingSfxVal.textContent = `${pct}%`;
+      sfx.setSfxVolume(pct / 100);
+    });
+  }
+
+  if (el.settingMusicVolume) {
+    el.settingMusicVolume.addEventListener('input', () => {
+      const pct = el.settingMusicVolume.value;
+      if (el.settingMusicVal) el.settingMusicVal.textContent = `${pct}%`;
+      sfx.setMusicVolume(pct / 100);
+    });
+  }
+
+  if (el.settingVoiceVolume) {
+    el.settingVoiceVolume.addEventListener('input', () => {
+      const pct = el.settingVoiceVolume.value;
+      if (el.settingVoiceVal) el.settingVoiceVal.textContent = `${pct}%`;
+      voiceChat.setMasterVoiceVolume(pct / 100);
+    });
+  }
+
+  if (el.settingVoicePtt) {
+    el.settingVoicePtt.addEventListener('change', () => {
+      voiceChat.setPushToTalk(el.settingVoicePtt.checked);
+    });
+  }
+
+  if (el.settingVoiceAutoMute) {
+    el.settingVoiceAutoMute.addEventListener('change', () => {
+      voiceChat.setAutoMuteOnJoin(el.settingVoiceAutoMute.checked);
+    });
+  }
+
+  if (el.micHelpRetryBtn && el.micHelpDialog) {
+    el.micHelpRetryBtn.addEventListener('click', async () => {
+      sfx.play('click');
+      el.micHelpDialog.close();
+      await voiceChat.joinVoice();
+    });
+  }
+
+  if (el.micHelpCloseBtn && el.micHelpDialog) {
+    el.micHelpCloseBtn.addEventListener('click', () => {
+      sfx.play('click');
+      el.micHelpDialog.close();
+    });
+  }
+
 
   if (el.createPublicFromDialogBtn) {
     el.createPublicFromDialogBtn.addEventListener('click', () => {
@@ -2254,3 +2525,55 @@ function init() {
 }
 
 init();
+
+
+function updateVoiceDockUI(status) {
+  if (!el.voiceChatDock) return;
+  const inRoom = Boolean(state.room && state.room.phase !== 'terminated');
+  el.voiceChatDock.hidden = !inRoom;
+  if (!inRoom) return;
+
+  if (el.voiceDockCount) {
+    el.voiceDockCount.textContent = `${status.membersCount} in Voice`;
+  }
+
+  if (!status.inVoice) {
+    if (el.voiceJoinBtn) el.voiceJoinBtn.hidden = false;
+    if (el.voiceMuteBtn) el.voiceMuteBtn.hidden = true;
+    if (el.voiceDeafenBtn) el.voiceDeafenBtn.hidden = true;
+    if (el.voicePttBtn) el.voicePttBtn.hidden = true;
+    if (el.voiceLeaveBtn) el.voiceLeaveBtn.hidden = true;
+    if (el.voiceDockLabel) el.voiceDockLabel.textContent = 'Voice Chat';
+    if (el.voiceDockIcon) el.voiceDockIcon.textContent = '🎙️';
+  } else {
+    if (el.voiceJoinBtn) el.voiceJoinBtn.hidden = true;
+    if (el.voiceMuteBtn) {
+      el.voiceMuteBtn.hidden = false;
+      el.voiceMuteBtn.textContent = status.isMuted ? '🔇 Muted' : '🎤 Mic';
+      el.voiceMuteBtn.classList.toggle('is-muted', status.isMuted);
+    }
+    if (el.voiceDeafenBtn) {
+      el.voiceDeafenBtn.hidden = false;
+      el.voiceDeafenBtn.textContent = status.isDeafened ? '🔇 Deafened' : '🎧 Deafen';
+      el.voiceDeafenBtn.classList.toggle('is-deafened', status.isDeafened);
+    }
+    if (el.voicePttBtn) {
+      el.voicePttBtn.hidden = !status.usePushToTalk;
+    }
+    if (el.voiceLeaveBtn) el.voiceLeaveBtn.hidden = false;
+
+    if (el.voiceDockLabel) {
+      el.voiceDockLabel.textContent = status.isSpeaking
+        ? 'Speaking...'
+        : (status.isMuted ? 'Mic Muted' : 'Voice Active');
+    }
+    if (el.voiceDockIcon) {
+      el.voiceDockIcon.textContent = status.isSpeaking ? '🗣️' : (status.isMuted ? '🔇' : '🎙️');
+    }
+  }
+
+  // Update speaking indicators in players list if room is active
+  if (state.room) {
+    renderPlayersSidebar(state.room, isMeHost(state.room));
+  }
+}

@@ -96,9 +96,6 @@
             <button type="button" id="create-private-btn" class="btn-skribbl btn-blue">
               Create Private Room
             </button>
-            <button type="button" id="open-public-browser-btn" class="btn-skribbl btn-yellow">
-              Public Rooms
-            </button>
             <button type="button" id="open-join-dialog-btn" class="btn-skribbl btn-purple">
               Join Room
             </button>
@@ -150,6 +147,9 @@
         <button type="button" id="sound-toggle-btn" class="btn-top-tool" aria-label="Toggle sound effects">
           Sound: On
         </button>
+        <button type="button" id="audio-settings-btn" class="btn-top-tool" aria-label="Audio and voice settings" title="Audio & Voice Settings">
+          ⚙️ Audio
+        </button>
         <button type="button" id="motion-toggle-btn" class="btn-top-tool" aria-label="Toggle animations">
           Anim: On
         </button>
@@ -164,6 +164,23 @@
       <!-- LEFT: Player List & Scoreboard -->
       <aside class="players-sidebar" aria-label="Players Scoreboard">
         <div class="sidebar-header">Players</div>
+
+        <!-- Compact Pixel-Art Voice Chat Dock -->
+        <div id="voice-chat-dock" class="voice-chat-dock">
+          <div class="voice-dock-status">
+            <span class="voice-dock-icon" id="voice-dock-icon">🎙️</span>
+            <span id="voice-dock-label" class="voice-dock-label">Voice Chat</span>
+            <span id="voice-dock-count" class="voice-dock-count" title="Players in voice">0</span>
+          </div>
+          <div class="voice-dock-actions">
+            <button type="button" id="voice-join-btn" class="btn-voice btn-voice-join" title="Join Voice Chat">Join Voice</button>
+            <button type="button" id="voice-mute-btn" class="btn-voice btn-voice-mute" hidden title="Mute/Unmute Mic">🎤 Mic</button>
+            <button type="button" id="voice-deafen-btn" class="btn-voice btn-voice-deafen" hidden title="Deafen/Undeafen Audio">🎧 Deafen</button>
+            <button type="button" id="voice-ptt-btn" class="btn-voice btn-voice-ptt" hidden title="Hold to Talk (Spacebar or 'V')">Talk</button>
+            <button type="button" id="voice-leave-btn" class="btn-voice btn-voice-leave" hidden title="Leave Voice Session">✕</button>
+          </div>
+        </div>
+
         <div id="players-list" class="players-list"></div>
         <div id="host-bot-controls" class="host-bot-controls" hidden>
           <button type="button" id="add-bot-btn" class="btn-skribbl btn-small btn-purple">
@@ -583,13 +600,16 @@
        NATIVE <dialog> MODALS (modern-web-guidance `dialog` compliant)
        ===================================================================== -->
 
-  <!-- Modal 0: Public Rooms Browser -->
+  <!-- Modal 0: Public Matchmaking Browser (Opened by Play!) -->
   <dialog id="public-rooms-dialog" class="skribbl-dialog skribbl-dialog-wide" closedby="any" aria-labelledby="public-rooms-dialog-title">
     <div class="dialog-header-row">
       <h2 id="public-rooms-dialog-title">Public Matchmaking</h2>
-      <button type="button" id="refresh-public-rooms-btn" class="btn-skribbl btn-blue btn-sm">Refresh</button>
+      <div class="dialog-header-actions">
+        <button type="button" id="create-public-from-header-btn" class="btn-skribbl btn-green btn-sm">+ Host Public Room</button>
+        <button type="button" id="refresh-public-rooms-btn" class="btn-skribbl btn-blue btn-sm">Refresh</button>
+      </div>
     </div>
-    <p class="dialog-sub">Join an active public game waiting for players around the world:</p>
+    <p class="dialog-sub">Join an active public game waiting for players around the world, or host your own:</p>
     <div id="public-rooms-container" class="public-rooms-container">
       <div id="public-rooms-empty" class="public-rooms-empty">
         <p>No open public rooms waiting right now.</p>
@@ -599,6 +619,71 @@
     </div>
     <div class="dialog-actions">
       <button type="button" id="close-public-rooms-btn" class="btn-skribbl btn-gray">Close</button>
+    </div>
+  </dialog>
+
+  <!-- Modal 0B: Audio & Voice Settings Dialog -->
+  <dialog id="audio-settings-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="audio-settings-title">
+    <div class="dialog-header-row">
+      <h2 id="audio-settings-title">⚙️ Audio &amp; Voice Settings</h2>
+    </div>
+    <div class="audio-settings-box">
+      <label class="audio-setting-row">
+        <span>Mute All Sounds:</span>
+        <input type="checkbox" id="setting-master-mute">
+      </label>
+      <div class="audio-slider-group">
+        <label for="setting-sfx-volume">Sound Effects Volume:</label>
+        <div class="slider-val-box">
+          <input type="range" id="setting-sfx-volume" min="0" max="100" value="85" class="skribbl-range">
+          <span id="setting-sfx-val" class="slider-badge">85%</span>
+        </div>
+      </div>
+      <div class="audio-slider-group">
+        <label for="setting-music-volume">Waiting / Think Music Volume:</label>
+        <div class="slider-val-box">
+          <input type="range" id="setting-music-volume" min="0" max="100" value="70" class="skribbl-range">
+          <span id="setting-music-val" class="slider-badge">70%</span>
+        </div>
+      </div>
+      <div class="audio-slider-group">
+        <label for="setting-voice-volume">Voice Chat Volume:</label>
+        <div class="slider-val-box">
+          <input type="range" id="setting-voice-volume" min="0" max="100" value="100" class="skribbl-range">
+          <span id="setting-voice-val" class="slider-badge">100%</span>
+        </div>
+      </div>
+      <label class="audio-setting-row">
+        <span>Push-to-Talk (Hold Space or V):</span>
+        <input type="checkbox" id="setting-voice-ptt">
+      </label>
+      <label class="audio-setting-row">
+        <span>Auto-Mute When Joining Voice:</span>
+        <input type="checkbox" id="setting-voice-automute">
+      </label>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="close-audio-settings-btn" class="btn-skribbl btn-green">Done</button>
+    </div>
+  </dialog>
+
+  <!-- Modal 0C: Microphone Permission Help Dialog -->
+  <dialog id="mic-help-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="mic-help-title">
+    <div class="dialog-header-row">
+      <h2 id="mic-help-title">🎙️ Microphone Access</h2>
+    </div>
+    <p id="mic-help-message" class="dialog-sub">Jeoparty needs permission to use your microphone so you can talk with players in your room.</p>
+    <div class="mic-help-instructions">
+      <p><strong>To enable your microphone:</strong></p>
+      <ol>
+        <li>Click the lock or camera/mic icon in your browser's address bar.</li>
+        <li>Toggle <strong>Microphone</strong> to <strong>Allow</strong>.</li>
+        <li>Click "Try Again" below.</li>
+      </ol>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="mic-help-retry-btn" class="btn-skribbl btn-green">Try Again</button>
+      <button type="button" id="mic-help-close-btn" class="btn-skribbl btn-gray">Close</button>
     </div>
   </dialog>
 
