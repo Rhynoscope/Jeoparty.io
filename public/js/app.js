@@ -243,6 +243,7 @@ const state = {
   room: null,
   clockOffsetMs: 0,
   categorySearchQuery: '',
+  pendingTransferPlayerId: null,
   lastRenderedPhase: null,
   lastTickSecond: -1,
 };
@@ -340,6 +341,7 @@ const el = {
   // Lobby controls
   lobbyRoomCodeDisplay: document.getElementById('lobby-room-code-display'),
   lobbyRoleBadge: document.getElementById('lobby-role-badge'),
+  activeDifficultyIndicator: document.getElementById('active-difficulty-indicator'),
   setAnswerMode: document.getElementById('set-answer-mode'),
   setBoardCols: document.getElementById('set-board-cols'),
   setCluesPerCat: document.getElementById('set-clues-per-cat'),
@@ -439,6 +441,11 @@ const el = {
   howtoDialog: document.getElementById('howto-dialog'),
   roomEndedDialog: document.getElementById('room-ended-dialog'),
   roomEndedMessage: document.getElementById('room-ended-message'),
+  transferHostDialog: document.getElementById('transfer-host-dialog'),
+  transferTargetName: document.getElementById('transfer-target-name'),
+  confirmTransferBtn: document.getElementById('confirm-transfer-btn'),
+  cancelTransferBtn: document.getElementById('cancel-transfer-btn'),
+  closeTransferDialogX: document.getElementById('close-transfer-dialog-x'),
   customCatDialog: document.getElementById('custom-cat-dialog'),
   customCatForm: document.getElementById('custom-cat-form'),
   customCatTitle: document.getElementById('custom-cat-title'),
@@ -974,6 +981,16 @@ function handleServerMessage(msg) {
       break;
     }
 
+    case 'host_transferred': {
+      sfx.play('daily_double');
+      if (msg.newHostId === state.playerId) {
+        showToast('👑 You are now the Room Host!', 'gold');
+      } else {
+        showToast(`👑 ${msg.newHostName || 'Another player'} is now the Room Host!`, 'info');
+      }
+      break;
+    }
+
     case 'sfx': {
       sfx.play(msg.sound);
       break;
@@ -1059,6 +1076,8 @@ function appendChatMessage(m) {
 function isMeHost(room) {
   return Boolean(room && room.hostId === state.playerId);
 }
+window.state = state;
+window.isMeHost = isMeHost;
 
 function findPlayer(room, id) {
   return room?.players?.find((p) => p.id === id) || null;
@@ -1296,15 +1315,46 @@ function renderPlayersSidebar(room, amHost) {
     }
 
     if (amHost && p.id !== state.playerId) {
+      const actionsWrap = document.createElement('div');
+      actionsWrap.className = 'player-admin-actions';
+
+      if (!p.isBot && p.connected) {
+        const transferBtn = document.createElement('button');
+        transferBtn.type = 'button';
+        transferBtn.className = 'transfer-host-btn';
+        transferBtn.title = `Transfer room host privileges to ${p.name}`;
+        transferBtn.setAttribute('aria-label', `Transfer host to ${p.name}`);
+        transferBtn.textContent = '👑 Host';
+        transferBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.pendingTransferPlayerId = p.id;
+          if (el.transferTargetName) {
+            el.transferTargetName.textContent = p.name;
+          }
+          if (el.transferHostDialog) {
+            if (typeof el.transferHostDialog.showModal === 'function') {
+              el.transferHostDialog.showModal();
+            } else {
+              el.transferHostDialog.setAttribute('open', '');
+            }
+          }
+        });
+        actionsWrap.appendChild(transferBtn);
+      }
+
       const kickBtn = document.createElement('button');
       kickBtn.type = 'button';
       kickBtn.className = 'kick-player-btn';
       kickBtn.setAttribute('aria-label', `Remove ${p.name}`);
+      kickBtn.title = `Remove ${p.name}`;
       kickBtn.textContent = '✕';
-      kickBtn.addEventListener('click', () => {
+      kickBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         sendWs({ type: 'remove_player', playerId: p.id });
       });
-      avatarCell.appendChild(kickBtn);
+      actionsWrap.appendChild(kickBtn);
+
+      avatarCell.appendChild(actionsWrap);
     }
 
     row.append(rankEl, infoEl, avatarCell);
@@ -1361,8 +1411,22 @@ function renderLobbyStage(room, amHost) {
       (pace === 'standard' && s.boardCols === 4 && s.cluesPerCat === 4) ||
       (pace === 'epic' && s.boardCols === 5 && s.cluesPerCat === 5 && s.doubleJeopardy);
     btn.classList.toggle('active', Boolean(isActive));
+    btn.setAttribute('aria-checked', Boolean(isActive) ? 'true' : 'false');
     btn.disabled = !amHost;
   });
+
+  // Sync Bot Difficulty buttons
+  const curDiff = s.botDifficulty || 'medium';
+  document.querySelectorAll('.diff-btn').forEach((btn) => {
+    const diff = btn.getAttribute('data-diff');
+    const isActive = diff === curDiff;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    btn.disabled = !amHost;
+  });
+  if (el.activeDifficultyIndicator) {
+    el.activeDifficultyIndicator.textContent = curDiff.toUpperCase();
+  }
 
   const controls = [
     el.setAnswerMode,
@@ -1415,7 +1479,9 @@ function renderLobbyStage(room, amHost) {
 
     const isChecked = includedSet.has(cat.id);
     const label = document.createElement('label');
-    label.className = 'cat-card';
+    label.className = `cat-card ${isChecked ? 'selected' : ''}`;
+    label.setAttribute('role', 'checkbox');
+    label.setAttribute('aria-checked', isChecked ? 'true' : 'false');
 
     const leftCluster = document.createElement('span');
     leftCluster.className = 'cat-card-label';
@@ -1425,6 +1491,13 @@ function renderLobbyStage(room, amHost) {
     nameEl.className = 'cat-card-name';
     nameEl.textContent = cat.name;
     leftCluster.append(iconEl, nameEl);
+
+    const rightCluster = document.createElement('span');
+    rightCluster.className = 'cat-card-right';
+
+    const checkBadge = document.createElement('span');
+    checkBadge.className = 'cat-check-badge';
+    checkBadge.textContent = '✓';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -1438,18 +1511,29 @@ function renderLobbyStage(room, amHost) {
       const nextSet = new Set(state.room.settings.includedCategoryIds);
       if (checkbox.checked) nextSet.add(cat.id);
       else nextSet.delete(cat.id);
+      label.classList.toggle('selected', checkbox.checked);
+      label.setAttribute('aria-checked', checkbox.checked ? 'true' : 'false');
       syncHasFallbackClass(label, checkbox);
       pushSettingsPatch({ includedCategoryIds: Array.from(nextSet) });
     });
 
-    label.append(leftCluster, checkbox);
+    rightCluster.append(checkBadge, checkbox);
+    label.append(leftCluster, rightCluster);
     syncHasFallbackClass(label, checkbox);
     el.lobbyCategoriesGrid.appendChild(label);
   }
 }
 
 function pushSettingsPatch(patch) {
-  if (!state.room || !isMeHost(state.room)) return;
+  if (!state.room) return;
+  if (!isMeHost(state.room)) {
+    showToast('Only the room host can change game settings!', 'error');
+    return;
+  }
+  if (state.room.phase !== 'lobby') {
+    showToast('Settings cannot be changed while a match is in progress.', 'error');
+    return;
+  }
   sendWs({
     type: 'update_settings',
     settings: patch,
@@ -2604,12 +2688,80 @@ function bindEvents() {
   document.querySelectorAll('.pace-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
+      if (!isMeHost(state.room)) {
+        showToast('Only the room host can change match pacing!', 'error');
+        return;
+      }
+      if (state.room?.phase !== 'lobby') {
+        showToast('Settings cannot be changed while a match is in progress.', 'error');
+        return;
+      }
       const pace = btn.getAttribute('data-pace');
       if (!pace) return;
       sfx.play('click');
-      sendWs({ type: 'patch_settings', patch: { matchPace: pace } });
+      // Immediate visual feedback
+      document.querySelectorAll('.pace-btn').forEach((b) => {
+        const isSelected = b === btn;
+        b.classList.toggle('active', isSelected);
+        b.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+      });
+      pushSettingsPatch({ matchPace: pace });
     });
   });
+
+  // Lobby Bot Difficulty Selector
+  document.querySelectorAll('.diff-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!isMeHost(state.room)) {
+        showToast('Only the room host can change bot difficulty!', 'error');
+        return;
+      }
+      if (state.room?.phase !== 'lobby') {
+        showToast('Bot difficulty cannot be changed while a match is in progress.', 'error');
+        return;
+      }
+      const diff = btn.getAttribute('data-diff');
+      if (!diff) return;
+      sfx.play('click');
+      // Immediate visual feedback
+      document.querySelectorAll('.diff-btn').forEach((b) => {
+        const isSelected = b === btn;
+        b.classList.toggle('active', isSelected);
+        b.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+      });
+      if (el.activeDifficultyIndicator) {
+        el.activeDifficultyIndicator.textContent = diff.toUpperCase();
+      }
+      pushSettingsPatch({ botDifficulty: diff });
+    });
+  });
+
+  // Transfer Host Confirmation Dialog Handlers
+  if (el.cancelTransferBtn) {
+    el.cancelTransferBtn.addEventListener('click', () => {
+      sfx.play('click');
+      if (el.transferHostDialog) el.transferHostDialog.close();
+      state.pendingTransferPlayerId = null;
+    });
+  }
+  if (el.closeTransferDialogX) {
+    el.closeTransferDialogX.addEventListener('click', () => {
+      sfx.play('click');
+      if (el.transferHostDialog) el.transferHostDialog.close();
+      state.pendingTransferPlayerId = null;
+    });
+  }
+  if (el.confirmTransferBtn) {
+    el.confirmTransferBtn.addEventListener('click', () => {
+      const targetId = state.pendingTransferPlayerId;
+      if (!targetId) return;
+      sfx.play('click');
+      sendWs({ type: 'transfer_host', targetPlayerId: targetId });
+      if (el.transferHostDialog) el.transferHostDialog.close();
+      state.pendingTransferPlayerId = null;
+    });
+  }
 
   // Floating Pixel Reaction Buttons
   document.querySelectorAll('.reaction-trigger-btn').forEach((btn) => {

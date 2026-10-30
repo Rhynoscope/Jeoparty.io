@@ -1247,10 +1247,39 @@ summary:focus-visible {
   border-color: #6d62cf;
 }
 
+.cat-card.selected,
 .cat-card:has(.cat-checkbox:checked) {
-  --cat-bg: #18319c;
-  --cat-border: #53e237;
+  --cat-bg: #142b78;
+  --cat-border: #2ed573;
   --cat-text: #ffffff;
+  border-width: 2.5px;
+  box-shadow: 0 0 8px rgba(46, 213, 115, 0.45);
+}
+
+.cat-card-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cat-check-badge {
+  display: none;
+  background: #2ed573;
+  color: #052e16;
+  font-size: 11px;
+  font-weight: 900;
+  width: 17px;
+  height: 17px;
+  line-height: 17px;
+  text-align: center;
+  border-radius: 3px;
+  border: 1px solid #000000;
+}
+
+.cat-card.selected .cat-check-badge,
+.cat-card:has(.cat-checkbox:checked) .cat-check-badge {
+  display: inline-block;
+  animation: settingSelectPulse 0.2s ease-out;
 }
 
 .cat-card-label {
@@ -3277,7 +3306,7 @@ dialog::backdrop {
   color: #222222;
   cursor: pointer;
   box-shadow: 2px 2px 0 #000000;
-  transition: transform 0.1s ease, background 0.15s ease;
+  transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
   text-align: center;
 }
 
@@ -3294,10 +3323,176 @@ dialog::backdrop {
 
 .pace-btn.active {
   background: #2ed573;
-  color: #0b3d1b;
-  border-color: #000000;
-  box-shadow: 2px 2px 0 #000000;
+  color: #052e16;
+  border: 2.5px solid #000000;
+  box-shadow: inset 0 0 0 2px #ffffff, 3px 3px 0 #000000;
   font-weight: 800;
+  animation: settingSelectPulse 0.25s ease-out;
+}
+
+.pace-check {
+  display: none;
+  font-weight: 900;
+  margin-right: 4px;
+}
+
+.pace-btn.active .pace-check {
+  display: inline;
+}
+
+/* Bot Difficulty Selector */
+.bot-diff-container {
+  margin: 10px 0 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diff-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diff-active-label {
+  font-family: var(--font-pixel);
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #2ed573;
+  background: #000000;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+.bot-diff-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.diff-btn {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 8px 10px;
+  border: 2px solid #000000;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #222222;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000000;
+  transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.diff-btn:hover:not(:disabled) {
+  background: #f1f2f6;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #000000;
+}
+
+.diff-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #000000;
+}
+
+.diff-btn.active {
+  background: #2ed573;
+  color: #052e16;
+  border: 2.5px solid #000000;
+  box-shadow: inset 0 0 0 2px #ffffff, 3px 3px 0 #000000;
+  animation: settingSelectPulse 0.25s ease-out;
+}
+
+.diff-btn[data-diff="champion"].active {
+  background: #ffd32a;
+  color: #3b2002;
+}
+
+.diff-btn-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.diff-badge {
+  font-family: var(--font-pixel);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.diff-check {
+  display: none;
+  font-weight: 900;
+  background: #052e16;
+  color: #ffffff;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.diff-btn.active .diff-check {
+  display: inline-block;
+}
+
+.diff-desc {
+  font-size: 0.67rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #555555;
+}
+
+.diff-btn.active .diff-desc {
+  color: #052e16;
+  font-weight: 600;
+}
+
+@keyframes settingSelectPulse {
+  0% { transform: scale(0.97); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* Host Transfer Interface */
+.player-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.transfer-host-btn {
+  background: #ffd32a;
+  color: #000000;
+  border: 1.5px solid #000000;
+  box-shadow: 1px 1px 0 #000000;
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.transfer-host-btn:hover {
+  background: #ffeaa7;
+  transform: scale(1.05);
+}
+
+.transfer-dialog-detail {
+  font-size: 0.85rem;
+  color: #444444;
+  margin-bottom: 16px;
+  line-height: 1.4;
 }
 
 /* =========================================================================

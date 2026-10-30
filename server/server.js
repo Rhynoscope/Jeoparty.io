@@ -140,6 +140,7 @@ function sanitizeAvatar(raw) {
 function createDefaultSettings() {
   return {
     matchPace: 'quick', // 'quick' (5-8m, 3x3) | 'standard' (10-15m, 4x4) | 'epic' (20-25m, 5x5) | 'custom'
+    botDifficulty: 'medium', // 'easy' | 'medium' | 'hard' | 'champion'
     answerMode: 'buzzer', // 'buzzer' | 'skribbl' | 'host'
     boardCols: 3, // 3 | 4 | 5 | 6 (Default 3 for fast, casual, mobile-friendly fun!)
     cluesPerCat: 3, // 3 | 4 | 5 (9 clues total in round 1)
@@ -177,6 +178,15 @@ function applySettingsPatch(room, patch) {
       s.clueTimeSec = 20;
       s.doubleJeopardy = true;
       s.wrongPenalty = true;
+    }
+  }
+
+  if (['easy', 'medium', 'hard', 'champion'].includes(patch.botDifficulty)) {
+    s.botDifficulty = patch.botDifficulty;
+    if (Array.isArray(room.players)) {
+      for (const p of room.players) {
+        if (p.isBot) p.botDifficulty = s.botDifficulty;
+      }
     }
   }
 
@@ -480,6 +490,7 @@ function serializeRoomForPlayer(room, viewerId) {
       score: p.score,
       connected: p.connected,
       isBot: p.isBot,
+      botDifficulty: p.isBot ? (p.botDifficulty || room.settings.botDifficulty || 'medium') : undefined,
       streak: p.stats?.currentStreak || 0,
       onFire: Boolean(p.stats?.currentStreak >= 2),
       inVoice: room.voiceMembers ? room.voiceMembers.has(p.id) : false,
@@ -715,6 +726,7 @@ function addBotToRoom(room) {
     connected: true,
     isBot: true,
     botSkill: profile.skill,
+    botDifficulty: room.settings.botDifficulty || 'medium',
     ws: null,
   };
   room.players.push(bot);
@@ -724,6 +736,84 @@ function addBotToRoom(room) {
   });
   broadcastRoomState(room);
   return bot;
+}
+
+/**
+ * Dynamic bot performance model tuned across Easy, Medium, Hard, and Champion.
+ * Accounts for room difficulty, individual bot persona, clue row/difficulty ($200 to $1000),
+ * realistic human-like reaction time windows, buzzer hesitation, and wager strategies.
+ */
+function getBotSkillProfile(bot, room, row = 0, totalRows = 5) {
+  const difficulty = (room?.settings?.botDifficulty || bot?.botDifficulty || 'medium').toLowerCase();
+  const rowRatio = totalRows > 1 ? Math.max(0, Math.min(1, row / (totalRows - 1))) : 0;
+
+  let baseAccuracy = 0.65;
+  let rowPenalty = 0.16;
+  let buzzProbability = 0.68;
+  let minReactionMs = 1200;
+  let maxReactionMs = 3000;
+  let answerDelayMinMs = 1500;
+  let answerDelayMaxMs = 2800;
+  let wagerAggressiveness = 0.50;
+
+  if (difficulty === 'easy') {
+    // Easy: ~35–50% accuracy, relaxed/hesitant buzzer, conservative wagers, struggles on higher value rows
+    baseAccuracy = 0.44;
+    rowPenalty = 0.22;
+    buzzProbability = 0.46;
+    minReactionMs = 1800;
+    maxReactionMs = 4000;
+    answerDelayMinMs = 2000;
+    answerDelayMaxMs = 3800;
+    wagerAggressiveness = 0.30;
+  } else if (difficulty === 'medium') {
+    // Medium: ~55–70% accuracy, balanced buzzer and wagers
+    baseAccuracy = 0.65;
+    rowPenalty = 0.16;
+    buzzProbability = 0.68;
+    minReactionMs = 1200;
+    maxReactionMs = 3000;
+    answerDelayMinMs = 1500;
+    answerDelayMaxMs = 2800;
+    wagerAggressiveness = 0.50;
+  } else if (difficulty === 'hard') {
+    // Hard: ~75–85% accuracy, fast & decisive buzzer, smart wagers
+    baseAccuracy = 0.82;
+    rowPenalty = 0.10;
+    buzzProbability = 0.84;
+    minReactionMs = 800;
+    maxReactionMs = 2200;
+    answerDelayMinMs = 1000;
+    answerDelayMaxMs = 2200;
+    wagerAggressiveness = 0.75;
+  } else if (difficulty === 'champion') {
+    // Champion: ~85–93% accuracy, expert timing 0.6–1.8s, aggressive wagers, sharp but beatable
+    baseAccuracy = 0.92;
+    rowPenalty = 0.05;
+    buzzProbability = 0.94;
+    minReactionMs = 600;
+    maxReactionMs = 1800;
+    answerDelayMinMs = 700;
+    answerDelayMaxMs = 1700;
+    wagerAggressiveness = 0.90;
+  }
+
+  // Individual persona variance (+/- 0.03 based on bot profile)
+  const botFlavor = bot?.botSkill ? (bot.botSkill - 0.68) * 0.3 : 0;
+  const effectiveAccuracy = Math.max(0.18, Math.min(0.95, baseAccuracy - (rowRatio * rowPenalty) + botFlavor));
+  const effectiveBuzz = Math.max(0.20, Math.min(0.98, buzzProbability - (rowRatio * (rowPenalty * 0.5)) + botFlavor));
+
+  const reactionMs = minReactionMs + Math.random() * (maxReactionMs - minReactionMs);
+  const answerDelayMs = answerDelayMinMs + Math.random() * (answerDelayMaxMs - answerDelayMinMs);
+
+  return {
+    difficulty,
+    accuracy: effectiveAccuracy,
+    buzzProbability: effectiveBuzz,
+    reactionMs: Math.round(reactionMs),
+    answerDelayMs: Math.round(answerDelayMs),
+    wagerAggressiveness,
+  };
 }
 
 /* =========================================================================
@@ -1102,12 +1192,13 @@ function enterDailyDoubleWagerPhase(room, picker) {
   if (picker.isBot) {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'daily_double_wager') return;
+      const botProf = getBotSkillProfile(picker, room, room.activeClue.row, room.settings.cluesPerCat || 5);
       const smartWager = Math.min(
         room.activeClue.maxWager,
-        Math.max(200, Math.round((room.activeClue.maxWager * 0.45) / 100) * 100)
+        Math.max(200, Math.round((room.activeClue.maxWager * botProf.wagerAggressiveness) / 100) * 100)
       );
       handleSubmitDailyDoubleWager(room, picker, smartWager);
-    }, 2200);
+    }, 2000);
   } else {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'daily_double_wager') return;
@@ -1145,12 +1236,13 @@ function handleSubmitDailyDoubleWager(room, player, rawWager) {
   if (player.isBot) {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'daily_double_answer') return;
-      const knows = Math.random() < player.botSkill;
+      const botProf = getBotSkillProfile(player, room, ac.row, room.settings.cluesPerCat || 5);
+      const knows = Math.random() < botProf.accuracy;
       const guess = knows
         ? ac.clueObj.answer
         : FUNNY_WRONG_ANSWERS[Math.floor(Math.random() * FUNNY_WRONG_ANSWERS.length)];
       handleSubmitDailyDoubleAnswer(room, player, guess);
-    }, 3000 + Math.random() * 2500);
+    }, 2200 + Math.random() * 2000);
   } else {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'daily_double_answer') return;
@@ -1248,17 +1340,15 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
   }
 
   for (const bot of eligible.filter((p) => p.isBot)) {
-    const difficultyPenalty = (ac.row / 5) * 0.22;
-    const willBuzz = Math.random() < bot.botSkill - difficultyPenalty + 0.12;
+    const botProf = getBotSkillProfile(bot, room, ac.row, room.settings.cluesPerCat || 5);
+    const willBuzz = Math.random() < botProf.buzzProbability;
     if (willBuzz) {
-      const reactionMs = 2800 + Math.random() * Math.min(8500, durationMs * 0.68);
-      if (reactionMs < durationMs - 400) {
-        scheduleRoomTimer(room, () => {
-          if (room.phase === 'clue_open') {
-            handlePlayerBuzz(room, bot);
-          }
-        }, reactionMs);
-      }
+      const reactionMs = Math.max(500, Math.min(durationMs - 400, botProf.reactionMs));
+      scheduleRoomTimer(room, () => {
+        if (room.phase === 'clue_open') {
+          handlePlayerBuzz(room, bot);
+        }
+      }, reactionMs);
     }
   }
 
@@ -1314,14 +1404,15 @@ function handlePlayerBuzz(room, player) {
   broadcastRoomState(room);
 
   if (player.isBot) {
+    const botProf = getBotSkillProfile(player, room, ac.row, room.settings.cluesPerCat || 5);
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'clue_buzzed' || ac.buzzedPlayerId !== player.id) return;
-      const knows = Math.random() < player.botSkill + 0.1;
+      const knows = Math.random() < botProf.accuracy;
       const guess = knows
         ? ac.clueObj.answer
         : FUNNY_WRONG_ANSWERS[Math.floor(Math.random() * FUNNY_WRONG_ANSWERS.length)];
       handleBuzzedAnswerSubmit(room, player, guess);
-    }, 1800 + Math.random() * 2000);
+    }, botProf.answerDelayMs);
   } else {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'clue_buzzed' || ac.buzzedPlayerId !== player.id) return;
@@ -1375,7 +1466,14 @@ function applyCorrectBuzz(room, player) {
   }
 
   recordCorrectAnswer(room, player, totalPoints);
-  triggerBotBanter(room, player, 'correct');
+  if (player.isBot) {
+    triggerBotBanter(room, player, 'correct');
+  } else {
+    const randomBot = room.players.find((p) => p.isBot && p.connected);
+    if (randomBot && Math.random() < 0.25) {
+      triggerBotBanter(room, randomBot, 'praise_human');
+    }
+  }
 
   sendChat(room, {
     color: 'success',
@@ -1583,12 +1681,18 @@ const BOT_BANTER = {
     "I was programmed for this moment! ⚡",
     "Too slow, humans! 💨",
     "Let a real intelligence handle this. 🧠",
+    "I think I saw this on TV once! 📺",
+    "Pressing buzzers is my favorite hobby!",
+    "Data retrieval indexed in 0.4s! ⚡",
   ],
   correct: [
     "100% calculation accuracy! 🎯",
     "Neural networks never lie. ✨",
     "Easy points for the bot squad!",
     "That was practically in my BIOS. 💻",
+    "Beginner's luck strikes again! 🥳",
+    "Calculated with 99.8% confidence. 🎯",
+    "Statistically expected result. ✨",
   ],
   wrong: [
     "Does not compute! 💥",
@@ -1596,11 +1700,20 @@ const BOT_BANTER = {
     "I blame high network latency! 📡",
     "Error 404: Brain not found.",
     "My database was bribed! 🫠",
+    "I was confident and wrong! 🙃",
+    "Anomalous dataset. Recalibrating. 🤖",
+    "Was that a trick question?! 🤔",
   ],
   streak: [
     "I am unstoppable! 🔥",
     "Bow down to your new pixel overlord! 👑",
     "Try to break my streak if you dare! 🏆",
+  ],
+  praise_human: [
+    "Lightning fast buzzer speed! ⚡",
+    "Respectable trivia reflexes! 👏",
+    "Nice solve, didn't see that coming! ✨",
+    "Good buzz, human! 🧠",
   ],
   reaction: ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'],
 };
@@ -1736,13 +1849,14 @@ function enterChaosAllPlayPhase(room) {
 
   // Bots in chaos all-play submit independently
   for (const bot of room.players.filter((p) => p.isBot && p.connected)) {
-    const knows = Math.random() < bot.botSkill;
-    const delay = 2500 + Math.random() * (durationMs * 0.55);
+    const botProf = getBotSkillProfile(bot, room, ac.row, room.settings.cluesPerCat || 5);
+    const knows = Math.random() < botProf.accuracy;
+    const delay = Math.max(1200, Math.min(durationMs - 800, botProf.reactionMs + botProf.answerDelayMs * 0.6));
     scheduleRoomTimer(room, () => {
       if (room.phase === 'clue_chaos') {
         const botAnswer = knows
           ? ac.clueObj.answer
-          : (bot.wrongAnswers?.[0] || 'Pass');
+          : FUNNY_WRONG_ANSWERS[Math.floor(Math.random() * FUNNY_WRONG_ANSWERS.length)];
         handleChaosAnswer(room, bot, botAnswer);
       }
     }, delay);
@@ -1866,9 +1980,10 @@ function enterSkribblCluePhase(room) {
   }, durationMs * 0.5);
 
   for (const bot of room.players.filter((p) => p.isBot && p.connected)) {
-    const knows = Math.random() < bot.botSkill;
+    const botProf = getBotSkillProfile(bot, room, ac.row, room.settings.cluesPerCat || 5);
+    const knows = Math.random() < botProf.accuracy;
     if (knows) {
-      const delay = 3500 + Math.random() * (durationMs * 0.72);
+      const delay = Math.max(1600, Math.min(durationMs * 0.8, botProf.reactionMs * 2 + 1000));
       scheduleRoomTimer(room, () => {
         if (room.phase === 'clue_skribbl') {
           handleSkribblGuessOrChat(room, bot, ac.clueObj.answer);
@@ -1993,10 +2108,14 @@ function enterFinalWagerPhase(room) {
   for (const bot of room.players.filter((p) => p.isBot)) {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'final_wager') return;
+      const botProf = getBotSkillProfile(bot, room, 4, 5);
       const maxW = getFinalMaxWager(room, bot.id);
-      room.finalState.wagers[bot.id] = Math.round((maxW * (0.4 + Math.random() * 0.5)) / 50) * 50;
+      room.finalState.wagers[bot.id] = Math.max(
+        0,
+        Math.min(maxW, Math.round((maxW * (botProf.wagerAggressiveness * (0.8 + Math.random() * 0.4))) / 50) * 50)
+      );
       checkAllFinalWagersLocked(room);
-    }, 1500 + Math.random() * 2000);
+    }, 1200 + Math.random() * 2000);
   }
 
   scheduleRoomTimer(room, () => {
@@ -2041,12 +2160,13 @@ function enterFinalCluePhase(room) {
   for (const bot of room.players.filter((p) => p.isBot)) {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'final_clue') return;
-      const knows = Math.random() < bot.botSkill;
+      const botProf = getBotSkillProfile(bot, room, 4, 5);
+      const knows = Math.random() < botProf.accuracy;
       room.finalState.answers[bot.id] = knows
         ? room.finalState.clueObj.answer
         : FUNNY_WRONG_ANSWERS[Math.floor(Math.random() * FUNNY_WRONG_ANSWERS.length)];
       checkAllFinalAnswersLocked(room);
-    }, 3500 + Math.random() * 5000);
+    }, 2800 + Math.random() * 4500);
   }
 
   scheduleRoomTimer(room, () => {
@@ -2315,6 +2435,27 @@ attachWebSocketServer(server, (ws) => {
     }
 
     if (room.hostId === player.id) {
+      const nextHuman = room.players.find(
+        (p) => !p.isBot && p.connected && p.id !== player.id
+      );
+      if (nextHuman) {
+        room.players = room.players.filter((p) => p.id !== player.id);
+        room.hostId = nextHuman.id;
+        clearHostDisconnectTimer(room);
+        sendChat(room, {
+          color: 'leave',
+          text: `${player.name} (Host) left the room. Host privileges transferred to ${nextHuman.name}!`,
+        });
+        advanceGameIfBlockedByDepartedNonHost(room, player.id);
+        broadcastRoomEvent(room, {
+          type: 'host_transferred',
+          previousHostId: player.id,
+          newHostId: nextHuman.id,
+          newHostName: nextHuman.name,
+        });
+        broadcastRoomState(room);
+        return { code: room.code, roomId: room.roomId, terminated: false };
+      }
       const reason =
         room.phase === 'lobby'
           ? 'The host closed the room.'
@@ -2370,10 +2511,29 @@ attachWebSocketServer(server, (ws) => {
         }
         const hostPlayer = room.players.find((p) => p.id === room.hostId);
         if (!hostPlayer || !hostPlayer.connected) {
-          terminateRoom(
-            room,
-            'The host disconnected and did not return, so this match has ended.'
+          const nextHuman = room.players.find(
+            (p) => !p.isBot && p.connected && p.id !== room.hostId
           );
+          if (nextHuman) {
+            room.hostId = nextHuman.id;
+            clearHostDisconnectTimer(room);
+            sendChat(room, {
+              color: 'gold',
+              text: `👑 Host did not reconnect. Host privileges automatically transferred to ${nextHuman.name}!`,
+            });
+            broadcastRoomEvent(room, {
+              type: 'host_transferred',
+              previousHostId: hostPlayer ? hostPlayer.id : null,
+              newHostId: nextHuman.id,
+              newHostName: nextHuman.name,
+            });
+            broadcastRoomState(room);
+          } else {
+            terminateRoom(
+              room,
+              'The host disconnected and did not return, so this match has ended.'
+            );
+          }
         }
       }, HOST_RECONNECT_GRACE_MS);
 
@@ -2641,8 +2801,20 @@ attachWebSocketServer(server, (ws) => {
 
       case 'update_settings': {
         if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
-        if (currentRoom.hostId !== currentPlayer.id) return;
-        if (currentRoom.phase !== 'lobby') return;
+        if (currentRoom.hostId !== currentPlayer.id) {
+          ws.send({
+            type: 'error',
+            message: 'Only the room host can change game settings.',
+          });
+          return;
+        }
+        if (currentRoom.phase !== 'lobby') {
+          ws.send({
+            type: 'error',
+            message: 'Settings cannot be changed while a match is in progress.',
+          });
+          return;
+        }
 
         applySettingsPatch(currentRoom, msg.settings || {});
         broadcastRoomState(currentRoom);
@@ -2732,6 +2904,61 @@ attachWebSocketServer(server, (ws) => {
           text: `${target.name} was removed from the room.`,
         });
         advanceGameIfBlockedByDepartedNonHost(currentRoom, target.id);
+        break;
+      }
+
+      case 'transfer_host': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        if (currentRoom.hostId !== currentPlayer.id) {
+          ws.send({
+            type: 'error',
+            message: 'Only the current host can transfer host privileges.',
+          });
+          return;
+        }
+
+        const targetId = msg.targetPlayerId;
+        if (!targetId || targetId === currentPlayer.id) {
+          ws.send({
+            type: 'error',
+            message: 'Please choose another connected player to become host.',
+          });
+          return;
+        }
+
+        const target = currentRoom.players.find((p) => p.id === targetId);
+        if (!target || target.isBot) {
+          ws.send({
+            type: 'error',
+            message: 'Host privileges can only be transferred to a real human player, not a bot.',
+          });
+          return;
+        }
+
+        if (!target.connected) {
+          ws.send({
+            type: 'error',
+            message: `${target.name} has disconnected and cannot become host.`,
+          });
+          return;
+        }
+
+        // Perform atomic host transfer
+        const prevHostName = currentPlayer.name;
+        currentRoom.hostId = target.id;
+        clearHostDisconnectTimer(currentRoom);
+
+        sendChat(currentRoom, {
+          color: 'gold',
+          text: `👑 Host privileges transferred from ${prevHostName} to ${target.name}!`,
+        });
+        broadcastRoomEvent(currentRoom, {
+          type: 'host_transferred',
+          previousHostId: currentPlayer.id,
+          newHostId: target.id,
+          newHostName: target.name,
+        });
+        broadcastRoomState(currentRoom);
         break;
       }
 

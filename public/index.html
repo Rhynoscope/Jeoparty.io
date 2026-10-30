@@ -218,17 +218,55 @@
               </div>
 
               <!-- Match Pace & Length Quick Presets (One-click setup for fun pacing!) -->
-              <div class="match-pace-container">
-                <span class="match-pace-title">Match Length &amp; Pace:</span>
-                <div class="match-pace-buttons">
-                  <button type="button" class="pace-btn active" data-pace="quick" title="3 Categories x 3 Rows = 9 Clues (Fast, Casual, Fun!)">
-                    ⚡ Quick Match (5–8m • 9 Clues)
+              <div class="match-pace-container" role="group" aria-labelledby="match-pace-heading">
+                <span id="match-pace-heading" class="match-pace-title">Match Length &amp; Pace:</span>
+                <div class="match-pace-buttons" role="radiogroup" aria-label="Match Length and Pace">
+                  <button type="button" class="pace-btn active" data-pace="quick" role="radio" aria-checked="true" title="3 Categories x 3 Rows = 9 Clues (Fast, Casual, Fun!)">
+                    <span class="pace-check">✓</span> ⚡ Quick Match (5–8m • 9 Clues)
                   </button>
-                  <button type="button" class="pace-btn" data-pace="standard" title="4 Categories x 4 Rows = 16 Clues">
-                    🎯 Standard (12–15m • 16 Clues)
+                  <button type="button" class="pace-btn" data-pace="standard" role="radio" aria-checked="false" title="4 Categories x 4 Rows = 16 Clues">
+                    <span class="pace-check">✓</span> 🎯 Standard (12–15m • 16 Clues)
                   </button>
-                  <button type="button" class="pace-btn" data-pace="epic" title="5 Categories x 5 Rows x 2 Rounds (Full Marathon)">
-                    🏆 Epic (20–25m • 2 Rounds)
+                  <button type="button" class="pace-btn" data-pace="epic" role="radio" aria-checked="false" title="5 Categories x 5 Rows x 2 Rounds (Full Marathon)">
+                    <span class="pace-check">✓</span> 🏆 Epic (20–25m • 2 Rounds)
+                  </button>
+                </div>
+              </div>
+
+              <!-- Bot Difficulty Selector (Easy, Medium, Hard, Champion) -->
+              <div class="bot-diff-container" role="group" aria-labelledby="bot-diff-heading">
+                <div class="diff-title-row">
+                  <span id="bot-diff-heading" class="match-pace-title">🤖 Bot Difficulty:</span>
+                  <span class="diff-active-label" id="active-difficulty-indicator">MEDIUM</span>
+                </div>
+                <div class="bot-diff-buttons" role="radiogroup" aria-label="Bot Difficulty">
+                  <button type="button" class="diff-btn" data-diff="easy" role="radio" aria-checked="false" title="Relaxed opponents who make frequent mistakes">
+                    <span class="diff-btn-header">
+                      <span class="diff-badge">EASY</span>
+                      <span class="diff-check">✓</span>
+                    </span>
+                    <span class="diff-desc">Relaxed opponents who make frequent mistakes.</span>
+                  </button>
+                  <button type="button" class="diff-btn active" data-diff="medium" role="radio" aria-checked="true" title="Balanced opponents with a mix of correct and incorrect answers">
+                    <span class="diff-btn-header">
+                      <span class="diff-badge">MEDIUM</span>
+                      <span class="diff-check">✓</span>
+                    </span>
+                    <span class="diff-desc">Balanced opponents with a mix of correct and incorrect answers.</span>
+                  </button>
+                  <button type="button" class="diff-btn" data-diff="hard" role="radio" aria-checked="false" title="Skilled opponents who answer quickly and accurately">
+                    <span class="diff-btn-header">
+                      <span class="diff-badge">HARD</span>
+                      <span class="diff-check">✓</span>
+                    </span>
+                    <span class="diff-desc">Skilled opponents who answer quickly and accurately.</span>
+                  </button>
+                  <button type="button" class="diff-btn" data-diff="champion" role="radio" aria-checked="false" title="Expert opponents designed to challenge experienced trivia players">
+                    <span class="diff-btn-header">
+                      <span class="diff-badge">CHAMPION</span>
+                      <span class="diff-check">✓</span>
+                    </span>
+                    <span class="diff-desc">Expert opponents designed to challenge experienced trivia players.</span>
                   </button>
                 </div>
               </div>
@@ -790,6 +828,24 @@
     <form method="dialog" class="dialog-actions">
       <button value="ok" class="btn-skribbl btn-green" autofocus>Back to Main Menu</button>
     </form>
+  </dialog>
+
+  <!-- Modal 3.5: Transfer Host Confirmation Dialog -->
+  <dialog id="transfer-host-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="transfer-host-title">
+    <div class="dialog-header-row">
+      <h2 id="transfer-host-title">👑 TRANSFER HOST</h2>
+      <button type="button" class="dialog-x" id="close-transfer-dialog-x" aria-label="Close">✕</button>
+    </div>
+    <p class="dialog-sub" id="transfer-host-message">
+      Transfer room host privileges to <strong id="transfer-target-name">Player</strong>?
+    </p>
+    <p class="transfer-dialog-detail">
+      They will become the room host with full permission to configure settings, manage players, and start games. You will remain in the room as a regular player.
+    </p>
+    <div class="dialog-actions">
+      <button type="button" id="cancel-transfer-btn" class="btn-skribbl btn-gray">CANCEL</button>
+      <button type="button" id="confirm-transfer-btn" class="btn-skribbl btn-gold">TRANSFER HOST</button>
+    </div>
   </dialog>
 
   <!-- Modal 4: Create Custom Jeopardy Category -->
