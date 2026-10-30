@@ -217,6 +217,22 @@
                 <h2 id="lobby-settings-heading" class="group-kicker">GAME SETTINGS</h2>
               </div>
 
+              <!-- Match Pace & Length Quick Presets (One-click setup for fun pacing!) -->
+              <div class="match-pace-container">
+                <span class="match-pace-title">Match Length &amp; Pace:</span>
+                <div class="match-pace-buttons">
+                  <button type="button" class="pace-btn active" data-pace="quick" title="3 Categories x 3 Rows = 9 Clues (Fast, Casual, Fun!)">
+                    ⚡ Quick Match (5–8m • 9 Clues)
+                  </button>
+                  <button type="button" class="pace-btn" data-pace="standard" title="4 Categories x 4 Rows = 16 Clues">
+                    🎯 Standard (12–15m • 16 Clues)
+                  </button>
+                  <button type="button" class="pace-btn" data-pace="epic" title="5 Categories x 5 Rows x 2 Rounds (Full Marathon)">
+                    🏆 Epic (20–25m • 2 Rounds)
+                  </button>
+                </div>
+              </div>
+
               <!-- Essential Primary Controls (3 simple choices) -->
               <div class="settings-grid-primary">
                 <label class="setting-field">
@@ -229,11 +245,11 @@
                 </label>
 
                 <label class="setting-field">
-                  <span>Match Length &amp; Difficulty</span>
+                  <span>Rows &amp; Difficulty</span>
                   <select id="set-clues-per-cat" class="skribbl-select">
-                    <option value="3">Quick (3 rows: $200–$600)</option>
+                    <option value="3" selected>Quick (3 rows: $200–$600)</option>
                     <option value="4">Medium (4 rows: $200–$800)</option>
-                    <option value="5" selected>Classic (5 rows: $200–$1000)</option>
+                    <option value="5">Classic (5 rows: $200–$1000)</option>
                   </select>
                 </label>
 
@@ -241,8 +257,8 @@
                   <span>Question Timer</span>
                   <select id="set-clue-time" class="skribbl-select">
                     <option value="12">12s (Blitz)</option>
-                    <option value="15">15s (Fast)</option>
-                    <option value="20" selected>20s (Standard)</option>
+                    <option value="15" selected>15s (Snappy)</option>
+                    <option value="20">20s (Standard)</option>
                     <option value="30">30s (Relaxed)</option>
                     <option value="45">45s (Party)</option>
                   </select>
@@ -292,8 +308,9 @@
                   <label class="setting-field">
                     <span>Categories on Board</span>
                     <select id="set-board-cols" class="skribbl-select">
-                      <option value="4">4 Categories</option>
-                      <option value="5" selected>5 Categories</option>
+                      <option value="3" selected>3 Categories (Fast &amp; Mobile-Friendly)</option>
+                      <option value="4">4 Categories (Standard)</option>
+                      <option value="5">5 Categories (Classic)</option>
                       <option value="6">6 Categories (Full TV Grid)</option>
                     </select>
                   </label>
@@ -477,6 +494,30 @@
                   Next Clue →
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3b. HALF-TIME INTERMISSION BREAK VIEW -->
+        <div id="stage-intermission" class="stage-panel intermission-panel" hidden>
+          <div class="clue-card-doodle intermission-card">
+            <div class="dd-header-row">
+              <span class="pixel-sprite sprite-confetti" aria-hidden="true"></span>
+              <div class="dd-banner">HALF-TIME INTERMISSION!</div>
+              <span class="pixel-sprite sprite-confetti" aria-hidden="true"></span>
+            </div>
+            <p id="intermission-subhead" class="intermission-subhead">
+              Catch your breath! Round 1 is in the books.
+            </p>
+            <div id="intermission-standings" class="intermission-standings"></div>
+            <div class="intermission-next-box">
+              <span>Next Up: </span>
+              <strong id="intermission-next-title" class="gold-text">Double Jeoparty</strong>
+            </div>
+            <div class="intermission-actions">
+              <button type="button" id="continue-intermission-btn" class="btn-skribbl btn-green btn-lg">
+                Continue Now →
+              </button>
             </div>
           </div>
         </div>

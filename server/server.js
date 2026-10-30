@@ -139,14 +139,15 @@ function sanitizeAvatar(raw) {
 
 function createDefaultSettings() {
   return {
+    matchPace: 'quick', // 'quick' (5-8m, 3x3) | 'standard' (10-15m, 4x4) | 'epic' (20-25m, 5x5) | 'custom'
     answerMode: 'buzzer', // 'buzzer' | 'skribbl' | 'host'
-    boardCols: 5, // 4 | 5 | 6
-    cluesPerCat: 5, // 3 | 4 | 5
-    clueTimeSec: 20, // 12 | 15 | 20 | 30 | 45
-    doubleJeopardy: true,
+    boardCols: 3, // 3 | 4 | 5 | 6 (Default 3 for fast, casual, mobile-friendly fun!)
+    cluesPerCat: 3, // 3 | 4 | 5 (9 clues total in round 1)
+    clueTimeSec: 15, // 12 | 15 | 20 | 30 | 45
+    doubleJeopardy: false, // 1 quick round + Final Jeopardy
     dailyDoubles: true,
     finalJeopardy: true,
-    wrongPenalty: true,
+    wrongPenalty: false, // friendly party default: no negative score dread!
     includedCategoryIds: BUILTIN_CATEGORIES.map((c) => c.id),
     customCategories: [],
   };
@@ -156,10 +157,33 @@ function applySettingsPatch(room, patch) {
   if (!patch || typeof patch !== 'object') return;
   const s = room.settings;
 
+  if (patch.matchPace) {
+    s.matchPace = patch.matchPace;
+    if (patch.matchPace === 'quick') {
+      s.boardCols = 3;
+      s.cluesPerCat = 3;
+      s.clueTimeSec = 15;
+      s.doubleJeopardy = false;
+      s.wrongPenalty = false;
+    } else if (patch.matchPace === 'standard') {
+      s.boardCols = 4;
+      s.cluesPerCat = 4;
+      s.clueTimeSec = 20;
+      s.doubleJeopardy = false;
+      s.wrongPenalty = true;
+    } else if (patch.matchPace === 'epic') {
+      s.boardCols = 5;
+      s.cluesPerCat = 5;
+      s.clueTimeSec = 20;
+      s.doubleJeopardy = true;
+      s.wrongPenalty = true;
+    }
+  }
+
   if (['buzzer', 'skribbl', 'host'].includes(patch.answerMode)) {
     s.answerMode = patch.answerMode;
   }
-  if ([4, 5, 6].includes(Number(patch.boardCols))) {
+  if ([3, 4, 5, 6].includes(Number(patch.boardCols))) {
     s.boardCols = Number(patch.boardCols);
   }
   if ([3, 4, 5].includes(Number(patch.cluesPerCat))) {
@@ -389,6 +413,9 @@ function serializeRoomForPlayer(room, viewerId) {
       attemptedIds: Array.from(ac.attemptedIds || []),
       solvedIds: Array.from(ac.solvedIds || []),
       chaosSolvedIds: ac.chaosSolvedList ? ac.chaosSolvedList.map((s) => s.playerId) : [],
+      chaosSubmittedIds: ac.chaosSubmissions ? Object.keys(ac.chaosSubmissions) : [],
+      myChaosSubmission: ac.chaosSubmissions?.[viewerId] || null,
+      chaosTotalPlayers: room.players.filter((p) => p.connected).length,
       winnerName: ac.winnerName || null,
       winnerDelta: ac.winnerDelta || 0,
       lastWrongText: ac.lastWrongText || null,
@@ -431,6 +458,7 @@ function serializeRoomForPlayer(room, viewerId) {
     round: room.round,
     pickerId: room.pickerId,
     phaseEndsAt: room.phaseEndsAt,
+    intermissionNextTitle: room.intermissionNextTitle || null,
     serverNow: Date.now(),
     settings: {
       ...room.settings,
@@ -730,7 +758,12 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
 
   const chosen = pool.slice(0, cols);
   const categories = chosen.map((cat, colIdx) => {
-    const cluesSlice = cat.clues.slice(0, rows);
+    let cluesSlice;
+    if (cat.clues && cat.clues.length > rows) {
+      cluesSlice = shuffle([...cat.clues]).slice(0, rows);
+    } else {
+      cluesSlice = (cat.clues || []).slice(0, rows);
+    }
     return {
       id: cat.id,
       name: cat.name,
@@ -899,32 +932,65 @@ function enterBoardPhase(room) {
 function advanceAfterRoundComplete(room) {
   if (!room || room.terminated) return;
   clearRoomTimers(room);
+
+  // If Round 1 is done and doubleJeopardy is enabled -> Intermission break before Round 2!
   if (room.round === 1 && room.settings.doubleJeopardy) {
-    room.round = 2;
-    room.board = buildRoundBoard(room, 2, room.usedCategoryIds);
-    for (const c of room.board.categories) {
-      room.usedCategoryIds.add(c.id);
-    }
-    const connected = room.players.filter((p) => p.connected);
-    if (connected.length > 0) {
-      connected.sort((a, b) => a.score - b.score);
-      room.pickerId = connected[0].id;
-    }
-    sendChat(room, {
-      color: 'gold',
-      text: `DOUBLE JEOPARTY! Point values are doubled!`,
-    });
-    broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
-    enterBoardPhase(room);
+    enterIntermissionPhase(room, () => {
+      room.round = 2;
+      room.board = buildRoundBoard(room, 2, room.usedCategoryIds);
+      for (const c of room.board.categories) {
+        room.usedCategoryIds.add(c.id);
+      }
+      const connected = room.players.filter((p) => p.connected);
+      if (connected.length > 0) {
+        connected.sort((a, b) => a.score - b.score);
+        room.pickerId = connected[0].id;
+      }
+      sendChat(room, {
+        color: 'gold',
+        text: `⚡ DOUBLE JEOPARTY! Point values are doubled ($400 - $2000)!`,
+      });
+      broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
+      enterBoardPhase(room);
+    }, 'Double Jeoparty (Round 2)');
     return;
   }
 
+  // Before Final Jeopardy -> Intermission break!
   if (room.settings.finalJeopardy) {
-    enterFinalWagerPhase(room);
+    enterIntermissionPhase(room, () => {
+      enterFinalWagerPhase(room);
+    }, 'Final Jeoparty!');
     return;
   }
 
   enterGameOverPhase(room);
+}
+
+function enterIntermissionPhase(room, nextPhaseCallback, nextTitle) {
+  if (!room || room.terminated) return;
+  clearRoomTimers(room);
+  room.phase = 'round_intermission';
+  const durationMs = 12000;
+  room.phaseEndsAt = Date.now() + durationMs;
+  room.intermissionNextTitle = nextTitle;
+  room.intermissionCallback = nextPhaseCallback;
+
+  sendChat(room, {
+    color: 'info',
+    text: `☕ Intermission! Catch your breath — ${nextTitle} starting in 12s...`,
+  });
+  broadcastRoomEvent(room, { type: 'sfx', sound: 'hint' });
+  broadcastRoomState(room);
+
+  scheduleRoomTimer(room, () => {
+    if (room.phase !== 'round_intermission') return;
+    if (typeof room.intermissionCallback === 'function') {
+      const cb = room.intermissionCallback;
+      room.intermissionCallback = null;
+      cb();
+    }
+  }, durationMs);
 }
 
 function handleSelectTile(room, player, col, row) {
@@ -1271,10 +1337,25 @@ function applyCorrectBuzz(room, player) {
   if (!room || room.terminated) return;
   clearRoomTimers(room);
   const ac = room.activeClue;
-  player.score += ac.value;
+
+  // Check Underdog Comeback Boost
+  const otherPlayers = room.players.filter((p) => p.connected && p.id !== player.id);
+  const topScore = otherPlayers.length > 0 ? Math.max(...otherPlayers.map((p) => p.score)) : 0;
+  const isUnderdog = otherPlayers.length > 0 && (topScore - player.score >= 1000 || player.score <= 0);
+  let underdogBonus = 0;
+  if (isUnderdog) {
+    underdogBonus = 200;
+    sendChat(room, {
+      color: 'gold',
+      text: `🚀 UNDERDOG BOOST! ${player.name} earned a +$200 Comeback Bonus!`,
+    });
+  }
+
+  const totalPoints = ac.value + underdogBonus;
+  player.score += totalPoints;
   room.pickerId = player.id;
   ac.winnerName = player.name;
-  ac.winnerDelta = ac.value;
+  ac.winnerDelta = totalPoints;
   ac.lastWrongText = null;
 
   // Handle Steal tile modifier
@@ -1293,12 +1374,12 @@ function applyCorrectBuzz(room, player) {
     }
   }
 
-  recordCorrectAnswer(room, player, ac.value);
+  recordCorrectAnswer(room, player, totalPoints);
   triggerBotBanter(room, player, 'correct');
 
   sendChat(room, {
     color: 'success',
-    text: `${player.name} got it right! (+$${ac.value.toLocaleString()})`,
+    text: `${player.name} got it right! (+$${totalPoints.toLocaleString()})${underdogBonus > 0 ? ' [Underdog Boost!]' : ''}`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
   enterClueResultPhase(room);
@@ -1632,13 +1713,14 @@ function enterChaosAllPlayPhase(room) {
   const durationMs = 14000;
   room.phaseEndsAt = Date.now() + durationMs;
   ac.chaosSolvedList = [];
+  ac.chaosSubmissions = {};
   ac.attemptedIds = new Set();
   ac.revealedLetterIndices = new Set();
   ac.hintMask = renderMaskFromRevealed(ac.clueObj.answer, ac.revealedLetterIndices);
 
   sendChat(room, {
     color: 'danger',
-    text: `💥 CHAOS ALL-PLAY! No buzzer — EVERYONE can answer at once for 14 seconds!`,
+    text: `💥 CHAOS ALL-PLAY! No buzzer — EVERYONE answers simultaneously for 14 seconds!`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'chaos' });
   broadcastRoomState(room);
@@ -1652,29 +1734,23 @@ function enterChaosAllPlayPhase(room) {
     }
   }, durationMs * 0.5);
 
-  // Bots in chaos all-play
+  // Bots in chaos all-play submit independently
   for (const bot of room.players.filter((p) => p.isBot && p.connected)) {
     const knows = Math.random() < bot.botSkill;
-    if (knows) {
-      const delay = 3500 + Math.random() * (durationMs * 0.65);
-      scheduleRoomTimer(room, () => {
-        if (room.phase === 'clue_chaos') {
-          handleChaosAnswer(room, bot, ac.clueObj.answer);
-        }
-      }, delay);
-    }
+    const delay = 2500 + Math.random() * (durationMs * 0.55);
+    scheduleRoomTimer(room, () => {
+      if (room.phase === 'clue_chaos') {
+        const botAnswer = knows
+          ? ac.clueObj.answer
+          : (bot.wrongAnswers?.[0] || 'Pass');
+        handleChaosAnswer(room, bot, botAnswer);
+      }
+    }, delay);
   }
 
   scheduleRoomTimer(room, () => {
     if (room.phase !== 'clue_chaos') return;
-    if (ac.chaosSolvedList.length === 0) {
-      sendChat(room, {
-        color: 'warn',
-        text: `Time's up! The answer was: ${ac.clueObj.answer}`,
-      });
-      broadcastRoomEvent(room, { type: 'sfx', sound: 'timeout' });
-    }
-    enterClueResultPhase(room);
+    resolveChaosRound(room);
   }, durationMs);
 }
 
@@ -1682,40 +1758,93 @@ function handleChaosAnswer(room, player, text) {
   if (!room || room.terminated || room.phase !== 'clue_chaos') return;
   const ac = room.activeClue;
   if (!ac) return;
-  if (ac.chaosSolvedList.some((s) => s.playerId === player.id)) return; // already solved
+  ac.chaosSubmissions = ac.chaosSubmissions || {};
+  if (ac.chaosSubmissions[player.id]) return; // Player already locked in their answer!
 
-  const result = evaluateAnswer(text, ac.clueObj);
+  const answerText = String(text || '').trim();
+  if (!answerText) return;
+
+  const result = evaluateAnswer(answerText, ac.clueObj);
   if (result.status === 'correct') {
     const order = ac.chaosSolvedList.length;
-    const points = order === 0 ? ac.value : Math.round(ac.value * 0.5);
+    // 1st solver gets full value; subsequent solvers get 50%
+    const basePts = order === 0 ? ac.value : Math.round(ac.value * 0.5);
+
+    // Underdog boost check
+    const others = room.players.filter((p) => p.connected && p.id !== player.id);
+    const topScore = others.length > 0 ? Math.max(...others.map((p) => p.score)) : 0;
+    const isUnderdog = others.length > 0 && (topScore - player.score >= 1000 || player.score <= 0);
+    const bonus = isUnderdog ? 200 : 0;
+    const points = basePts + bonus;
+
     player.score += points;
-    ac.chaosSolvedList.push({ playerId: player.id, name: player.name, points });
+    ac.chaosSolvedList.push({ playerId: player.id, name: player.name, points, order });
+    ac.chaosSubmissions[player.id] = { text: answerText, correct: true, points, order };
+
     if (order === 0) {
       ac.winnerName = player.name;
       ac.winnerDelta = points;
       room.pickerId = player.id;
     }
     recordCorrectAnswer(room, player, points);
+
+    const rankSuffix = order === 0 ? '1st' : order === 1 ? '2nd' : `${order + 1}th`;
+    sendPrivateChat(player, {
+      color: 'success',
+      text: `✅ Correct! Locked in "${answerText}" (+$${points.toLocaleString()})!`,
+    });
     sendChat(room, {
       color: 'success',
-      text: `💥 ${player.name} solved it! (+${points}) [${order + 1}${order === 0 ? 'st' : order === 1 ? 'nd' : 'rd'}]`,
+      text: `💥 ${player.name} solved it! [${rankSuffix}] (+$${points.toLocaleString()})${bonus > 0 ? ' (Underdog Boost!)' : ''}`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
-    broadcastRoomState(room);
-
-    // If all connected players solved, finish immediately
-    const connectedCount = room.players.filter((p) => p.connected).length;
-    if (ac.chaosSolvedList.length >= connectedCount) {
-      enterClueResultPhase(room);
-    }
   } else {
+    ac.chaosSubmissions[player.id] = { text: answerText, correct: false, points: 0 };
     recordWrongAnswer(player);
     sendPrivateChat(player, {
       color: 'danger',
-      text: `"${text}" is incorrect!`,
+      text: `❌ "${answerText}" is incorrect. Answer locked in!`,
     });
-    broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
+    // Send feedback SFX only to the guessing player
+    if (player.ws && player.ws.readyState === 1) {
+      try {
+        player.ws.send(JSON.stringify({ type: 'sfx', sound: 'wrong' }));
+      } catch (_) {}
+    }
   }
+
+  // Check if all connected players have submitted
+  const connectedCount = room.players.filter((p) => p.connected).length;
+  const submittedCount = Object.keys(ac.chaosSubmissions).length;
+  if (submittedCount >= connectedCount) {
+    clearRoomTimers(room);
+    resolveChaosRound(room);
+  } else {
+    broadcastRoomState(room);
+  }
+}
+
+function resolveChaosRound(room) {
+  if (!room || room.terminated) return;
+  clearRoomTimers(room);
+  const ac = room.activeClue;
+  if (!ac) return;
+
+  if (!ac.chaosSolvedList || ac.chaosSolvedList.length === 0) {
+    sendChat(room, {
+      color: 'warn',
+      text: `💥 Time's up! Nobody solved it. The answer was: ${ac.clueObj.answer}`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'timeout' });
+  } else {
+    const winners = ac.chaosSolvedList.map((s) => `${s.name} (+$${s.points.toLocaleString()})`).join(', ');
+    sendChat(room, {
+      color: 'gold',
+      text: `💥 CHAOS ALL-PLAY OVER! Solvers: ${winners}`,
+    });
+  }
+
+  enterClueResultPhase(room);
 }
 
 function enterSkribblCluePhase(room) {

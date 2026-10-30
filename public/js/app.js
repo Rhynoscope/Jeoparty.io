@@ -330,8 +330,12 @@ const el = {
   stageLobby: document.getElementById('stage-lobby'),
   stageBoard: document.getElementById('stage-board'),
   stageClue: document.getElementById('stage-clue'),
+  stageIntermission: document.getElementById('stage-intermission'),
   stageFinal: document.getElementById('stage-final'),
   stageGameover: document.getElementById('stage-gameover'),
+  intermissionStandings: document.getElementById('intermission-standings'),
+  intermissionNextTitle: document.getElementById('intermission-next-title'),
+  continueIntermissionBtn: document.getElementById('continue-intermission-btn'),
 
   // Lobby controls
   lobbyRoomCodeDisplay: document.getElementById('lobby-room-code-display'),
@@ -476,6 +480,15 @@ function formatCash(amount) {
   const n = Number(amount) || 0;
   if (n < 0) return `-$${Math.abs(n).toLocaleString()}`;
   return `$${n.toLocaleString()}`;
+}
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function saveProfile() {
@@ -1104,21 +1117,25 @@ function renderRoomState() {
     'daily_double_answer',
     'clue_open',
     'clue_buzzed',
+    'clue_chaos',
     'clue_skribbl',
     'clue_result',
   ].includes(room.phase);
+  const showIntermission = room.phase === 'round_intermission';
   const showFinal = room.phase === 'final_wager' || room.phase === 'final_clue';
   const showGameover = room.phase === 'game_over';
 
   el.stageLobby.hidden = !showLobby;
   el.stageBoard.hidden = !showBoard;
   el.stageClue.hidden = !showClue;
+  if (el.stageIntermission) el.stageIntermission.hidden = !showIntermission;
   el.stageFinal.hidden = !showFinal;
   el.stageGameover.hidden = !showGameover;
 
   if (showLobby) renderLobbyStage(room, amHost);
   if (showBoard) renderBoardStage(room);
   if (showClue) renderClueStage(room, amHost, phaseChanged);
+  if (showIntermission) renderIntermissionStage(room);
   if (showFinal) renderFinalStage(room, phaseChanged);
   if (showGameover) renderGameoverStage(room, amHost);
 
@@ -1128,7 +1145,7 @@ function renderRoomState() {
   }
 
   // Synchronize Authentic Jeopardy Waiting / Think Music
-  const WAITING_MUSIC_PHASES = ['clue_reading', 'clue_open', 'clue_skribbl', 'daily_double_answer', 'final_clue'];
+  const WAITING_MUSIC_PHASES = ['clue_reading', 'clue_open', 'clue_chaos', 'clue_skribbl', 'daily_double_answer', 'final_clue'];
   if (WAITING_MUSIC_PHASES.includes(room.phase)) {
     if (room.phase === 'clue_buzzed') {
       sfx.stopWaitingMusic();
@@ -1335,6 +1352,17 @@ function renderLobbyStage(room, amHost) {
   el.setDailyDoubles.checked = Boolean(s.dailyDoubles);
   el.setFinalJeopardy.checked = Boolean(s.finalJeopardy);
   el.setWrongPenalty.checked = Boolean(s.wrongPenalty);
+
+  // Sync Pace buttons active class
+  document.querySelectorAll('.pace-btn').forEach((btn) => {
+    const pace = btn.getAttribute('data-pace');
+    const isActive =
+      (pace === 'quick' && s.boardCols === 3 && s.cluesPerCat === 3) ||
+      (pace === 'standard' && s.boardCols === 4 && s.cluesPerCat === 4) ||
+      (pace === 'epic' && s.boardCols === 5 && s.cluesPerCat === 5 && s.doubleJeopardy);
+    btn.classList.toggle('active', Boolean(isActive));
+    btn.disabled = !amHost;
+  });
 
   const controls = [
     el.setAnswerMode,
@@ -1684,15 +1712,27 @@ function renderClueStage(room, amHost, phaseChanged) {
   // 6b. Chaos All-Play Mode UI
   el.chaosAnswerForm.hidden = !isChaosMode;
   if (isChaosMode) {
-    const alreadySolved = ac.chaosSolvedIds?.includes(state.playerId);
-    el.chaosAnswerInput.disabled = alreadySolved;
-    el.chaosAnswerForm.querySelector('button[type="submit"]').disabled = alreadySolved;
-    el.chaosStatusMsg.textContent = alreadySolved
-      ? '✅ Answer solved! Waiting for others...'
-      : 'Type your answer and press Enter!';
-    if (phaseChanged && !alreadySolved) {
-      el.chaosAnswerInput.value = '';
-      setTimeout(() => el.chaosAnswerInput.focus(), 40);
+    const mySub = ac.myChaosSubmission;
+    const alreadySubmitted = Boolean(mySub);
+    el.chaosAnswerInput.disabled = alreadySubmitted;
+    const submitBtn = el.chaosAnswerForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = alreadySubmitted;
+
+    const submittedCount = ac.chaosSubmittedIds?.length || 0;
+    const totalCount = ac.chaosTotalPlayers || room.players.filter((p) => p.connected).length || 1;
+
+    if (alreadySubmitted) {
+      if (mySub.correct) {
+        el.chaosStatusMsg.innerHTML = `<span style="color:#70f558; font-weight:700;">✅ Correct! Locked in "${escapeHtml(mySub.text)}" (+${formatCash(mySub.points)})</span> <span style="opacity:0.8;">(Waiting for ${Math.max(0, totalCount - submittedCount)} player${totalCount - submittedCount === 1 ? '' : 's'}...)</span>`;
+      } else {
+        el.chaosStatusMsg.innerHTML = `<span style="color:#ffb3b3; font-weight:700;">❌ Locked in "${escapeHtml(mySub.text)}" (Incorrect)</span> <span style="opacity:0.8;">(Waiting for round to finish...)</span>`;
+      }
+    } else {
+      el.chaosStatusMsg.innerHTML = `💥 <strong>EVERYONE ANSWERS SIMULTANEOUSLY!</strong> Type and submit: <span class="chaos-pill">(${submittedCount}/${totalCount} answered)</span>`;
+      if (phaseChanged && !alreadySubmitted) {
+        el.chaosAnswerInput.value = '';
+        setTimeout(() => el.chaosAnswerInput.focus(), 40);
+      }
     }
   }
 
@@ -1722,6 +1762,38 @@ function renderClueStage(room, amHost, phaseChanged) {
       : 'Nobody got this clue!';
     el.clueWinnerLine.style.color = someoneWon ? '#70f558' : '#ffb3b3';
     el.nextClueBtn.hidden = !(amHost || room.pickerId === state.playerId);
+  }
+}
+
+/* =========================================================================
+   INTERMISSION STAGE RENDERING
+   ========================================================================= */
+
+function renderIntermissionStage(room) {
+  if (!el.stageIntermission) return;
+  const sorted = [...room.players].sort((a, b) => b.score - a.score);
+  if (el.intermissionNextTitle) {
+    el.intermissionNextTitle.textContent = room.intermissionNextTitle || 'Next Round';
+  }
+
+  if (el.intermissionStandings) {
+    el.intermissionStandings.innerHTML = '';
+    sorted.forEach((p, idx) => {
+      const row = document.createElement('div');
+      row.className = 'fb-row';
+
+      const left = document.createElement('div');
+      left.className = 'fb-left';
+      const rankBadge = idx === 0 ? '👑' : `#${idx + 1}`;
+      left.innerHTML = `<span class="intermission-rank">${rankBadge}</span> <strong>${escapeHtml(p.name)}</strong>`;
+
+      const right = document.createElement('strong');
+      right.style.color = p.score >= 0 ? '#ffea00' : '#ff6b6b';
+      right.textContent = formatCash(p.score);
+
+      row.append(left, right);
+      el.intermissionStandings.appendChild(row);
+    });
   }
 }
 
@@ -2520,6 +2592,23 @@ function bindEvents() {
     if (!val) return;
     sfx.play('click');
     sendWs({ type: 'submit_chaos_answer', answer: val });
+  });
+
+  // Intermission Continue Button
+  el.continueIntermissionBtn?.addEventListener('click', () => {
+    sfx.play('click');
+    sendWs({ type: 'continue_intermission' });
+  });
+
+  // Lobby Match Pace Quick Presets
+  document.querySelectorAll('.pace-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const pace = btn.getAttribute('data-pace');
+      if (!pace) return;
+      sfx.play('click');
+      sendWs({ type: 'patch_settings', patch: { matchPace: pace } });
+    });
   });
 
   // Floating Pixel Reaction Buttons

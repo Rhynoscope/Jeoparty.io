@@ -3236,3 +3236,248 @@ dialog::backdrop {
   margin-bottom: 4px;
 }
 
+/* =========================================================================
+   MATCH PACE & LENGTH PRESET SELECTOR (Lobby)
+   ========================================================================= */
+
+.match-pace-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  background: #f0f4f9;
+  border: 2px solid #000000;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.match-pace-title {
+  font-family: var(--font-pixel);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #111111;
+  letter-spacing: 0.5px;
+}
+
+.match-pace-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.pace-btn {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 7px 10px;
+  border: 2px solid #000000;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #222222;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000000;
+  transition: transform 0.1s ease, background 0.15s ease;
+  text-align: center;
+}
+
+.pace-btn:hover:not(:disabled) {
+  background: #e9efff;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #000000;
+}
+
+.pace-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #000000;
+}
+
+.pace-btn.active {
+  background: #2ed573;
+  color: #0b3d1b;
+  border-color: #000000;
+  box-shadow: 2px 2px 0 #000000;
+  font-weight: 800;
+}
+
+/* =========================================================================
+   HALF-TIME INTERMISSION BREAK VIEW
+   ========================================================================= */
+
+.intermission-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.intermission-card {
+  max-width: 540px;
+  width: 100%;
+  text-align: center;
+}
+
+.intermission-subhead {
+  font-size: 0.95rem;
+  color: #e0e0e0;
+  margin: 6px 0 14px 0;
+}
+
+.intermission-standings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid #000000;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 14px;
+}
+
+.intermission-rank {
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  color: #ffd900;
+  margin-right: 6px;
+}
+
+.intermission-next-box {
+  background: rgba(255, 234, 0, 0.15);
+  border: 2px dashed #ffd900;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+  color: #ffffff;
+}
+
+.intermission-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* =========================================================================
+   FINAL AUTHORITATIVE MOBILE OVERRIDES (Overrides all earlier desktop CSS)
+   ========================================================================= */
+
+@media (max-width: 680px) {
+  /* Fix Mobile Tile Modifier Badges: 100% Unobstructed Dollar Amounts */
+  .j-tile-btn {
+    position: relative !important;
+    min-height: 40px !important;
+    padding: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .j-tile-value {
+    font-size: clamp(0.72rem, 3vw, 1.05rem) !important;
+    letter-spacing: -0.3px !important;
+    margin: 0 !important;
+    padding-right: 14px !important; /* Always leave room for the 13px corner tag */
+    display: inline-block !important;
+  }
+
+  /* Compact 13px square icon badge in top-right corner */
+  .tile-modifier-tag {
+    position: absolute !important;
+    top: 2px !important;
+    right: 2px !important;
+    width: 13px !important;
+    height: 13px !important;
+    min-width: 13px !important;
+    max-width: 13px !important;
+    min-height: 13px !important;
+    max-height: 13px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 2px !important;
+    border: 1px solid #000000 !important;
+    box-shadow: 1px 1px 0 #000000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide the text label completely on mobile */
+  .tile-modifier-tag .tile-mod-text {
+    display: none !important;
+  }
+
+  .tile-modifier-tag .tile-mod-icon {
+    font-size: 8px !important;
+    line-height: 1 !important;
+    display: block !important;
+  }
+
+  /* Board Perk Legend below the board */
+  .board-perk-legend {
+    gap: 4px !important;
+    margin: 3px 0 5px 0 !important;
+    padding: 2px 4px !important;
+  }
+
+  .legend-chip {
+    font-size: 0.58rem !important;
+    padding: 1px 4px !important;
+  }
+
+  /* Chat Drawer and Safe Area Insets for iOS Safari */
+  .chat-drawer,
+  .chat-drawer-wrap,
+  .game-screen,
+  .home-screen {
+    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Pace preset buttons on phone */
+  .match-pace-buttons {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pace-btn {
+    font-size: 0.74rem !important;
+    padding: 5px 8px !important;
+  }
+
+  /* Compact Clue Card on Mobile Phones so input & submit button never get pushed off-screen */
+  .clue-panel {
+    padding: 6px 8px !important;
+  }
+
+  .clue-card-doodle {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+
+  .clue-prompt-text {
+    font-size: clamp(0.92rem, 3.8vw, 1.2rem) !important;
+    line-height: 1.35 !important;
+    margin: 4px 0 !important;
+  }
+
+  .skribbl-hint-mask {
+    font-size: clamp(0.85rem, 3.5vw, 1.15rem) !important;
+    letter-spacing: 2px !important;
+    padding: 4px 6px !important;
+  }
+
+  .chaos-headline-banner {
+    font-size: 0.76rem !important;
+    padding: 4px 8px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .chaos-input-row {
+    gap: 6px !important;
+  }
+
+  .answer-big-input {
+    font-size: 0.95rem !important;
+    padding: 8px 10px !important;
+  }
+}
+
