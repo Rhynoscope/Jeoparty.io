@@ -2695,31 +2695,28 @@ dialog::backdrop {
   right: 2px;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-family: var(--font-pixel);
-  font-size: 0.52rem;
-  font-weight: 800;
-  line-height: 1;
-  padding: 1px 3px;
-  border-radius: 3px;
-  border: 1.5px solid #000000;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border-radius: 2px;
+  border: 1px solid #000000;
   box-shadow: 1px 1px 0 #000000;
   letter-spacing: 0;
   text-transform: uppercase;
   z-index: 2;
   pointer-events: none;
-  max-height: 16px;
-  white-space: nowrap;
+  overflow: hidden;
 }
 
 .tile-modifier-tag .tile-mod-icon {
-  font-size: 0.62rem;
+  font-size: 8px;
   line-height: 1;
+  display: block;
 }
 
 .tile-modifier-tag .tile-mod-text {
-  font-size: 0.48rem;
-  line-height: 1;
+  display: none !important;
 }
 
 .tile-with-modifier {
@@ -3556,7 +3553,7 @@ dialog::backdrop {
    FINAL AUTHORITATIVE MOBILE OVERRIDES (Overrides all earlier desktop CSS)
    ========================================================================= */
 
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   /* Fix Mobile Tile Modifier Badges: 100% Unobstructed Dollar Amounts */
   .j-tile-btn {
     position: relative !important;
