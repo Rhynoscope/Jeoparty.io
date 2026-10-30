@@ -859,6 +859,18 @@ summary:focus-visible {
   color: #1761d1;
 }
 
+.player-self-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #1761d1;
+  background: #e3f2ff;
+  border: 1px solid #99c7f4;
+  border-radius: 3px;
+  padding: 0 4px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
 .player-score {
   font-family: var(--font-pixel);
   font-weight: 700;
@@ -1422,6 +1434,7 @@ summary:focus-visible {
 }
 
 .j-tile-btn {
+  position: relative;
   background: var(--jeopardy-blue);
   border: 3px solid #000;
   box-shadow: 0 4px 0 #000;
@@ -1429,12 +1442,40 @@ summary:focus-visible {
   color: var(--jeopardy-gold);
   font-family: var(--font-pixel);
   font-weight: 700;
-  font-size: clamp(1rem, 0.68rem + 1.25vw, 1.85rem);
+  font-size: clamp(0.95rem, 0.68rem + 1.25vw, 1.85rem);
   text-shadow: 2px 3px 0 #000;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  overflow: hidden; /* Never allow badges to spill over tile boundaries! */
   transition: transform 0.08s ease, background-color 0.12s ease;
+  user-select: none;
+}
+
+.j-tile-value {
+  display: inline-block;
+  line-height: 1;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Modifier Tile Subtle Pixel Accents & Gradients */
+.j-tile-btn.mod-tile-blitz {
+  border-top: 4px solid #ffea00;
+  background: linear-gradient(180deg, rgba(255, 234, 0, 0.18) 0%, var(--jeopardy-blue) 45%);
+}
+.j-tile-btn.mod-tile-steal {
+  border-top: 4px solid #b537f2;
+  background: linear-gradient(180deg, rgba(181, 55, 242, 0.2) 0%, var(--jeopardy-blue) 45%);
+}
+.j-tile-btn.mod-tile-chaos {
+  border-top: 4px solid #ff4757;
+  background: linear-gradient(180deg, rgba(255, 71, 87, 0.2) 0%, var(--jeopardy-blue) 45%);
+}
+.j-tile-btn.mod-tile-double {
+  border-top: 4px solid #2ed573;
+  background: linear-gradient(180deg, rgba(46, 213, 115, 0.2) 0%, var(--jeopardy-blue) 45%);
 }
 
 .j-tile-btn.can-pick:hover {
@@ -1455,15 +1496,15 @@ summary:focus-visible {
 
 @container (max-width: 620px) {
   .jeopardy-board-grid {
-    gap: 5px;
+    gap: 4px;
   }
   .j-cat-header {
-    font-size: 0.66rem;
-    padding: 4px 3px;
+    font-size: 0.64rem;
+    padding: 4px 2px;
   }
   .j-tile-btn {
-    font-size: clamp(0.68rem, 2.2cqi, 1.05rem);
-    padding: 6px 2px;
+    font-size: clamp(0.72rem, 2.2cqi, 1.05rem);
+    padding: 2px;
     letter-spacing: -0.5px;
     border-width: 2.5px;
   }
@@ -2102,20 +2143,197 @@ dialog::backdrop {
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
   }
 
   .player-row {
-    min-width: 204px;
+    flex: 1 1 0;
+    min-width: 140px;
+    max-width: 220px;
     border-bottom: none;
     border-right: 1.5px solid #e4e7f2;
+    scroll-snap-align: start;
   }
 
   .chat-sidebar {
-    min-height: 220px;
+    min-height: 180px;
+    max-height: 240px;
   }
 
   .lobby-scroll-area {
     max-height: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-screen {
+    padding: 6px 6px max(10px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  /* Mobile scoreboard - fit players cleanly side-by-side with no avatar clipping */
+  .player-row {
+    flex: 1 1 0;
+    min-width: 125px;
+    max-width: 210px;
+    padding: 4px 6px;
+    grid-template-columns: 20px minmax(0, 1fr) 34px;
+    gap: 4px;
+  }
+
+  .player-row .player-avatar-cell .pixel-avatar {
+    --av-size: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .player-rank {
+    font-size: 0.68rem;
+  }
+
+  .player-name-line {
+    font-size: 0.74rem;
+    gap: 2px;
+  }
+
+  .player-score {
+    font-size: 0.76rem;
+  }
+
+  .player-status-chip {
+    font-size: 0.62rem;
+    padding: 1px 3px;
+  }
+
+  /* Compact voice chat dock on phones */
+  .voice-chat-dock {
+    padding: 4px 6px;
+    margin-bottom: 4px;
+    gap: 4px;
+  }
+
+  .voice-dock-status {
+    font-size: 0.72rem;
+  }
+
+  .btn-voice {
+    font-size: 0.68rem;
+    padding: 4px 6px;
+    min-height: 32px;
+  }
+
+  /* Jeopardy Board on mobile */
+  .jeopardy-board-grid {
+    gap: 4px;
+  }
+
+  .j-cat-header {
+    padding: 3px 2px;
+    font-size: clamp(0.52rem, 1.8vw, 0.66rem);
+    min-height: 42px;
+  }
+
+  .j-cat-header .cat-pixel-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .j-tile-btn {
+    min-height: 38px;
+    padding: 2px;
+    border-width: 2px;
+    border-radius: 4px;
+  }
+
+  .j-tile-value {
+    font-size: clamp(0.68rem, 2.7vw, 0.98rem);
+    letter-spacing: -0.4px;
+  }
+
+  .j-tile-btn.tile-with-modifier {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-right: 15px; /* Reserves space for the top-right corner badge */
+  }
+
+  .j-tile-btn.tile-with-modifier .j-tile-value {
+    margin-top: 2px;
+    font-size: clamp(0.65rem, 2.5vw, 0.92rem);
+  }
+
+  /* Mini Icon Chip on Mobile - 100% unobstructed dollar amounts! */
+  .tile-modifier-tag {
+    top: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 2px;
+    border-width: 1px;
+    box-shadow: 1px 1px 0 #000;
+  }
+
+  .tile-modifier-tag .tile-mod-text {
+    display: none !important; /* Hide text on mobile so only icon badge shows */
+  }
+
+  .tile-modifier-tag .tile-mod-icon {
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .player-self-tag {
+    font-size: 0.6rem;
+    padding: 0 3px;
+  }
+
+  .board-perk-legend {
+    gap: 4px;
+    margin: 2px 0 4px 0;
+  }
+
+  .legend-chip {
+    font-size: 0.52rem;
+    padding: 1px 4px;
+    border-width: 1px;
+  }
+
+  .legend-icon {
+    font-size: 0.58rem;
+  }
+
+  /* Floating Reaction Bar on mobile */
+  .floating-reaction-bar {
+    padding: 4px 8px;
+    gap: 5px;
+    margin: 4px auto 2px auto;
+  }
+
+  .reaction-trigger-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
+  }
+
+  /* Clue view scaling on mobile */
+  .clue-modifier-badge {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    gap: 3px;
+  }
+
+  .progressive-letter-slots {
+    gap: 3px;
+  }
+
+  .letter-slot {
+    min-width: 16px;
+    height: 24px;
+    font-size: 0.85rem;
   }
 }
 
@@ -2444,23 +2662,70 @@ dialog::backdrop {
 /* Board Tile Modifier Pill (Mini tag on the board tile) */
 .tile-modifier-tag {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 0.65rem;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-pixel);
+  font-size: 0.52rem;
   font-weight: 800;
-  padding: 1px 4px;
+  line-height: 1;
+  padding: 1px 3px;
   border-radius: 3px;
   border: 1.5px solid #000000;
   box-shadow: 1px 1px 0 #000000;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
   text-transform: uppercase;
   z-index: 2;
   pointer-events: none;
+  max-height: 16px;
+  white-space: nowrap;
+}
+
+.tile-modifier-tag .tile-mod-icon {
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+.tile-modifier-tag .tile-mod-text {
+  font-size: 0.48rem;
+  line-height: 1;
 }
 
 .tile-with-modifier {
   position: relative;
-  overflow: visible;
+}
+
+/* Board Perk Legend Strip */
+.board-perk-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0 6px 0;
+  flex-wrap: wrap;
+}
+
+.legend-chip {
+  font-family: var(--font-pixel);
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1.5px solid #000000;
+  box-shadow: 1px 1px 0 #000000;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.legend-icon {
+  font-size: 0.65rem;
+  line-height: 1;
 }
 
 /* Chaos All-Play Mode UI */

@@ -1493,6 +1493,8 @@ function recordWrongAnswer(player) {
   player.stats.currentStreak = 0;
 }
 
+const BOT_REACTIONS = ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'];
+
 const BOT_BANTER = {
   buzz: [
     "Hold my coffee, I know this! ☕",
@@ -1519,6 +1521,7 @@ const BOT_BANTER = {
     "Bow down to your new pixel overlord! 👑",
     "Try to break my streak if you dare! 🏆",
   ],
+  reaction: ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'],
 };
 
 function triggerBotBanter(room, bot, category) {

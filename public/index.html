@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>jeoparty.io - Multiplayer MS Paint Jeopardy Game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -339,6 +339,12 @@
         <div id="stage-board" class="stage-panel board-panel" hidden>
           <div id="board-turn-banner" class="board-turn-banner">
             Pick a clue from the board!
+          </div>
+          <div class="board-perk-legend" aria-label="Game Modifier Perks">
+            <span class="legend-chip mod-blitz" title="Speed Blitz: +50% Bonus Points!"><span class="legend-icon">⚡</span> Blitz +50%</span>
+            <span class="legend-chip mod-steal" title="Steal Tile: Docks $200 from leader on solve!"><span class="legend-icon">🦹</span> Steal</span>
+            <span class="legend-chip mod-chaos" title="Chaos All-Play: Everyone answers simultaneously!"><span class="legend-icon">💥</span> Chaos</span>
+            <span class="legend-chip mod-double" title="Double Trouble: 2X Points!"><span class="legend-icon">🍀</span> 2X</span>
           </div>
           <div id="jeopardy-board-grid" class="jeopardy-board-grid"></div>
         </div>

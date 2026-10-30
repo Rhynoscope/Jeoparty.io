@@ -1195,8 +1195,16 @@ function renderPlayersSidebar(room, amHost) {
     }
 
     const nameText = document.createElement('span');
-    nameText.textContent = `${p.name}${p.id === state.playerId ? ' (You)' : ''}`;
+    nameText.className = 'player-name-text';
+    nameText.textContent = p.name;
     nameLine.appendChild(nameText);
+
+    if (p.id === state.playerId) {
+      const youTag = document.createElement('span');
+      youTag.className = 'player-self-tag';
+      youTag.textContent = '(You)';
+      nameLine.appendChild(youTag);
+    }
 
     if (isOnFire) {
       const streakBadge = document.createElement('span');
@@ -1467,20 +1475,68 @@ function renderBoardStage(room) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `j-tile-btn ${myTurn ? 'can-pick' : 'not-my-turn'}`;
-        btn.textContent = `$${tile.value}`;
+
+        const valSpan = document.createElement('span');
+        valSpan.className = 'j-tile-value';
+        valSpan.textContent = `$${tile.value}`;
+        btn.appendChild(valSpan);
 
         if (tile.modifier) {
-          btn.classList.add('tile-with-modifier');
-          const modTag = document.createElement('span');
           const MOD_INFO = {
-            speed_blitz: { label: '⚡ BLITZ', cls: 'mod-blitz' },
-            steal: { label: '🦹 STEAL', cls: 'mod-steal' },
-            chaos_all_play: { label: '💥 CHAOS', cls: 'mod-chaos' },
-            double_trouble: { label: '🍀 2X', cls: 'mod-double' },
+            speed_blitz: {
+              icon: '⚡',
+              shortLabel: 'BLITZ',
+              title: 'Speed Blitz: +50% Bonus Points!',
+              cls: 'mod-blitz',
+              tileCls: 'mod-tile-blitz',
+            },
+            steal: {
+              icon: '🦹',
+              shortLabel: 'STEAL',
+              title: 'Steal Tile: Docks $200 from leader on correct solve!',
+              cls: 'mod-steal',
+              tileCls: 'mod-tile-steal',
+            },
+            chaos_all_play: {
+              icon: '💥',
+              shortLabel: 'CHAOS',
+              title: 'Chaos All-Play: Everyone buzzes in simultaneously!',
+              cls: 'mod-chaos',
+              tileCls: 'mod-tile-chaos',
+            },
+            double_trouble: {
+              icon: '🍀',
+              shortLabel: '2X',
+              title: 'Double Trouble: 2x points on correct solve!',
+              cls: 'mod-double',
+              tileCls: 'mod-tile-double',
+            },
           };
-          const info = MOD_INFO[tile.modifier] || { label: '✨ PERK', cls: 'mod-blitz' };
+          const info = MOD_INFO[tile.modifier] || {
+            icon: '✨',
+            shortLabel: 'PERK',
+            title: 'Party Modifier Tile',
+            cls: 'mod-blitz',
+            tileCls: 'mod-tile-blitz',
+          };
+
+          btn.classList.add('tile-with-modifier', info.tileCls);
+          btn.title = `$${tile.value} • ${info.title}`;
+
+          const modTag = document.createElement('span');
           modTag.className = `tile-modifier-tag ${info.cls}`;
-          modTag.textContent = info.label;
+          modTag.setAttribute('aria-label', info.title);
+
+          const iconEl = document.createElement('span');
+          iconEl.className = 'tile-mod-icon';
+          iconEl.textContent = info.icon;
+          modTag.appendChild(iconEl);
+
+          const textEl = document.createElement('span');
+          textEl.className = 'tile-mod-text';
+          textEl.textContent = info.shortLabel;
+          modTag.appendChild(textEl);
+
           btn.appendChild(modTag);
         }
         btn.addEventListener('click', () => {
