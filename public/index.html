@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Patrick+Hand&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="preload" as="image" href="/assets/logo-sheet.png" fetchpriority="high" />
-  <link rel="stylesheet" href="/css/styles.css?v=2.5.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=2.6.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -329,10 +329,11 @@
                     <button type="button" class="preset-chip" data-preset="all">All</button>
                     <button type="button" class="preset-chip" data-preset="none">None</button>
                     <button type="button" class="preset-chip" data-preset="random6">Random 6</button>
-                    <button type="button" class="preset-chip" data-preset="pop">Pop &amp; Memes</button>
-                    <button type="button" class="preset-chip" data-preset="nerdy">Games &amp; Sci</button>
-                    <button type="button" class="preset-chip" data-preset="weird">Weird</button>
-                    <button type="button" class="preset-chip" data-preset="everyday">Food &amp; Words</button>
+                    <button type="button" class="preset-chip" data-preset="funny">😂 Funny &amp; Weird</button>
+                    <button type="button" class="preset-chip" data-preset="science">🔬 Science</button>
+                    <button type="button" class="preset-chip" data-preset="history">🏛️ History</button>
+                    <button type="button" class="preset-chip" data-preset="pop">🎮 Pop &amp; Games</button>
+                    <button type="button" class="preset-chip" data-preset="everyday">☕ Everyday</button>
                   </div>
                 </div>
 
@@ -848,6 +849,51 @@
     </div>
   </dialog>
 
+  <!-- Modal 3.6: Individual Bot Difficulty Settings Dialog -->
+  <dialog id="bot-settings-dialog" class="skribbl-dialog bot-settings-dialog" closedby="any" aria-labelledby="bot-settings-title">
+    <div class="dialog-header-row">
+      <h2 id="bot-settings-title">⚙️ BOT DIFFICULTY</h2>
+      <button type="button" class="dialog-x" id="close-bot-settings-x" aria-label="Close">×</button>
+    </div>
+    <p class="dialog-sub">
+      Configure difficulty for <strong id="bot-settings-name">Bot</strong>:
+    </p>
+    <div class="bot-dialog-diff-buttons" role="radiogroup" aria-label="Select Bot Difficulty">
+      <button type="button" class="bot-modal-diff-btn" data-diff="easy" role="radio" aria-checked="false">
+        <div class="bot-modal-diff-header">
+          <span class="bot-diff-tag diff-easy">EASY</span>
+          <span class="bot-modal-check">✓</span>
+        </div>
+        <div class="bot-modal-diff-desc">Relaxed opponents who make frequent mistakes.</div>
+      </button>
+      <button type="button" class="bot-modal-diff-btn active" data-diff="medium" role="radio" aria-checked="true">
+        <div class="bot-modal-diff-header">
+          <span class="bot-diff-tag diff-medium">MEDIUM</span>
+          <span class="bot-modal-check">✓</span>
+        </div>
+        <div class="bot-modal-diff-desc">Balanced opponents with a mix of correct and incorrect answers.</div>
+      </button>
+      <button type="button" class="bot-modal-diff-btn" data-diff="hard" role="radio" aria-checked="false">
+        <div class="bot-modal-diff-header">
+          <span class="bot-diff-tag diff-hard">HARD</span>
+          <span class="bot-modal-check">✓</span>
+        </div>
+        <div class="bot-modal-diff-desc">Skilled opponents who answer quickly and accurately.</div>
+      </button>
+      <button type="button" class="bot-modal-diff-btn" data-diff="champion" role="radio" aria-checked="false">
+        <div class="bot-modal-diff-header">
+          <span class="bot-diff-tag diff-champion">CHAMPION</span>
+          <span class="bot-modal-check">✓</span>
+        </div>
+        <div class="bot-modal-diff-desc">Expert opponents designed to challenge experienced trivia players.</div>
+      </button>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="cancel-bot-settings-btn" class="btn-skribbl btn-gray">CANCEL</button>
+      <button type="button" id="apply-bot-settings-btn" class="btn-skribbl btn-green">APPLY DIFFICULTY</button>
+    </div>
+  </dialog>
+
   <!-- Modal 4: Create Custom Jeopardy Category -->
   <dialog id="custom-cat-dialog" class="skribbl-dialog skribbl-dialog-wide" aria-labelledby="custom-cat-dialog-title">
     <h2 id="custom-cat-dialog-title">Create Custom Category</h2>
@@ -904,6 +950,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=2.5.0"></script>
+  <script type="module" src="/js/app.js?v=2.6.0"></script>
 </body>
 </html>

@@ -98,12 +98,20 @@ function getCategorySpriteOffsetPct(categoryId) {
   return `${((idx / 24) * 100).toFixed(4)}%`;
 }
 
-function createCategoryPixelIcon(categoryId, sizePx = 22) {
+function createCategoryPixelIcon(categoryId, sizePx = 22, fallbackIcon = '💡') {
+  if (CATEGORY_ICON_INDEX.has(categoryId)) {
+    const span = document.createElement('span');
+    span.className = 'cat-pixel-icon';
+    span.setAttribute('aria-hidden', 'true');
+    span.style.setProperty('--icon-size', `${sizePx}px`);
+    span.style.setProperty('--cat-pos', getCategorySpriteOffsetPct(categoryId));
+    return span;
+  }
   const span = document.createElement('span');
-  span.className = 'cat-pixel-icon';
+  span.className = 'cat-emoji-icon';
   span.setAttribute('aria-hidden', 'true');
-  span.style.setProperty('--icon-size', `${sizePx}px`);
-  span.style.setProperty('--cat-pos', getCategorySpriteOffsetPct(categoryId));
+  span.style.fontSize = `${Math.round(sizePx * 0.9)}px`;
+  span.textContent = fallbackIcon || '💡';
   return span;
 }
 
@@ -244,6 +252,9 @@ const state = {
   clockOffsetMs: 0,
   categorySearchQuery: '',
   pendingTransferPlayerId: null,
+  editingBotId: null,
+  editingBotName: '',
+  selectedBotDiff: 'medium',
   lastRenderedPhase: null,
   lastTickSecond: -1,
 };
@@ -457,6 +468,14 @@ const el = {
   publicRoomsContainer: document.getElementById('public-rooms-container'),
   publicRoomsEmpty: document.getElementById('public-rooms-empty'),
   publicRoomsList: document.getElementById('public-rooms-list'),
+
+  // Individual Bot Settings Dialog
+  botSettingsDialog: document.getElementById('bot-settings-dialog'),
+  botSettingsName: document.getElementById('bot-settings-name'),
+  closeBotSettingsX: document.getElementById('close-bot-settings-x'),
+  cancelBotSettingsBtn: document.getElementById('cancel-bot-settings-btn'),
+  applyBotSettingsBtn: document.getElementById('apply-bot-settings-btn'),
+  botModalDiffBtns: document.querySelectorAll('.bot-modal-diff-btn'),
 };
 
 /* =========================================================================
@@ -1242,6 +1261,33 @@ function renderPlayersSidebar(room, amHost) {
       nameLine.appendChild(youTag);
     }
 
+    if (p.isBot) {
+      const diff = (p.botDifficulty || room.settings?.botDifficulty || 'medium').toLowerCase();
+      const botCluster = document.createElement('span');
+      botCluster.className = 'player-bot-cluster';
+
+      const diffTag = document.createElement('span');
+      diffTag.className = `bot-diff-tag diff-${diff}`;
+      diffTag.textContent = diff.toUpperCase();
+      diffTag.title = `Bot difficulty: ${diff.toUpperCase()}`;
+      botCluster.appendChild(diffTag);
+
+      if (amHost) {
+        const gearBtn = document.createElement('button');
+        gearBtn.type = 'button';
+        gearBtn.className = 'bot-gear-btn';
+        gearBtn.title = `Configure ${p.name}'s difficulty`;
+        gearBtn.setAttribute('aria-label', `Configure ${p.name}'s difficulty`);
+        gearBtn.textContent = '⚙️';
+        gearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openBotSettingsModal(p);
+        });
+        botCluster.appendChild(gearBtn);
+      }
+      nameLine.appendChild(botCluster);
+    }
+
     if (isOnFire) {
       const streakBadge = document.createElement('span');
       streakBadge.className = 'player-streak-badge';
@@ -1362,6 +1408,36 @@ function renderPlayersSidebar(room, amHost) {
   });
 
   el.hostBotControls.hidden = !amHost || room.phase !== 'lobby';
+}
+
+function syncBotModalDiffButtons(selectedDiff) {
+  state.selectedBotDiff = (selectedDiff || 'medium').toLowerCase();
+  if (el.botModalDiffBtns) {
+    el.botModalDiffBtns.forEach((btn) => {
+      const btnDiff = (btn.getAttribute('data-diff') || '').toLowerCase();
+      const isActive = btnDiff === state.selectedBotDiff;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-checked', String(isActive));
+    });
+  }
+}
+
+function openBotSettingsModal(bot) {
+  if (!bot || !bot.isBot) return;
+  state.editingBotId = bot.id;
+  state.editingBotName = bot.name;
+  const curDiff = (bot.botDifficulty || state.room?.settings?.botDifficulty || 'medium').toLowerCase();
+  syncBotModalDiffButtons(curDiff);
+  if (el.botSettingsName) {
+    el.botSettingsName.textContent = bot.name;
+  }
+  if (el.botSettingsDialog) {
+    if (typeof el.botSettingsDialog.showModal === 'function') {
+      el.botSettingsDialog.showModal();
+    } else {
+      el.botSettingsDialog.setAttribute('open', '');
+    }
+  }
 }
 
 /* =========================================================================
@@ -1486,7 +1562,7 @@ function renderLobbyStage(room, amHost) {
     const leftCluster = document.createElement('span');
     leftCluster.className = 'cat-card-label';
 
-    const iconEl = createCategoryPixelIcon(cat.id, 22);
+    const iconEl = createCategoryPixelIcon(cat.id, 22, cat.icon);
     const nameEl = document.createElement('span');
     nameEl.className = 'cat-card-name';
     nameEl.textContent = cat.name;
@@ -1567,7 +1643,7 @@ function renderBoardStage(room) {
     const header = document.createElement('div');
     header.className = 'j-cat-header';
 
-    const iconEl = createCategoryPixelIcon(cat.id, 24);
+    const iconEl = createCategoryPixelIcon(cat.id, 24, cat.icon);
     const nameSpan = document.createElement('span');
     nameSpan.textContent = cat.name;
 
@@ -2760,6 +2836,49 @@ function bindEvents() {
       sendWs({ type: 'transfer_host', targetPlayerId: targetId });
       if (el.transferHostDialog) el.transferHostDialog.close();
       state.pendingTransferPlayerId = null;
+    });
+  }
+
+  // Individual Bot Difficulty Dialog Handlers
+  if (el.botModalDiffBtns) {
+    el.botModalDiffBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        sfx.play('click');
+        const diff = btn.getAttribute('data-diff');
+        syncBotModalDiffButtons(diff);
+      });
+    });
+  }
+  if (el.cancelBotSettingsBtn) {
+    el.cancelBotSettingsBtn.addEventListener('click', () => {
+      sfx.play('click');
+      if (el.botSettingsDialog) el.botSettingsDialog.close();
+      state.editingBotId = null;
+    });
+  }
+  if (el.closeBotSettingsX) {
+    el.closeBotSettingsX.addEventListener('click', () => {
+      sfx.play('click');
+      if (el.botSettingsDialog) el.botSettingsDialog.close();
+      state.editingBotId = null;
+    });
+  }
+  if (el.applyBotSettingsBtn) {
+    el.applyBotSettingsBtn.addEventListener('click', () => {
+      if (!state.editingBotId) return;
+      if (!isMeHost(state.room)) {
+        showToast('Only the host can modify bot settings!', 'error');
+        return;
+      }
+      sfx.play('click');
+      sendWs({
+        type: 'set_bot_difficulty',
+        botId: state.editingBotId,
+        difficulty: state.selectedBotDiff,
+      });
+      showToast(`Updated ${state.editingBotName || 'Bot'} difficulty to ${state.selectedBotDiff.toUpperCase()}!`, 'success');
+      if (el.botSettingsDialog) el.botSettingsDialog.close();
+      state.editingBotId = null;
     });
   }
 
