@@ -1,28 +1,35 @@
 'use strict';
 
 /**
- * JEOPARTY MASTER CATEGORIES & QUESTIONS DATABASE
- * Combines curated trivia across Serious Science, Deep History, Pop Culture,
- * Everyday Knowledge, Hilarious Absurdities, and Final Jeopardy showdowns.
+ * Jeoparty Category & Question Database
+ * Aggregates 53 handcrafted categories (over 1,100+ unique questions) across:
+ * - Pop Culture & Entertainment
+ * - Gaming & Tech
+ * - Science & Nature
+ * - History & Geography
+ * - Funny & Absurd
+ * - Food, Wordplay & Everyday Life
+ * Plus expanded Final Jeoparty Pool (35 clues).
  */
 
-const { FUNNY_CATEGORIES } = require('./categories/funny');
-const { SCIENCE_CATEGORIES } = require('./categories/science');
-const { HISTORY_CATEGORIES } = require('./categories/history');
-const { POP_CATEGORIES } = require('./categories/pop');
-const { EVERYDAY_CATEGORIES } = require('./categories/everyday');
-const { FINAL_JEOPARDY_POOL } = require('./categories/final');
+const popCulture = require('./categories/popCulture');
+const gamingTech = require('./categories/gamingTech');
+const scienceNature = require('./categories/scienceNature');
+const historyGeography = require('./categories/historyGeography');
+const funnyAbsurd = require('./categories/funnyAbsurd');
+const everydayLife = require('./categories/everydayLife');
+const finalJeopardy = require('./categories/finalJeopardy');
 
-// Master list of all builtin categories available for matchmaking
 const BUILTIN_CATEGORIES = [
-  ...FUNNY_CATEGORIES,
-  ...SCIENCE_CATEGORIES,
-  ...HISTORY_CATEGORIES,
-  ...POP_CATEGORIES,
-  ...EVERYDAY_CATEGORIES,
+  ...popCulture,
+  ...gamingTech,
+  ...scienceNature,
+  ...historyGeography,
+  ...funnyAbsurd,
+  ...everydayLife,
 ];
 
 module.exports = {
   BUILTIN_CATEGORIES,
-  FINAL_JEOPARDY_POOL,
+  FINAL_JEOPARDY_POOL: finalJeopardy,
 };

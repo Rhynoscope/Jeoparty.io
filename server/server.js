@@ -183,7 +183,6 @@ function applySettingsPatch(room, patch) {
 
   if (['easy', 'medium', 'hard', 'champion'].includes(patch.botDifficulty)) {
     s.botDifficulty = patch.botDifficulty;
-    // Room default for newly added bots — existing bots maintain their individual difficulties
   }
 
   if (['buzzer', 'skribbl', 'host'].includes(patch.answerMode)) {
@@ -842,68 +841,52 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
     pool = [...pool, ...more];
   }
 
-  const chosen = pool.slice(0, cols);
-  room.usedClues = room.usedClues || new Set();
+  room.recentClueKeys = room.recentClueKeys || new Set();
 
+  const chosen = pool.slice(0, cols);
   const categories = chosen.map((cat, colIdx) => {
-    const pickedClues = [];
-    const usedInCat = new Set();
-    const catClues = Array.isArray(cat.clues) ? cat.clues : [];
+    const allClues = cat.clues || [];
+    let poolForCat = allClues.filter(
+      (c) => !room.recentClueKeys.has(c.clue)
+    );
+    if (poolForCat.length < rows) {
+      poolForCat = [...allClues];
+    }
+
+    const selectedClues = [];
+    const usedInCol = new Set();
 
     for (let r = 0; r < rows; r++) {
-      const targetBaseValue = (r + 1) * 200;
-
-      // Tier 1: exact baseValue matching + NOT used recently in room
-      let candidates = catClues.filter(
-        (clue) =>
-          clue.baseValue === targetBaseValue &&
-          !room.usedClues.has(clue.clue) &&
-          !usedInCat.has(clue.clue)
-      );
-
-      // Tier 2: any baseValue + NOT used recently in room
-      if (candidates.length === 0) {
-        candidates = catClues.filter(
-          (clue) => !room.usedClues.has(clue.clue) && !usedInCat.has(clue.clue)
-        );
+      const targetValue = (r + 1) * 200;
+      const candidates = poolForCat.filter((c) => !usedInCol.has(c));
+      let best = candidates.find((c) => c.baseValue === targetValue);
+      if (!best && candidates.length > 0) {
+        best = candidates.slice().sort(
+          (a, b) =>
+            Math.abs((a.baseValue || 400) - targetValue) -
+            Math.abs((b.baseValue || 400) - targetValue)
+        )[0];
       }
-
-      // Tier 3: exact baseValue matching + not used in this category yet
-      if (candidates.length === 0) {
-        candidates = catClues.filter(
-          (clue) => clue.baseValue === targetBaseValue && !usedInCat.has(clue.clue)
-        );
+      if (!best && allClues.length > 0) {
+        best = allClues[r % allClues.length];
       }
-
-      // Tier 4: any clue from category not used in this board column yet
-      if (candidates.length === 0) {
-        candidates = catClues.filter((clue) => !usedInCat.has(clue.clue));
-      }
-
-      // Fallback: any clue from category
-      if (candidates.length === 0) {
-        candidates = catClues;
-      }
-
-      const picked = candidates[Math.floor(Math.random() * candidates.length)];
-      if (picked) {
-        pickedClues.push(picked);
-        usedInCat.add(picked.clue);
-        room.usedClues.add(picked.clue);
+      if (best) {
+        usedInCol.add(best);
+        selectedClues.push(best);
+        room.recentClueKeys.add(best.clue);
       }
     }
 
-    // Prune rolling history if it exceeds 300 clues
-    if (room.usedClues.size > 300) {
-      const arr = Array.from(room.usedClues);
-      room.usedClues = new Set(arr.slice(arr.length - 150));
+    if (room.recentClueKeys.size > 300) {
+      const excess = Array.from(room.recentClueKeys).slice(0, 75);
+      excess.forEach((k) => room.recentClueKeys.delete(k));
     }
 
     return {
       id: cat.id,
       name: cat.name,
       icon: cat.icon,
-      tiles: pickedClues.map((clueObj, rowIdx) => ({
+      tiles: selectedClues.map((clueObj, rowIdx) => ({
         row: rowIdx,
         col: colIdx,
         value: (rowIdx + 1) * 200 * multiplier,
@@ -2129,17 +2112,17 @@ function getFinalMaxWager(room, playerId) {
 function enterFinalWagerPhase(room) {
   if (!room || room.terminated) return;
   clearRoomTimers(room);
-
-  room.usedFinalClues = room.usedFinalClues || new Set();
-  const unusedFinals = FINAL_JEOPARDY_POOL.filter(
-    (f) => !room.usedFinalClues.has(f.clue)
+  room.recentFinalKeys = room.recentFinalKeys || new Set();
+  let availableFinal = FINAL_JEOPARDY_POOL.filter(
+    (f) => !room.recentFinalKeys.has(f.clue)
   );
-  const pool = unusedFinals.length > 0 ? unusedFinals : FINAL_JEOPARDY_POOL;
-  const finalClue = pool[Math.floor(Math.random() * pool.length)];
-  room.usedFinalClues.add(finalClue.clue);
-  if (room.usedFinalClues.size > 25) {
-    room.usedFinalClues.clear();
+  if (availableFinal.length === 0) {
+    room.recentFinalKeys.clear();
+    availableFinal = FINAL_JEOPARDY_POOL;
   }
+  const finalClue =
+    availableFinal[Math.floor(Math.random() * availableFinal.length)];
+  room.recentFinalKeys.add(finalClue.clue);
 
   room.finalState = {
     clueObj: finalClue,
@@ -2933,36 +2916,31 @@ attachWebSocketServer(server, (ws) => {
         if (currentRoom.hostId !== currentPlayer.id) {
           ws.send({
             type: 'error',
-            message: 'Only the room host can configure bot difficulty.',
+            message: 'Only the room host can change bot settings.',
           });
           return;
         }
-
         const validDiffs = ['easy', 'medium', 'hard', 'champion'];
-        const targetDiff = (msg.difficulty || '').toLowerCase();
-        if (!validDiffs.includes(targetDiff)) {
+        const difficulty = String(msg.difficulty || '').toLowerCase();
+        if (!validDiffs.includes(difficulty)) {
           ws.send({
             type: 'error',
             message: 'Invalid difficulty. Choose Easy, Medium, Hard, or Champion.',
           });
           return;
         }
-
-        const targetBot = currentRoom.players.find(
-          (p) => p.id === msg.botId && p.isBot
-        );
-        if (!targetBot) {
+        const bot = currentRoom.players.find((p) => p.id === msg.botId && p.isBot);
+        if (!bot) {
           ws.send({
             type: 'error',
-            message: 'Bot not found in the room.',
+            message: 'Bot player not found in this room.',
           });
           return;
         }
-
-        targetBot.botDifficulty = targetDiff;
+        bot.botDifficulty = difficulty;
         sendChat(currentRoom, {
-          color: 'gold',
-          text: `⚙️ ${targetBot.name}'s difficulty changed to ${targetDiff.toUpperCase()}.`,
+          color: 'system',
+          text: `⚙️ Host configured ${bot.name}'s difficulty to ${difficulty.toUpperCase()}.`,
         });
         broadcastRoomState(currentRoom);
         break;

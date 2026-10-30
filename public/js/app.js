@@ -2600,8 +2600,12 @@ function bindEvents() {
         const count = Math.max(6, state.room.settings.boardCols);
         nextIds = shuffled.slice(0, count).map((c) => c.id);
       } else {
+        const matchesGroup = (c) => {
+          if (preset === 'pop') return c.group === 'pop' || c.group === 'nerdy';
+          return c.group === preset;
+        };
         nextIds = allCats
-          .filter((c) => c.group === preset || c.group === 'custom')
+          .filter((c) => matchesGroup(c) || c.group === 'custom')
           .map((c) => c.id);
       }
 
