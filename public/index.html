@@ -7,7 +7,7 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=3.0.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=3.1.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -258,24 +258,39 @@
                 <h2 id="lobby-settings-heading" class="group-kicker">GAME SETTINGS</h2>
               </div>
 
-              <!-- Match Pace & Length Quick Presets (One-click setup for fun pacing!) -->
+              <!-- Match Pace & Dynamic Player-Count Scaling Presets -->
               <div class="match-pace-container" role="group" aria-labelledby="match-pace-heading">
-                <span id="match-pace-heading" class="match-pace-title">Match Length &amp; Pace:</span>
-                <div class="match-pace-buttons" role="radiogroup" aria-label="Match Length and Pace">
-                  <button type="button" class="pace-btn active" data-pace="quick" role="radio" aria-checked="true" title="3 Categories x 3 Rows = 9 Clues (Fast, Casual, Fun!)">
+                <div class="pace-header-row">
+                  <span id="match-pace-heading" class="match-pace-title">Match Length &amp; Scaling:</span>
+                  <span id="auto-scale-status-pill" class="auto-scale-banner" aria-live="polite">
+                    AUTO: 3 Players (5x5 • 25 Clues)
+                  </span>
+                </div>
+                <div class="match-pace-buttons" role="radiogroup" aria-label="Match Length and Scaling">
+                  <button type="button" class="pace-btn active" data-pace="auto" role="radio" aria-checked="true" title="Automatically scales categories, clues, timers &amp; modifiers to active player count (2-10 players)">
+                    <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-anim-star" aria-hidden="true"></span>
+                    <span>Auto (By Players)</span>
+                  </button>
+                  <button type="button" class="pace-btn" data-pace="shorter" role="radio" aria-checked="false" title="3 Categories x 4 Clues = 12 Clues (Fast 6-9m match)">
                     <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     <span class="pixel-sprite sprite-mod-blitz" aria-hidden="true"></span>
-                    <span>Quick Match (5-8m | 9 Clues)</span>
+                    <span>Shorter (12 Clues)</span>
                   </button>
-                  <button type="button" class="pace-btn" data-pace="standard" role="radio" aria-checked="false" title="4 Categories x 4 Rows = 16 Clues">
+                  <button type="button" class="pace-btn" data-pace="standard" role="radio" aria-checked="false" title="5 Categories x 5 Clues = 25 Clues (Classic 12-16m match)">
                     <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     <span class="pixel-sprite sprite-target" aria-hidden="true"></span>
-                    <span>Standard (12-15m | 16 Clues)</span>
+                    <span>Standard (25 Clues)</span>
                   </button>
-                  <button type="button" class="pace-btn" data-pace="epic" role="radio" aria-checked="false" title="5 Categories x 5 Rows x 2 Rounds (Full Marathon)">
+                  <button type="button" class="pace-btn" data-pace="extended" role="radio" aria-checked="false" title="6 Categories x 5 Clues x 2 Rounds = 60 Clues + Final Jeoparty">
                     <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     <span class="pixel-sprite sprite-medal" aria-hidden="true"></span>
-                    <span>Epic (20-25m | 2 Rounds)</span>
+                    <span>Extended (2 Rounds)</span>
+                  </button>
+                  <button type="button" class="pace-btn" data-pace="custom" role="radio" aria-checked="false" title="Customize categories, clues, timers &amp; special rounds manually">
+                    <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-gear" aria-hidden="true"></span>
+                    <span>Custom</span>
                   </button>
                 </div>
               </div>
@@ -321,34 +336,58 @@
                 </div>
               </div>
 
-              <!-- Essential Primary Controls (3 simple choices) -->
+              <!-- Essential Match Customization Controls -->
               <div class="settings-grid-primary">
-                <label class="setting-field">
+                <label class="setting-field" for="set-answer-mode">
                   <span>Game Mode</span>
-                  <select id="set-answer-mode" class="skribbl-select">
+                  <select id="set-answer-mode" name="answerMode" class="skribbl-select">
                     <option value="buzzer">Classic Buzzer (Buzz + Type)</option>
                     <option value="skribbl">Everyone Answers (Speed Mode)</option>
                     <option value="host">Host Judges (Party / Voice)</option>
                   </select>
                 </label>
 
-                <label class="setting-field">
-                  <span>Rows &amp; Difficulty</span>
-                  <select id="set-clues-per-cat" class="skribbl-select">
-                    <option value="3" selected>Quick (3 rows: $200-$600)</option>
-                    <option value="4">Medium (4 rows: $200-$800)</option>
-                    <option value="5">Classic (5 rows: $200-$1000)</option>
+                <label class="setting-field" for="set-board-cols">
+                  <span>Categories</span>
+                  <select id="set-board-cols" name="boardCols" class="skribbl-select">
+                    <option value="3">3 Categories (Compact)</option>
+                    <option value="4">4 Categories (2 Players)</option>
+                    <option value="5" selected>5 Categories (3-4 Players)</option>
+                    <option value="6">6 Categories (5-6 Players)</option>
+                    <option value="7">7 Categories (7-8 Players)</option>
+                    <option value="8">8 Categories (9-10 Players)</option>
                   </select>
                 </label>
 
-                <label class="setting-field">
-                  <span>Question Timer</span>
-                  <select id="set-clue-time" class="skribbl-select">
+                <label class="setting-field" for="set-clues-per-cat">
+                  <span>Clues / Category</span>
+                  <select id="set-clues-per-cat" name="cluesPerCat" class="skribbl-select">
+                    <option value="3">3 Clues ($200-$600)</option>
+                    <option value="4">4 Clues ($200-$800)</option>
+                    <option value="5" selected>5 Clues ($200-$1000)</option>
+                    <option value="6">6 Clues ($200-$1200)</option>
+                  </select>
+                </label>
+
+                <label class="setting-field" for="set-clue-time">
+                  <span>Answer Timer</span>
+                  <select id="set-clue-time" name="clueTimeSec" class="skribbl-select">
                     <option value="12">12s (Blitz)</option>
-                    <option value="15" selected>15s (Snappy)</option>
+                    <option value="15">15s (Fast)</option>
+                    <option value="18" selected>18s (Balanced)</option>
                     <option value="20">20s (Standard)</option>
+                    <option value="25">25s (Comfortable)</option>
                     <option value="30">30s (Relaxed)</option>
                     <option value="45">45s (Party)</option>
+                  </select>
+                </label>
+
+                <label class="setting-field" for="set-special-freq">
+                  <span>Special Events</span>
+                  <select id="set-special-freq" name="specialFrequency" class="skribbl-select">
+                    <option value="low">Low (Classic Focus)</option>
+                    <option value="normal" selected>Balanced (Recommended)</option>
+                    <option value="high">High (Party Chaos)</option>
                   </select>
                 </label>
               </div>
@@ -371,8 +410,12 @@
                     <input
                       type="search"
                       id="cat-filter-input"
+                      name="categoryFilter"
                       class="skribbl-input cat-search-input"
                       placeholder="Search categories..."
+                      autocorrect="off"
+                      autocapitalize="off"
+                      spellcheck="false"
                       aria-label="Filter categories"
                     />
                   </search>
@@ -409,23 +452,13 @@
                 <div id="lobby-categories-grid" class="lobby-categories-grid"></div>
               </div>
 
-              <!-- Collapsible Disclosure for Less Frequently Changed Rules -->
-              <details class="advanced-rules-details">
-                <summary class="advanced-rules-summary">Optional Special Rounds &amp; Board Columns</summary>
+              <!-- Special Rounds & Scoring Rules -->
+              <details class="advanced-rules-details" open>
+                <summary class="advanced-rules-summary">Special Rounds &amp; Scoring Rules</summary>
                 <div class="advanced-rules-body">
-                  <label class="setting-field">
-                    <span>Categories on Board</span>
-                    <select id="set-board-cols" class="skribbl-select">
-                      <option value="3" selected>3 Categories (Fast &amp; Mobile-Friendly)</option>
-                      <option value="4">4 Categories (Standard)</option>
-                      <option value="5">5 Categories (Classic)</option>
-                      <option value="6">6 Categories (Full TV Grid)</option>
-                    </select>
-                  </label>
-
                   <div class="switches-row">
                     <label class="rule-toggle-pill">
-                      <input type="checkbox" id="set-double-jeopardy" class="rule-check" checked />
+                      <input type="checkbox" id="set-double-jeopardy" class="rule-check" />
                       <span>Double Jeoparty (Round 2)</span>
                     </label>
                     <label class="rule-toggle-pill">
@@ -437,7 +470,7 @@
                       <span>Final Jeoparty Round</span>
                     </label>
                     <label class="rule-toggle-pill">
-                      <input type="checkbox" id="set-wrong-penalty" class="rule-check" checked />
+                      <input type="checkbox" id="set-wrong-penalty" class="rule-check" />
                       <span>Wrong Answer Penalty</span>
                     </label>
                   </div>
@@ -784,13 +817,19 @@
       <aside class="chat-sidebar" aria-label="Room Chat">
         <div class="sidebar-header">Chat</div>
         <div id="chat-messages" class="chat-messages"></div>
+        <div id="bot-typing-indicator" class="bot-typing-bar" aria-live="polite" hidden>
+          <span class="pixel-sprite sprite-loading" aria-hidden="true"></span>
+          <span id="bot-typing-text">Bot is typing...</span>
+        </div>
         <form id="chat-form" class="chat-form">
           <input
             type="text"
             id="chat-input"
+            name="chatMessage"
             class="skribbl-input chat-input"
-            placeholder="Type to chat..."
+            placeholder="Chat with players &amp; AI bots..."
             maxlength="150"
+            enterkeyhint="send"
             aria-label="Chat message"
           />
         </form>
@@ -915,9 +954,13 @@
       <input
         type="text"
         id="join-code-input"
+        name="roomCode"
         class="skribbl-input code-big-input"
         placeholder="K7P4M9"
         maxlength="8"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
         autofocus
         required
         aria-label="6-character room code"
@@ -1000,8 +1043,12 @@
       </button>
     </div>
     <p class="dialog-sub">
-      Configure difficulty for <strong id="bot-settings-name">Bot</strong>:
+      Configure trivia difficulty for <strong id="bot-settings-name">Bot</strong>:
     </p>
+    <div id="bot-settings-personality" class="bot-modal-persona-note">
+      <span class="pixel-sprite sprite-bot" aria-hidden="true"></span>
+      <span id="bot-settings-personality-text">AI Personality (Independent of trivia skill)</span>
+    </div>
     <div class="bot-dialog-diff-buttons" role="radiogroup" aria-label="Select Bot Difficulty">
       <button type="button" class="bot-modal-diff-btn" data-diff="easy" role="radio" aria-checked="false">
         <div class="bot-modal-diff-header">
@@ -1082,6 +1129,11 @@
           <input type="text" class="skribbl-input cc-clue" placeholder="Clue for $1000..." aria-label="Clue for 1000" required />
           <input type="text" class="skribbl-input cc-ans" placeholder="Answer..." aria-label="Answer for 1000" required />
         </div>
+        <div class="custom-clue-row">
+          <span class="custom-val-tag">$1200</span>
+          <input type="text" class="skribbl-input cc-clue" placeholder="Optional $1200 clue (6-row boards)..." aria-label="Optional clue for 1200" />
+          <input type="text" class="skribbl-input cc-ans" placeholder="Optional answer..." aria-label="Optional answer for 1200" />
+        </div>
       </div>
 
       <div class="dialog-actions">
@@ -1094,6 +1146,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=3.0.0"></script>
+  <script type="module" src="/js/app.js?v=3.1.0"></script>
 </body>
 </html>

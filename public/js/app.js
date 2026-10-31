@@ -225,17 +225,24 @@ function savePreferredSettingsFromRoom(room) {
     ? s.includedCategoryIds.filter((id) => !String(id).startsWith('custom_'))
     : undefined;
 
+  const autoScale = s.autoScaleMatch !== false;
   const pref = {
+    autoScaleMatch: autoScale,
+    matchPace: autoScale ? 'auto' : s.matchPace || 'custom',
+    botDifficulty: s.botDifficulty || 'medium',
+    specialFrequency: s.specialFrequency || 'normal',
     answerMode: s.answerMode,
-    boardCols: s.boardCols,
-    cluesPerCat: s.cluesPerCat,
-    clueTimeSec: s.clueTimeSec,
     doubleJeopardy: s.doubleJeopardy,
     dailyDoubles: s.dailyDoubles,
     finalJeopardy: s.finalJeopardy,
     wrongPenalty: s.wrongPenalty,
     includedCategoryIds: cleanBuiltinIds,
   };
+  if (!autoScale) {
+    pref.boardCols = s.boardCols;
+    pref.cluesPerCat = s.cluesPerCat;
+    pref.clueTimeSec = s.clueTimeSec;
+  }
   state.preferredSettings = pref;
   localStorage.setItem(PREFERRED_SETTINGS_KEY, JSON.stringify(pref));
 }
@@ -285,6 +292,7 @@ const state = {
   editingBotId: null,
   editingBotName: '',
   selectedBotDiff: 'medium',
+  typingBots: new Map(),
   lastRenderedPhase: null,
   lastTickSecond: -1,
 };
@@ -382,11 +390,13 @@ const el = {
   // Lobby controls
   lobbyRoomCodeDisplay: document.getElementById('lobby-room-code-display'),
   lobbyRoleBadge: document.getElementById('lobby-role-badge'),
+  autoScaleStatusPill: document.getElementById('auto-scale-status-pill'),
   activeDifficultyIndicator: document.getElementById('active-difficulty-indicator'),
   setAnswerMode: document.getElementById('set-answer-mode'),
   setBoardCols: document.getElementById('set-board-cols'),
   setCluesPerCat: document.getElementById('set-clues-per-cat'),
   setClueTime: document.getElementById('set-clue-time'),
+  setSpecialFreq: document.getElementById('set-special-freq'),
   setDoubleJeopardy: document.getElementById('set-double-jeopardy'),
   setDailyDoubles: document.getElementById('set-daily-doubles'),
   setFinalJeopardy: document.getElementById('set-final-jeopardy'),
@@ -471,6 +481,8 @@ const el = {
 
   // Chat
   chatMessages: document.getElementById('chat-messages'),
+  botTypingIndicator: document.getElementById('bot-typing-indicator'),
+  botTypingText: document.getElementById('bot-typing-text'),
   chatForm: document.getElementById('chat-form'),
   chatInput: document.getElementById('chat-input'),
 
@@ -502,6 +514,7 @@ const el = {
   // Individual Bot Settings Dialog
   botSettingsDialog: document.getElementById('bot-settings-dialog'),
   botSettingsName: document.getElementById('bot-settings-name'),
+  botSettingsPersonalityText: document.getElementById('bot-settings-personality-text'),
   closeBotSettingsX: document.getElementById('close-bot-settings-x'),
   cancelBotSettingsBtn: document.getElementById('cancel-bot-settings-btn'),
   applyBotSettingsBtn: document.getElementById('apply-bot-settings-btn'),
@@ -923,6 +936,7 @@ function sendActionWithProfile(actionObj, { roomCodeForToken = null } = {}) {
 function startFreshRoomSession(actionType, extraPayload = {}) {
   clearTimeout(state.reconnectTimer);
   state.intentionalLeave = false;
+  clearAllBotTyping();
   state.room = null;
   state.lastRenderedPhase = null;
 
@@ -983,6 +997,7 @@ function handleServerMessage(msg) {
       el.gameScreen.hidden = false;
       if (!msg.reconnected) {
         el.chatMessages.innerHTML = '';
+        clearAllBotTyping();
       }
 
       const nextUrl = new URL(window.location.href);
@@ -1085,6 +1100,11 @@ function handleServerMessage(msg) {
       break;
     }
 
+    case 'bot_typing': {
+      handleBotTypingEvent(msg);
+      break;
+    }
+
     case 'room_state': {
       // Ignore stale state packets if we intentionally left or room mismatches
       if (state.intentionalLeave) return;
@@ -1105,6 +1125,7 @@ function returnToHomeScreen({ clearInvite = true } = {}) {
   clearTimeout(state.reconnectTimer);
   voiceChat.leaveVoice(false);
   sfx.stopWaitingMusic();
+  clearAllBotTyping();
   state.room = null;
   state.lastRenderedPhase = null;
   el.timerBadge.hidden = true;
@@ -1142,20 +1163,80 @@ const CHAT_ICON_SPRITES = {
   rocket: 'sprite-rocket',
 };
 
+function clearAllBotTyping() {
+  for (const entry of state.typingBots.values()) {
+    if (entry.timer) clearTimeout(entry.timer);
+  }
+  state.typingBots.clear();
+  updateBotTypingIndicatorUI();
+}
+
+function updateBotTypingIndicatorUI() {
+  if (!el.botTypingIndicator || !el.botTypingText) return;
+  const names = Array.from(state.typingBots.values()).map((x) => x.name);
+  if (names.length === 0) {
+    el.botTypingIndicator.hidden = true;
+    el.botTypingText.textContent = '';
+    return;
+  }
+  el.botTypingIndicator.hidden = false;
+  if (names.length === 1) {
+    el.botTypingText.textContent = `${names[0]} [BOT] is typing...`;
+  } else {
+    el.botTypingText.textContent = `${names.slice(0, 2).join(' & ')} are typing...`;
+  }
+}
+
+function handleBotTypingEvent(msg) {
+  if (!msg || !msg.botId) return;
+  const existing = state.typingBots.get(msg.botId);
+  if (existing?.timer) clearTimeout(existing.timer);
+
+  if (msg.isTyping) {
+    const timer = setTimeout(() => {
+      state.typingBots.delete(msg.botId);
+      updateBotTypingIndicatorUI();
+      if (state.room) renderPlayersSidebar(state.room, isMeHost(state.room));
+    }, 3600);
+    state.typingBots.set(msg.botId, { name: msg.botName || 'Bot', timer });
+  } else {
+    state.typingBots.delete(msg.botId);
+  }
+  updateBotTypingIndicatorUI();
+  if (state.room) {
+    renderPlayersSidebar(state.room, isMeHost(state.room));
+  }
+}
+
 function appendChatMessage(m) {
   if (!m) return;
   const div = document.createElement('div');
-  div.className = `chat-line c-${m.color || 'chat'}${m.color === 'bot' ? ' chat-msg-bot' : ''}`;
+  const isBotChat = Boolean(m.isBot || m.color === 'bot');
+  div.className = `chat-line c-${m.color || 'chat'}${isBotChat ? ' chat-msg-bot' : ''}`;
 
   if (m.icon && CHAT_ICON_SPRITES[m.icon]) {
     div.appendChild(createPixelSprite(CHAT_ICON_SPRITES[m.icon], 'chat-inline-sprite'));
   }
 
   if (m.kind === 'chat' && m.author) {
+    if (isBotChat) {
+      const botTag = document.createElement('span');
+      botTag.className = 'chat-bot-tag';
+      botTag.textContent = 'BOT';
+      div.appendChild(botTag);
+
+      if (m.botPersonalityTitle) {
+        const personaTag = document.createElement('span');
+        personaTag.className = 'chat-persona-tag';
+        personaTag.textContent = m.botPersonalityTitle;
+        div.appendChild(personaTag);
+      }
+    }
     const authorSpan = document.createElement('span');
     authorSpan.className = 'chat-author';
     authorSpan.textContent = `${m.author}: `;
     const textSpan = document.createElement('span');
+    textSpan.className = 'chat-body-text';
     textSpan.textContent = m.text;
     div.append(authorSpan, textSpan);
   } else {
@@ -1278,10 +1359,10 @@ function renderRoomState() {
   }
 
 
-  el.chatInput.placeholder =
-    room.phase === 'clue_skribbl'
-      ? 'Type your answer guess here...'
-      : 'Type to chat...';
+    el.chatInput.placeholder =
+      room.phase === 'clue_skribbl'
+        ? 'Type your answer guess here...'
+        : 'Chat with players & AI bots...';
 }
 
 function renderPlayersSidebar(room, amHost) {
@@ -1422,6 +1503,7 @@ function renderPlayersSidebar(room, amHost) {
     scoreEl.className = `player-score ${p.score < 0 ? 'is-negative' : ''}`;
     scoreEl.textContent = formatCash(p.score);
 
+    const isTypingChat = Boolean(p.isBot && state.typingBots.has(p.id));
     const statusEl = document.createElement('div');
     statusEl.className = 'player-status-chip';
     if (!p.connected) {
@@ -1430,10 +1512,16 @@ function renderPlayersSidebar(room, amHost) {
       statusEl.textContent = 'Buzzed!';
     } else if (isSolved) {
       statusEl.textContent = 'Correct!';
+    } else if (isTypingChat) {
+      statusEl.textContent = 'Typing...';
+      statusEl.classList.add('is-bot-typing');
     } else if (room.phase === 'board' && room.pickerId === p.id) {
       statusEl.textContent = 'Picking';
     } else if (p.isBot) {
-      statusEl.textContent = 'Bot';
+      statusEl.textContent = p.personalityTitle ? `AI • ${p.personalityTitle}` : 'AI Bot';
+      if (p.personalityArchetype) {
+        statusEl.title = `${p.name} — ${p.personalityArchetype}`;
+      }
     }
 
     const metaRow = document.createElement('div');
@@ -1472,7 +1560,10 @@ function renderPlayersSidebar(room, amHost) {
     const wearsLeaderCrown =
       (room.phase !== 'lobby' && idx === 0 && topScore > 0) ||
       (room.phase === 'lobby' && p.id === room.hostId);
-    const isSpeakingAvatar = p.voiceSpeaking || (p.id === state.playerId && voiceChat.isSpeaking);
+    const isSpeakingAvatar =
+      p.voiceSpeaking ||
+      (p.id === state.playerId && voiceChat.isSpeaking) ||
+      isTypingChat;
     const missedCurrentClue =
       Boolean(room.activeClue?.attemptedIds?.includes(p.id)) && !isSolved;
     const avatarMood = isSpeakingAvatar
@@ -1541,6 +1632,11 @@ function openBotSettingsModal(bot) {
   if (el.botSettingsName) {
     el.botSettingsName.textContent = bot.name;
   }
+  if (el.botSettingsPersonalityText) {
+    el.botSettingsPersonalityText.textContent = bot.personalityArchetype
+      ? `${bot.personalityArchetype} — Social personality stays unique at every difficulty!`
+      : 'Distinct AI Personality (Independent of trivia difficulty)';
+  }
   if (el.botSettingsDialog) {
     if (typeof el.botSettingsDialog.showModal === 'function') {
       el.botSettingsDialog.showModal();
@@ -1584,20 +1680,49 @@ function renderLobbyStage(room, amHost) {
   el.setBoardCols.value = String(s.boardCols);
   el.setCluesPerCat.value = String(s.cluesPerCat);
   el.setClueTime.value = String(s.clueTimeSec);
+  if (el.setSpecialFreq) {
+    el.setSpecialFreq.value = s.specialFrequency || 'normal';
+  }
   el.setDoubleJeopardy.checked = Boolean(s.doubleJeopardy);
   el.setDailyDoubles.checked = Boolean(s.dailyDoubles);
   el.setFinalJeopardy.checked = Boolean(s.finalJeopardy);
   el.setWrongPenalty.checked = Boolean(s.wrongPenalty);
 
-  // Sync Pace buttons active class
+  // Sync live player-based auto-scaling status banner
+  const activeCount =
+    typeof room.activePlayerCount === 'number'
+      ? room.activePlayerCount
+      : room.players.filter((p) => p.connected).length;
+  const roundClues = (Number(s.boardCols) || 5) * (Number(s.cluesPerCat) || 5);
+  const autoScaleActive = s.autoScaleMatch !== false;
+  if (el.autoScaleStatusPill) {
+    if (autoScaleActive) {
+      el.autoScaleStatusPill.textContent = `AUTO (${activeCount} ${
+        activeCount === 1 ? 'Player' : 'Players'
+      }): ${s.boardCols}x${s.cluesPerCat} (${roundClues} Clues${
+        s.doubleJeopardy ? ' x2' : ''
+      } • ${s.clueTimeSec}s)`;
+      el.autoScaleStatusPill.classList.remove('is-manual');
+    } else {
+      const modeName = (s.matchPace || 'custom').toUpperCase();
+      el.autoScaleStatusPill.textContent = `${modeName}: ${s.boardCols}x${s.cluesPerCat} (${roundClues} Clues${
+        s.doubleJeopardy ? ' x2' : ''
+      } • ${s.clueTimeSec}s)`;
+      el.autoScaleStatusPill.classList.add('is-manual');
+    }
+  }
+
+  // Sync Pace / Scaling radio buttons
+  const currentPace = autoScaleActive
+    ? 'auto'
+    : ['shorter', 'standard', 'extended', 'custom'].includes(s.matchPace)
+    ? s.matchPace
+    : 'custom';
   document.querySelectorAll('.pace-btn').forEach((btn) => {
     const pace = btn.getAttribute('data-pace');
-    const isActive =
-      (pace === 'quick' && s.boardCols === 3 && s.cluesPerCat === 3) ||
-      (pace === 'standard' && s.boardCols === 4 && s.cluesPerCat === 4) ||
-      (pace === 'epic' && s.boardCols === 5 && s.cluesPerCat === 5 && s.doubleJeopardy);
-    btn.classList.toggle('active', Boolean(isActive));
-    btn.setAttribute('aria-checked', Boolean(isActive) ? 'true' : 'false');
+    const isActive = pace === currentPace;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
     btn.disabled = !amHost;
   });
 
@@ -1619,6 +1744,7 @@ function renderLobbyStage(room, amHost) {
     el.setBoardCols,
     el.setCluesPerCat,
     el.setClueTime,
+    el.setSpecialFreq,
     el.setDoubleJeopardy,
     el.setDailyDoubles,
     el.setFinalJeopardy,
@@ -1626,7 +1752,7 @@ function renderLobbyStage(room, amHost) {
     el.openCustomCatBtn,
     el.startGameBtn,
     ...document.querySelectorAll('.preset-chip[data-preset]'),
-  ];
+  ].filter(Boolean);
   for (const ctrl of controls) {
     ctrl.disabled = !amHost;
   }
@@ -1746,6 +1872,8 @@ function renderBoardStage(room) {
 
   el.boardGrid.style.setProperty('--board-cols', String(cols));
   el.boardGrid.style.setProperty('--board-rows', String(rows));
+  el.boardGrid.dataset.cols = String(cols);
+  el.boardGrid.dataset.rows = String(rows);
   el.boardGrid.innerHTML = '';
 
   // Row 0: Category Headers with 2-Frame Animated MS Paint Pixel Icons
@@ -2692,6 +2820,9 @@ function bindEvents() {
   el.setClueTime.addEventListener('change', () =>
     pushSettingsPatch({ clueTimeSec: Number(el.setClueTime.value) })
   );
+  el.setSpecialFreq?.addEventListener('change', () =>
+    pushSettingsPatch({ specialFrequency: el.setSpecialFreq.value })
+  );
   el.setDoubleJeopardy.addEventListener('change', () =>
     pushSettingsPatch({ doubleJeopardy: el.setDoubleJeopardy.checked })
   );
@@ -2808,7 +2939,7 @@ function bindEvents() {
   });
 
   window.addEventListener('keydown', (e) => {
-    if (e.code !== 'Space') return;
+    if (e.isComposing || e.code !== 'Space') return;
     if (!state.room || state.room.phase !== 'clue_open') return;
     const tag = (document.activeElement?.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button') return;
@@ -2915,7 +3046,11 @@ function bindEvents() {
         b.classList.toggle('active', isSelected);
         b.setAttribute('aria-checked', isSelected ? 'true' : 'false');
       });
-      pushSettingsPatch({ matchPace: pace });
+      if (pace === 'auto') {
+        pushSettingsPatch({ autoScaleMatch: true, matchPace: 'auto' });
+      } else {
+        pushSettingsPatch({ autoScaleMatch: false, matchPace: pace });
+      }
     });
   });
 

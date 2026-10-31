@@ -9,6 +9,14 @@ const crypto = require('node:crypto');
 const { attachWebSocketServer } = require('./ws');
 const { BUILTIN_CATEGORIES, FINAL_JEOPARDY_POOL } = require('./categoriesData');
 const { evaluateAnswer } = require('./answerMatcher');
+const {
+  BOT_PERSONALITIES,
+  getPersonalityForBot,
+  clearBotPendingTimers,
+  handleHumanChatForBots,
+  notifyBotGameEvent,
+  getBotAiServiceDescriptor,
+} = require('./botBrain');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST_RECONNECT_GRACE_MS = Math.max(
@@ -37,14 +45,13 @@ const MIME_TYPES = {
   '.ogg': 'audio/ogg',
 };
 
-const BOT_PROFILES = [
-  { name: 'DoodleDan', avatar: { color: 3, eyes: 2, mouth: 1, hat: 1 }, skill: 0.72 },
-  { name: 'QuizzyLizzy', avatar: { color: 16, eyes: 6, mouth: 12, hat: 5 }, skill: 0.78 },
-  { name: 'BuzzerBob', avatar: { color: 0, eyes: 3, mouth: 5, hat: 3 }, skill: 0.64 },
-  { name: 'PixelPenny', avatar: { color: 18, eyes: 11, mouth: 2, hat: 2 }, skill: 0.70 },
-  { name: 'SketchySam', avatar: { color: 6, eyes: 8, mouth: 7, hat: 4 }, skill: 0.60 },
-  { name: 'SleepyGus', avatar: { color: 2, eyes: 5, mouth: 9, hat: 9 }, skill: 0.55 },
-];
+const BOT_PROFILES = BOT_PERSONALITIES.map((p) => ({
+  id: p.id,
+  name: p.name,
+  shortTitle: p.shortTitle,
+  archetype: p.archetype,
+  avatar: { ...p.avatar },
+}));
 
 const FUNNY_WRONG_ANSWERS = [
   'Shrek 2?',
@@ -140,18 +147,106 @@ function sanitizeAvatar(raw) {
   };
 }
 
+function getActivePlayerCount(room) {
+  if (!room || !Array.isArray(room.players)) return 0;
+  return room.players.filter((p) => p && p.connected).length;
+}
+
+/**
+ * Computes sensible dynamic match-length settings from the active connected
+ * player count (humans + bots, up to MAX_ROOM_PLAYERS = 10; disconnected excluded).
+ */
+function computeScaledMatchConfig(rawPlayerCount) {
+  const count = Math.max(1, Math.min(MAX_ROOM_PLAYERS, Number(rawPlayerCount) || 2));
+  if (count <= 2) {
+    return {
+      activePlayerCount: count,
+      tierLabel: '2 Players',
+      boardCols: 4,
+      cluesPerCat: 4,
+      totalClues: 16,
+      clueTimeSec: 15,
+    };
+  }
+  if (count <= 4) {
+    return {
+      activePlayerCount: count,
+      tierLabel: '3-4 Players',
+      boardCols: 5,
+      cluesPerCat: 5,
+      totalClues: 25,
+      clueTimeSec: 18,
+    };
+  }
+  if (count <= 6) {
+    return {
+      activePlayerCount: count,
+      tierLabel: '5-6 Players',
+      boardCols: 6,
+      cluesPerCat: 5,
+      totalClues: 30,
+      clueTimeSec: 18,
+    };
+  }
+  if (count <= 8) {
+    return {
+      activePlayerCount: count,
+      tierLabel: '7-8 Players',
+      boardCols: 7,
+      cluesPerCat: 5,
+      totalClues: 35,
+      clueTimeSec: 20,
+    };
+  }
+  return {
+    activePlayerCount: count,
+    tierLabel: '9-10 Players',
+    boardCols: 8,
+    cluesPerCat: 6,
+    totalClues: 48,
+    clueTimeSec: 20,
+  };
+}
+
+function syncAutoScaledSettingsForLobby(room) {
+  if (!room || !room.settings || !room.settings.autoScaleMatch) return;
+  const activeCount = Math.max(2, getActivePlayerCount(room));
+  const scaled = computeScaledMatchConfig(activeCount);
+  room.settings.boardCols = scaled.boardCols;
+  room.settings.cluesPerCat = scaled.cluesPerCat;
+  room.settings.clueTimeSec = scaled.clueTimeSec;
+  room.settings.matchPace = 'auto';
+
+  // Ensure enough categories are selected when scaling up to 7-8 columns unless host intentionally cleared
+  if (
+    Array.isArray(room.settings.includedCategoryIds) &&
+    room.settings.includedCategoryIds.length > 0 &&
+    room.settings.includedCategoryIds.length < scaled.boardCols
+  ) {
+    const allCats = getAllCategoriesForRoom(room);
+    const curSet = new Set(room.settings.includedCategoryIds);
+    for (const c of allCats) {
+      if (curSet.size >= scaled.boardCols) break;
+      curSet.add(c.id);
+    }
+    room.settings.includedCategoryIds = Array.from(curSet);
+  }
+}
+
 function createDefaultSettings() {
   return {
-    matchPace: 'quick', // 'quick' (5-8m, 3x3) | 'standard' (10-15m, 4x4) | 'epic' (20-25m, 5x5) | 'custom'
+    autoScaleMatch: true, // Automatically scales board & timers based on active player count!
+    matchPace: 'auto', // 'auto' | 'shorter' | 'standard' | 'extended' | 'custom'
+    specialFrequency: 'normal', // 'low' | 'normal' | 'high'
     botDifficulty: 'medium', // 'easy' | 'medium' | 'hard' | 'champion'
     answerMode: 'buzzer', // 'buzzer' | 'skribbl' | 'host'
-    boardCols: 3, // 3 | 4 | 5 | 6 (Default 3 for fast, casual, mobile-friendly fun!)
-    cluesPerCat: 3, // 3 | 4 | 5 (9 clues total in round 1)
-    clueTimeSec: 15, // 12 | 15 | 20 | 30 | 45
-    doubleJeopardy: false, // 1 quick round + Final Jeopardy
+    boardCols: 4, // 3..8 (auto-updated for active roster when autoScaleMatch is true)
+    cluesPerCat: 4, // 3..6 ($200..$1200)
+    clueTimeSec: 15, // 12 | 15 | 18 | 20 | 25 | 30 | 45
+    doubleJeopardy: false, // Host can toggle Round 2 Double Jeoparty anytime
     dailyDoubles: true,
     finalJeopardy: true,
-    wrongPenalty: false, // friendly party default: no negative score dread!
+    wrongPenalty: false, // Friendly party default
     includedCategoryIds: BUILTIN_CATEGORIES.map((c) => c.id),
     customCategories: [],
   };
@@ -161,27 +256,54 @@ function applySettingsPatch(room, patch) {
   if (!patch || typeof patch !== 'object') return;
   const s = room.settings;
 
+  if (typeof patch.autoScaleMatch === 'boolean') {
+    s.autoScaleMatch = patch.autoScaleMatch;
+    if (s.autoScaleMatch) {
+      s.matchPace = 'auto';
+      syncAutoScaledSettingsForLobby(room);
+    } else if (s.matchPace === 'auto') {
+      s.matchPace = 'custom';
+    }
+  }
+
   if (patch.matchPace) {
-    s.matchPace = patch.matchPace;
-    if (patch.matchPace === 'quick') {
+    const pace = String(patch.matchPace).toLowerCase();
+    if (pace === 'auto') {
+      s.autoScaleMatch = true;
+      s.matchPace = 'auto';
+      syncAutoScaledSettingsForLobby(room);
+    } else if (pace === 'shorter' || pace === 'quick') {
+      s.autoScaleMatch = false;
+      s.matchPace = 'shorter';
       s.boardCols = 3;
-      s.cluesPerCat = 3;
+      s.cluesPerCat = 4;
       s.clueTimeSec = 15;
       s.doubleJeopardy = false;
       s.wrongPenalty = false;
-    } else if (patch.matchPace === 'standard') {
-      s.boardCols = 4;
-      s.cluesPerCat = 4;
-      s.clueTimeSec = 20;
+    } else if (pace === 'standard') {
+      s.autoScaleMatch = false;
+      s.matchPace = 'standard';
+      s.boardCols = 5;
+      s.cluesPerCat = 5;
+      s.clueTimeSec = 18;
       s.doubleJeopardy = false;
       s.wrongPenalty = true;
-    } else if (patch.matchPace === 'epic') {
-      s.boardCols = 5;
+    } else if (pace === 'extended' || pace === 'epic') {
+      s.autoScaleMatch = false;
+      s.matchPace = 'extended';
+      s.boardCols = 6;
       s.cluesPerCat = 5;
       s.clueTimeSec = 20;
       s.doubleJeopardy = true;
       s.wrongPenalty = true;
+    } else if (pace === 'custom') {
+      s.autoScaleMatch = false;
+      s.matchPace = 'custom';
     }
+  }
+
+  if (['low', 'normal', 'high'].includes(patch.specialFrequency)) {
+    s.specialFrequency = patch.specialFrequency;
   }
 
   if (['easy', 'medium', 'hard', 'champion'].includes(patch.botDifficulty)) {
@@ -191,14 +313,30 @@ function applySettingsPatch(room, patch) {
   if (['buzzer', 'skribbl', 'host'].includes(patch.answerMode)) {
     s.answerMode = patch.answerMode;
   }
-  if ([3, 4, 5, 6].includes(Number(patch.boardCols))) {
+
+  const manualOverride =
+    patch.autoScaleMatch !== true && String(patch.matchPace || '').toLowerCase() !== 'auto';
+
+  if ([3, 4, 5, 6, 7, 8].includes(Number(patch.boardCols))) {
     s.boardCols = Number(patch.boardCols);
+    if (manualOverride) {
+      s.autoScaleMatch = false;
+      if (!patch.matchPace) s.matchPace = 'custom';
+    }
   }
-  if ([3, 4, 5].includes(Number(patch.cluesPerCat))) {
+  if ([3, 4, 5, 6].includes(Number(patch.cluesPerCat))) {
     s.cluesPerCat = Number(patch.cluesPerCat);
+    if (manualOverride) {
+      s.autoScaleMatch = false;
+      if (!patch.matchPace) s.matchPace = 'custom';
+    }
   }
-  if ([12, 15, 20, 30, 45].includes(Number(patch.clueTimeSec))) {
+  if ([12, 15, 18, 20, 25, 30, 45].includes(Number(patch.clueTimeSec))) {
     s.clueTimeSec = Number(patch.clueTimeSec);
+    if (manualOverride) {
+      s.autoScaleMatch = false;
+      if (!patch.matchPace) s.matchPace = 'custom';
+    }
   }
   if (typeof patch.doubleJeopardy === 'boolean') {
     s.doubleJeopardy = patch.doubleJeopardy;
@@ -253,8 +391,18 @@ function createRoom({ isPrivate, preferredSettings = null }) {
   };
 
   if (preferredSettings && typeof preferredSettings === 'object') {
+    const sanitizedPref = { ...preferredSettings };
+    // Legacy client localStorage preferences predating v3.1 lack `autoScaleMatch`;
+    // keep auto-scaling active unless the host explicitly opted out!
+    if (typeof sanitizedPref.autoScaleMatch !== 'boolean' || sanitizedPref.autoScaleMatch === true) {
+      delete sanitizedPref.boardCols;
+      delete sanitizedPref.cluesPerCat;
+      delete sanitizedPref.clueTimeSec;
+      delete sanitizedPref.matchPace;
+      sanitizedPref.autoScaleMatch = true;
+    }
     applySettingsPatch(room, {
-      ...preferredSettings,
+      ...sanitizedPref,
       allowEmptyCategories: false,
     });
     if (room.settings.includedCategoryIds.length < room.settings.boardCols) {
@@ -318,6 +466,7 @@ function terminateRoom(room, reason, { excludePlayerId = null } = {}) {
   room.terminated = true;
   room.phase = 'terminated';
   clearRoomTimers(room);
+  clearBotPendingTimers(room);
   clearHostDisconnectTimer(room);
 
   const closedGameId = room.gameId;
@@ -468,6 +617,8 @@ function serializeRoomForPlayer(room, viewerId) {
     phaseEndsAt: room.phaseEndsAt,
     intermissionNextTitle: room.intermissionNextTitle || null,
     serverNow: Date.now(),
+    activePlayerCount: getActivePlayerCount(room),
+    scaledMatchPreview: computeScaledMatchConfig(Math.max(2, getActivePlayerCount(room))),
     settings: {
       ...room.settings,
       customCategoriesMeta: room.settings.customCategories.map((c) => ({
@@ -481,20 +632,26 @@ function serializeRoomForPlayer(room, viewerId) {
     availableCategoryCount: allCats.filter((c) =>
       room.settings.includedCategoryIds.includes(c.id)
     ).length,
-    players: room.players.map((p) => ({
-      id: p.id,
-      name: p.name,
-      avatar: p.avatar,
-      score: p.score,
-      connected: p.connected,
-      isBot: p.isBot,
-      botDifficulty: p.isBot ? (p.botDifficulty || room.settings.botDifficulty || 'medium') : undefined,
-      streak: p.stats?.currentStreak || 0,
-      onFire: Boolean(p.stats?.currentStreak >= 2),
-      inVoice: room.voiceMembers ? room.voiceMembers.has(p.id) : false,
-      voiceMuted: room.voiceMembers?.get(p.id)?.muted ?? false,
-      voiceSpeaking: room.voiceMembers?.get(p.id)?.speaking ?? false,
-    })),
+    players: room.players.map((p) => {
+      const persona = p.isBot ? getPersonalityForBot(p) : null;
+      return {
+        id: p.id,
+        name: p.name,
+        avatar: p.avatar,
+        score: p.score,
+        connected: p.connected,
+        isBot: p.isBot,
+        botDifficulty: p.isBot ? (p.botDifficulty || room.settings.botDifficulty || 'medium') : undefined,
+        personalityId: persona ? persona.id : undefined,
+        personalityTitle: persona ? persona.shortTitle : undefined,
+        personalityArchetype: persona ? persona.archetype : undefined,
+        streak: p.stats?.currentStreak || 0,
+        onFire: Boolean(p.stats?.currentStreak >= 2),
+        inVoice: room.voiceMembers ? room.voiceMembers.has(p.id) : false,
+        voiceMuted: room.voiceMembers?.get(p.id)?.muted ?? false,
+        voiceSpeaking: room.voiceMembers?.get(p.id)?.speaking ?? false,
+      };
+    }),
     board: boardView,
     activeClue: activeClueView,
     finalState: finalView,
@@ -523,7 +680,19 @@ function broadcastRoomEvent(room, payload) {
   }
 }
 
-function sendChat(room, { kind = 'system', color = 'info', text, author = null, icon = null }) {
+function sendChat(
+  room,
+  {
+    kind = 'system',
+    color = 'info',
+    text,
+    author = null,
+    icon = null,
+    isBot = false,
+    botId = null,
+    botPersonalityTitle = null,
+  }
+) {
   if (!room || room.terminated) return;
   broadcastRoomEvent(room, {
     type: 'chat',
@@ -533,11 +702,50 @@ function sendChat(room, { kind = 'system', color = 'info', text, author = null, 
       color,
       author,
       icon,
+      isBot: Boolean(isBot),
+      botId,
+      botPersonalityTitle,
       text,
       ts: Date.now(),
     },
   });
 }
+
+const botHooks = {
+  broadcastEvent: (room, payload) => broadcastRoomEvent(room, payload),
+  sendBotChat: (room, bot, text, persona) => {
+    sendChat(room, {
+      kind: 'chat',
+      color: 'bot',
+      author: bot.name,
+      icon: 'bot',
+      isBot: true,
+      botId: bot.id,
+      botPersonalityTitle: persona?.shortTitle || 'AI Bot',
+      text,
+    });
+  },
+  spawnBotReaction: (room, bot, reactionId) => {
+    if (!room || room.terminated || !bot) return;
+    bot.stats = bot.stats || {
+      correctCount: 0,
+      wrongCount: 0,
+      maxStreak: 0,
+      currentStreak: 0,
+      fastestBuzzMs: 99999,
+      reactionsSent: 0,
+    };
+    bot.stats.reactionsSent++;
+    broadcastRoomEvent(room, {
+      type: 'reaction_spawn',
+      playerId: bot.id,
+      playerName: bot.name,
+      reaction: reactionId,
+      emoji: reactionId,
+      avatarConfig: bot.avatar,
+    });
+  },
+};
 
 
 /* ---------------- Real-Time WebRTC Voice Signaling ---------------- */
@@ -702,46 +910,55 @@ function shuffle(arr) {
 
 function addBotToRoom(room) {
   if (!room || room.terminated) return null;
-  if (room.players.length >= 10) return null;
+  if (room.players.filter((p) => p.connected).length >= MAX_ROOM_PLAYERS) return null;
   const usedNames = new Set(room.players.map((p) => p.name));
   const profile =
     BOT_PROFILES.find((b) => !usedNames.has(b.name)) ||
     {
+      id: BOT_PERSONALITIES[room.players.length % BOT_PERSONALITIES.length].id,
       name: `Bot_${Math.floor(10 + Math.random() * 89)}`,
+      shortTitle: 'Wildcard',
+      archetype: 'The Wildcard Opponent',
       avatar: {
         color: Math.floor(Math.random() * 20),
         eyes: Math.floor(Math.random() * 16),
         mouth: Math.floor(Math.random() * 16),
         hat: Math.floor(Math.random() * 11),
       },
-      skill: 0.65,
     };
 
   const bot = {
     id: 'bot_' + randomId(5),
     token: randomId(8),
     name: profile.name,
+    personalityId: profile.id,
+    personalityTitle: profile.shortTitle,
+    personalityArchetype: profile.archetype,
     avatar: { ...profile.avatar },
     score: 0,
     connected: true,
     isBot: true,
-    botSkill: profile.skill,
     botDifficulty: room.settings.botDifficulty || 'medium',
     ws: null,
   };
   room.players.push(bot);
+  if (room.phase === 'lobby') {
+    syncAutoScaledSettingsForLobby(room);
+  }
   sendChat(room, {
     color: 'join',
-    text: `${bot.name} (Bot) joined the room.`,
+    icon: 'bot',
+    text: `${bot.name} [BOT - ${bot.personalityTitle}] joined the room.`,
   });
   broadcastRoomState(room);
   return bot;
 }
 
 /**
- * Dynamic bot performance model tuned across Easy, Medium, Hard, and Champion.
- * Accounts for room difficulty, individual bot persona, clue row/difficulty ($200 to $1000),
- * realistic human-like reaction time windows, buzzer hesitation, and wager strategies.
+ * Dynamic bot trivia performance model tuned across Easy, Medium, Hard, and Champion.
+ * IMPORTANT: Personality and trivia difficulty are strictly independent systems.
+ * Also applies subtle human-like pacing in larger rooms (4–10 players) so no single
+ * bot locks out every participant on every consecutive question.
  */
 function getBotSkillProfile(bot, room, row = 0, totalRows = 5) {
   const difficulty = (bot?.botDifficulty || room?.settings?.botDifficulty || 'medium').toLowerCase();
@@ -781,29 +998,55 @@ function getBotSkillProfile(bot, room, row = 0, totalRows = 5) {
     baseAccuracy = 0.82;
     rowPenalty = 0.10;
     buzzProbability = 0.84;
-    minReactionMs = 800;
-    maxReactionMs = 2200;
+    minReactionMs = 850;
+    maxReactionMs = 2300;
     answerDelayMinMs = 1000;
     answerDelayMaxMs = 2200;
     wagerAggressiveness = 0.75;
   } else if (difficulty === 'champion') {
-    // Champion: ~85–93% accuracy, expert timing 0.6–1.8s, aggressive wagers, sharp but beatable
+    // Champion: ~85–93% accuracy, expert timing 0.65–1.9s, aggressive wagers, sharp but beatable
     baseAccuracy = 0.92;
     rowPenalty = 0.05;
     buzzProbability = 0.94;
-    minReactionMs = 600;
-    maxReactionMs = 1800;
-    answerDelayMinMs = 700;
-    answerDelayMaxMs = 1700;
+    minReactionMs = 650;
+    maxReactionMs = 1900;
+    answerDelayMinMs = 750;
+    answerDelayMaxMs = 1750;
     wagerAggressiveness = 0.90;
   }
 
-  // Individual persona variance (+/- 0.03 based on bot profile)
-  const botFlavor = bot?.botSkill ? (bot.botSkill - 0.68) * 0.3 : 0;
-  const effectiveAccuracy = Math.max(0.18, Math.min(0.95, baseAccuracy - (rowRatio * rowPenalty) + botFlavor));
-  const effectiveBuzz = Math.max(0.20, Math.min(0.98, buzzProbability - (rowRatio * (rowPenalty * 0.5)) + botFlavor));
+  // Fair multi-player participation pacing: prevent one hot bot from monopolizing 4-10 player rooms
+  const activeCount = getActivePlayerCount(room);
+  const botStreak = bot?.stats?.currentStreak || 0;
+  const justWonLast = room?.pickerId === bot?.id && botStreak >= 1;
+  let crowdReactionOffsetMs = 0;
+  let streakBuzzMod = 0;
 
-  const reactionMs = minReactionMs + Math.random() * (maxReactionMs - minReactionMs);
+  if (activeCount >= 4) {
+    if (botStreak >= 2) {
+      crowdReactionOffsetMs += Math.min(3, botStreak) * 320;
+      streakBuzzMod -= 0.05 * Math.min(3, botStreak - 1);
+    } else if (justWonLast) {
+      crowdReactionOffsetMs += 260;
+    }
+    if (activeCount >= 7) {
+      crowdReactionOffsetMs += Math.random() * 420;
+    }
+  }
+  // Longer/harder clues naturally take slightly longer for humans AND bots to read
+  const readingOffsetMs = Math.round(rowRatio * 450);
+
+  const effectiveAccuracy = Math.max(0.18, Math.min(0.95, baseAccuracy - rowRatio * rowPenalty));
+  const effectiveBuzz = Math.max(
+    0.20,
+    Math.min(0.98, buzzProbability - rowRatio * (rowPenalty * 0.5) + streakBuzzMod)
+  );
+
+  const reactionMs =
+    minReactionMs +
+    Math.random() * (maxReactionMs - minReactionMs) +
+    crowdReactionOffsetMs +
+    readingOffsetMs;
   const answerDelayMs = answerDelayMinMs + Math.random() * (answerDelayMaxMs - answerDelayMinMs);
 
   return {
@@ -819,6 +1062,22 @@ function getBotSkillProfile(bot, room, row = 0, totalRows = 5) {
 /* =========================================================================
    JEOPARDY GAME ENGINE
    ========================================================================= */
+
+/**
+ * Dynamic per-question open buzzer/answer timer adjusted by room setting
+ * AND clue row difficulty so simple $200 clues stay brisk while $1000-$1200
+ * clues give players comfortable thinking time.
+ */
+function computeDynamicClueDurationMs(room, ac) {
+  const baseSec = Number(room?.settings?.clueTimeSec) || 18;
+  const row = Number(ac?.row) || 0;
+  let deltaSec = 0;
+  if (row === 0) deltaSec = -2;
+  else if (row === 3) deltaSec = 2;
+  else if (row >= 4) deltaSec = 4;
+  const effectiveSec = Math.max(10, Math.min(55, baseSec + deltaSec));
+  return effectiveSec * 1000;
+}
 
 function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
   const cols = room.settings.boardCols;
@@ -847,15 +1106,21 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
   }
 
   room.recentClueKeys = room.recentClueKeys || new Set();
+  const usedOnThisBoard = new Set();
+
+  // Backup pool of built-in clues in case a 5-clue custom category is played on a 6-row board
+  const fallbackBuiltinClues = shuffle(
+    BUILTIN_CATEGORIES.flatMap((bc) => bc.clues || [])
+  );
 
   const chosen = pool.slice(0, cols);
   const categories = chosen.map((cat, colIdx) => {
     const allClues = cat.clues || [];
     let poolForCat = allClues.filter(
-      (c) => !room.recentClueKeys.has(c.clue)
+      (c) => !room.recentClueKeys.has(c.clue) && !usedOnThisBoard.has(c.clue)
     );
     if (poolForCat.length < rows) {
-      poolForCat = [...allClues];
+      poolForCat = allClues.filter((c) => !usedOnThisBoard.has(c.clue));
     }
 
     const selectedClues = [];
@@ -863,7 +1128,9 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
 
     for (let r = 0; r < rows; r++) {
       const targetValue = (r + 1) * 200;
-      const candidates = poolForCat.filter((c) => !usedInCol.has(c));
+      const candidates = poolForCat.filter(
+        (c) => !usedInCol.has(c) && !usedOnThisBoard.has(c.clue)
+      );
       let best = candidates.find((c) => c.baseValue === targetValue);
       if (!best && candidates.length > 0) {
         best = candidates.slice().sort(
@@ -872,18 +1139,22 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
             Math.abs((b.baseValue || 400) - targetValue)
         )[0];
       }
-      if (!best && allClues.length > 0) {
-        best = allClues[r % allClues.length];
+      if (!best) {
+        // Never duplicate a clue on the same board (e.g. 5-clue custom category in 6-row match)
+        best = fallbackBuiltinClues.find(
+          (fc) => !usedOnThisBoard.has(fc.clue) && !room.recentClueKeys.has(fc.clue)
+        ) || fallbackBuiltinClues.find((fc) => !usedOnThisBoard.has(fc.clue));
       }
       if (best) {
         usedInCol.add(best);
+        usedOnThisBoard.add(best.clue);
         selectedClues.push(best);
         room.recentClueKeys.add(best.clue);
       }
     }
 
-    if (room.recentClueKeys.size > 300) {
-      const excess = Array.from(room.recentClueKeys).slice(0, 75);
+    if (room.recentClueKeys.size > 400) {
+      const excess = Array.from(room.recentClueKeys).slice(0, 100);
       excess.forEach((k) => room.recentClueKeys.delete(k));
     }
 
@@ -902,8 +1173,25 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
     };
   });
 
+  const totalTiles = cols * rows;
+  const freq = room.settings.specialFrequency || 'normal';
+
   if (room.settings.dailyDoubles) {
-    const ddCount = roundNumber === 2 && cols >= 4 ? 2 : 1;
+    let baseDD = 1;
+    if (totalTiles >= 35) {
+      baseDD = roundNumber === 2 ? 3 : 2;
+    } else if (totalTiles >= 30) {
+      baseDD = 2;
+    } else if (roundNumber === 2 && cols >= 4) {
+      baseDD = 2;
+    }
+    const ddCount =
+      freq === 'low'
+        ? Math.max(1, baseDD - 1)
+        : freq === 'high'
+        ? Math.min(cols, baseDD + 1)
+        : baseDD;
+
     const candidateCoords = [];
     for (let c = 0; c < categories.length; c++) {
       for (let r = 0; r < categories[c].tiles.length; r++) {
@@ -924,20 +1212,33 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
     }
   }
 
-  // Assign Party Wildcard Modifiers to 2-3 non-Daily-Double tiles
-  const nonDDTiles = [];
-  for (let c = 0; c < categories.length; c++) {
-    for (let r = 0; r < categories[c].tiles.length; r++) {
-      if (!categories[c].tiles[r].dailyDouble) {
-        nonDDTiles.push(categories[c].tiles[r]);
+  // Assign Party Wildcard Modifiers scaled proportionally to match length & specialFrequency
+  const nonDDByCol = categories.map((cat) =>
+    shuffle(cat.tiles.filter((t) => !t.dailyDouble))
+  );
+  const totalNonDD = nonDDByCol.reduce((sum, arr) => sum + arr.length, 0);
+  const ratio = freq === 'low' ? 0.09 : freq === 'high' ? 0.24 : 0.16;
+  const minMods = freq === 'low' ? 1 : freq === 'high' ? 3 : 2;
+  const modCount = Math.min(
+    totalNonDD,
+    Math.max(minMods, Math.round(totalTiles * ratio))
+  );
+
+  const MODIFIERS = ['speed_blitz', 'steal', 'chaos_all_play', 'double_trouble'];
+  const colOrder = shuffle(Array.from({ length: categories.length }, (_, idx) => idx));
+  let modsPlaced = 0;
+  let pass = 0;
+  while (modsPlaced < modCount && pass < rows + 2) {
+    for (const colIdx of colOrder) {
+      if (modsPlaced >= modCount) break;
+      const bucket = nonDDByCol[colIdx];
+      if (bucket && bucket.length > 0) {
+        const tile = bucket.pop();
+        tile.modifier = MODIFIERS[modsPlaced % MODIFIERS.length];
+        modsPlaced++;
       }
     }
-  }
-  const MODIFIERS = ['speed_blitz', 'steal', 'chaos_all_play', 'double_trouble'];
-  const shuffledNonDD = shuffle(nonDDTiles);
-  const modCount = Math.min(3, Math.max(2, Math.floor(nonDDTiles.length / 4)));
-  for (let i = 0; i < modCount; i++) {
-    shuffledNonDD[i].modifier = MODIFIERS[i % MODIFIERS.length];
+    pass++;
   }
 
   return { categories };
@@ -947,8 +1248,17 @@ function startNewGame(room) {
   if (!room || room.terminated) return;
   clearRoomTimers(room);
 
+  // Lock match scaling at match start from the actual connected active roster (excluding disconnected)
+  if (room.settings.autoScaleMatch) {
+    syncAutoScaledSettingsForLobby(room);
+  }
+
   // Mint a brand-new game session ID and reset every piece of match state
   room.gameId = 'game_' + randomId(6);
+  if (room.botMemory) {
+    room.botMemory.lastLeaderId = null;
+    room.botMemory.endgameAnnouncedRound = 0;
+  }
   for (const p of room.players) {
     p.score = 0;
     p.stats = {
@@ -975,11 +1285,13 @@ function startNewGame(room) {
   room.phaseEndsAt = 0;
   room.mainTimerRemainingMs = 0;
 
+  const totalClues = room.settings.boardCols * room.settings.cluesPerCat;
   sendChat(room, {
     color: 'success',
-    text: `New match started! Round 1 — Single Jeoparty!`,
+    text: `New match started! (${activePlayers.length} Players • ${room.settings.boardCols}x${room.settings.cluesPerCat} = ${totalClues} Clues) — Round 1!`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
+  notifyBotGameEvent(room, 'match_start', {}, botHooks);
   enterBoardPhase(room);
 }
 
@@ -1015,6 +1327,7 @@ function enterBoardPhase(room) {
   const pickDurationMs = 35000;
   room.phaseEndsAt = Date.now() + pickDurationMs;
   broadcastRoomState(room);
+  notifyBotGameEvent(room, 'board_ready', {}, botHooks);
 
   if (picker && picker.isBot) {
     scheduleRoomTimer(
@@ -1069,10 +1382,11 @@ function advanceAfterRoundComplete(room) {
         connected.sort((a, b) => a.score - b.score);
         room.pickerId = connected[0].id;
       }
+      const topR2 = (room.settings.cluesPerCat || 5) * 400;
       sendChat(room, {
         color: 'gold',
         icon: 'blitz',
-        text: `DOUBLE JEOPARTY! Point values are doubled ($400 - $2000)!`,
+        text: `DOUBLE JEOPARTY! Point values are doubled ($400 - $${topR2.toLocaleString()})!`,
       });
       broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
       enterBoardPhase(room);
@@ -1107,6 +1421,7 @@ function enterIntermissionPhase(room, nextPhaseCallback, nextTitle) {
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'hint' });
   broadcastRoomState(room);
+  notifyBotGameEvent(room, 'intermission', { nextTitle }, botHooks);
 
   scheduleRoomTimer(room, () => {
     if (room.phase !== 'round_intermission') return;
@@ -1130,7 +1445,7 @@ function handleSelectTile(room, player, col, row) {
   clearRoomTimers(room);
   tile.used = true;
 
-  const maxBoardVal = room.round === 2 ? 2000 : 1000;
+  const maxBoardVal = (room.settings.cluesPerCat || 5) * 200 * (room.round === 2 ? 2 : 1);
   const maxWager = Math.max(player.score, maxBoardVal);
 
   const modifier = tile.modifier || null;
@@ -1163,16 +1478,19 @@ function handleSelectTile(room, player, col, row) {
     return;
   }
 
+  const clueDurationMs = computeDynamicClueDurationMs(room, room.activeClue);
+
   // Handle Party Wildcard Modifiers
   if (modifier === 'speed_blitz') {
     room.activeClue.value = Math.round(tile.value * 1.5);
     sendChat(room, {
       color: 'gold',
       icon: 'blitz',
-      text: `SPEED BLITZ! 8s rapid buzzer with +50% bonus points ($${room.activeClue.value})!`,
+      text: `SPEED BLITZ! 9s rapid buzzer with +50% bonus points ($${room.activeClue.value})!`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'blitz' });
-    enterBuzzerClueOpenPhase(room, 8000, true);
+    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
+    enterBuzzerClueOpenPhase(room, 9000, true);
     return;
   }
 
@@ -1183,7 +1501,8 @@ function handleSelectTile(room, player, col, row) {
       text: `STEAL TILE! Correct buzz earns $${room.activeClue.value} AND steals $200 from the leader!`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'steal' });
-    enterBuzzerClueOpenPhase(room, room.settings.clueTimeSec * 1000, true);
+    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
     return;
   }
 
@@ -1195,11 +1514,13 @@ function handleSelectTile(room, player, col, row) {
       text: `DOUBLE TROUBLE! 2X points ($${room.activeClue.value}), but 2X penalty for incorrect guesses!`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
-    enterBuzzerClueOpenPhase(room, room.settings.clueTimeSec * 1000, true);
+    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
     return;
   }
 
   if (modifier === 'chaos_all_play') {
+    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
     enterChaosAllPlayPhase(room);
     return;
   }
@@ -1207,7 +1528,7 @@ function handleSelectTile(room, player, col, row) {
   if (room.settings.answerMode === 'skribbl') {
     enterSkribblCluePhase(room);
   } else {
-    enterBuzzerClueOpenPhase(room, room.settings.clueTimeSec * 1000, true);
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
   }
 }
 
@@ -1226,6 +1547,12 @@ function enterDailyDoubleWagerPhase(room, picker) {
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
   broadcastRoomState(room);
+  notifyBotGameEvent(
+    room,
+    'daily_double',
+    { player: picker, categoryName: room.activeClue.categoryName },
+    botHooks
+  );
 
   if (picker.isBot) {
     scheduleRoomTimer(room, () => {
@@ -1262,7 +1589,7 @@ function handleSubmitDailyDoubleWager(room, player, rawWager) {
   ac.buzzedPlayerId = player.id;
 
   room.phase = 'daily_double_answer';
-  const answerMs = room.settings.clueTimeSec * 1000;
+  const answerMs = computeDynamicClueDurationMs(room, ac) + 2000;
   room.phaseEndsAt = Date.now() + answerMs;
 
   sendChat(room, {
@@ -1285,12 +1612,19 @@ function handleSubmitDailyDoubleWager(room, player, rawWager) {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'daily_double_answer') return;
       player.score -= ac.wager;
+      recordWrongAnswer(player);
       ac.lastWrongText = `${player.name} ran out of time (-$${ac.wager.toLocaleString()})`;
       sendChat(room, {
         color: 'danger',
         text: `Time's up for ${player.name}! (-$${ac.wager.toLocaleString()})`,
       });
       broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
+      notifyBotGameEvent(
+        room,
+        'wrong_answer',
+        { player, categoryName: ac.categoryName },
+        botHooks
+      );
       enterClueResultPhase(room);
     }, answerMs);
   }
@@ -1317,19 +1651,38 @@ function handleSubmitDailyDoubleAnswer(room, player, text) {
     player.score += ac.wager;
     ac.winnerName = player.name;
     ac.winnerDelta = ac.wager;
+    recordCorrectAnswer(room, player, ac.wager);
     sendChat(room, {
       color: 'success',
       text: `${player.name} nailed the Daily Double! (+$${ac.wager.toLocaleString()})`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
+    notifyBotGameEvent(
+      room,
+      player.stats?.currentStreak >= 3 ? 'streak' : 'correct_answer',
+      {
+        player,
+        points: ac.wager,
+        streak: player.stats?.currentStreak || 1,
+        categoryName: ac.categoryName,
+      },
+      botHooks
+    );
   } else {
     player.score -= ac.wager;
+    recordWrongAnswer(player);
     ac.lastWrongText = `${player.name}: "${text}" (-$${ac.wager.toLocaleString()})`;
     sendChat(room, {
       color: 'danger',
       text: `"${text}" — Incorrect! ${player.name} loses $${ac.wager.toLocaleString()}.`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
+    notifyBotGameEvent(
+      room,
+      'wrong_answer',
+      { player, categoryName: ac.categoryName },
+      botHooks
+    );
   }
   enterClueResultPhase(room);
 }
@@ -1432,8 +1785,6 @@ function handlePlayerBuzz(room, player) {
   const buzzAnswerMs = 11000;
   room.phaseEndsAt = Date.now() + buzzAnswerMs;
 
-  triggerBotBanter(room, player, 'buzz');
-
   sendChat(room, {
     color: 'info',
     text: `${player.name} buzzed in!`,
@@ -1489,6 +1840,7 @@ function applyCorrectBuzz(room, player) {
   ac.lastWrongText = null;
 
   // Handle Steal tile modifier
+  let stolenVictim = null;
   if (ac.modifier === 'steal') {
     const leader = room.players
       .filter((p) => p.id !== player.id && p.connected && p.score > 0)
@@ -1497,6 +1849,7 @@ function applyCorrectBuzz(room, player) {
       const stolen = Math.min(200, leader.score);
       leader.score -= stolen;
       player.score += stolen;
+      stolenVictim = leader;
       sendChat(room, {
         color: 'gold',
         icon: 'steal',
@@ -1506,13 +1859,39 @@ function applyCorrectBuzz(room, player) {
   }
 
   recordCorrectAnswer(room, player, totalPoints);
-  if (player.isBot) {
-    triggerBotBanter(room, player, 'correct');
+  if (stolenVictim) {
+    notifyBotGameEvent(
+      room,
+      'steal_executed',
+      { player, victim: stolenVictim, points: totalPoints, categoryName: ac.categoryName },
+      botHooks
+    );
+  } else if ((player.stats?.currentStreak || 0) >= 3) {
+    notifyBotGameEvent(
+      room,
+      'streak',
+      {
+        player,
+        streak: player.stats.currentStreak,
+        points: totalPoints,
+        categoryName: ac.categoryName,
+      },
+      botHooks
+    );
+  } else if (underdogBonus > 0 && Math.random() < 0.55) {
+    notifyBotGameEvent(
+      room,
+      'comeback',
+      { player, points: totalPoints, categoryName: ac.categoryName },
+      botHooks
+    );
   } else {
-    const randomBot = room.players.find((p) => p.isBot && p.connected);
-    if (randomBot && Math.random() < 0.25) {
-      triggerBotBanter(room, randomBot, 'praise_human');
-    }
+    notifyBotGameEvent(
+      room,
+      'correct_answer',
+      { player, points: totalPoints, categoryName: ac.categoryName },
+      botHooks
+    );
   }
 
   sendChat(room, {
@@ -1532,7 +1911,12 @@ function applyWrongBuzz(room, player, displayGuess) {
   player.score -= penalty;
 
   recordWrongAnswer(player);
-  triggerBotBanter(room, player, 'wrong');
+  notifyBotGameEvent(
+    room,
+    'wrong_answer',
+    { player, categoryName: ac.categoryName },
+    botHooks
+  );
 
   // Progressive letter hint: reveal another letter!
   revealOneLetterHint(ac);
@@ -1746,90 +2130,6 @@ function normalizeReactionId(raw) {
   return null;
 }
 
-const BOT_REACTIONS = [
-  'laugh',
-  'rofl',
-  'happy',
-  'shocked',
-  'confused',
-  'celebrate',
-  'facepalm',
-  'thinking',
-  'fire',
-];
-
-const BOT_BANTER = {
-  buzz: [
-    'Hold my coffee, I know this!',
-    'Beep boop, calculating answer...',
-    'I was programmed for this moment!',
-    'Too slow, humans!',
-    'Let a real intelligence handle this.',
-    'I think I saw this on TV once!',
-    'Pressing buzzers is my favorite hobby!',
-    'Data retrieval indexed in 0.4s!',
-  ],
-  correct: [
-    '100% calculation accuracy!',
-    'Neural networks never lie.',
-    'Easy points for the bot squad!',
-    'That was practically in my BIOS.',
-    "Beginner's luck strikes again!",
-    'Calculated with 99.8% confidence.',
-    'Statistically expected result.',
-  ],
-  wrong: [
-    'Does not compute!',
-    'Who programmed that clue?!',
-    'I blame high network latency!',
-    'Error 404: Brain not found.',
-    'My database was bribed!',
-    'I was confident and wrong!',
-    'Anomalous dataset. Recalibrating.',
-    'Was that a trick question?!',
-  ],
-  streak: [
-    'I am unstoppable!',
-    'Bow down to your new pixel overlord!',
-    'Try to break my streak if you dare!',
-  ],
-  praise_human: [
-    'Lightning fast buzzer speed!',
-    'Respectable trivia reflexes!',
-    "Nice solve, didn't see that coming!",
-    'Good buzz, human!',
-  ],
-  reaction: BOT_REACTIONS,
-};
-
-function triggerBotBanter(room, bot, category) {
-  if (!bot || !bot.isBot) return;
-  if (Math.random() > 0.38) return;
-  const list = BOT_BANTER[category];
-  if (!list || list.length === 0) return;
-  const quote = list[Math.floor(Math.random() * list.length)];
-  setTimeout(() => {
-    if (room && !room.terminated) {
-      sendChat(room, {
-        color: 'bot',
-        icon: 'bot',
-        text: `[${bot.name}]: ${quote}`,
-      });
-      if (Math.random() < 0.45) {
-        const reactionId = BOT_BANTER.reaction[Math.floor(Math.random() * BOT_BANTER.reaction.length)];
-        broadcastRoomEvent(room, {
-          type: 'reaction_spawn',
-          playerId: bot.id,
-          playerName: bot.name,
-          reaction: reactionId,
-          emoji: reactionId,
-          avatarConfig: bot.avatar,
-        });
-      }
-    }
-  }, 400 + Math.random() * 800);
-}
-
 function computeSuperlatives(room) {
   const superlatives = [];
   const players = room.players || [];
@@ -1909,7 +2209,14 @@ function enterChaosAllPlayPhase(room) {
   clearRoomTimers(room);
   const ac = room.activeClue;
   room.phase = 'clue_chaos';
-  const durationMs = 14000;
+  const durationSec = Math.max(
+    14,
+    Math.min(
+      22,
+      Math.round((room.settings.clueTimeSec || 18) * 0.85) + (ac.row >= 4 ? 2 : 0)
+    )
+  );
+  const durationMs = durationSec * 1000;
   room.phaseEndsAt = Date.now() + durationMs;
   ac.chaosSolvedList = [];
   ac.chaosSubmissions = {};
@@ -1920,7 +2227,7 @@ function enterChaosAllPlayPhase(room) {
   sendChat(room, {
     color: 'danger',
     icon: 'chaos',
-    text: `CHAOS ALL-PLAY! No buzzer — EVERYONE answers simultaneously for 14 seconds!`,
+    text: `CHAOS ALL-PLAY! No buzzer — EVERYONE answers simultaneously for ${durationSec} seconds!`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'chaos' });
   broadcastRoomState(room);
@@ -1988,6 +2295,19 @@ function handleChaosAnswer(room, player, text) {
       room.pickerId = player.id;
     }
     recordCorrectAnswer(room, player, points);
+    if (order === 0) {
+      notifyBotGameEvent(
+        room,
+        (player.stats?.currentStreak || 0) >= 3 ? 'streak' : 'correct_answer',
+        {
+          player,
+          points,
+          streak: player.stats?.currentStreak || 1,
+          categoryName: ac.categoryName,
+        },
+        botHooks
+      );
+    }
 
     const rankSuffix = order === 0 ? '1st' : order === 1 ? '2nd' : `${order + 1}th`;
     sendPrivateChat(player, {
@@ -2058,7 +2378,7 @@ function enterSkribblCluePhase(room) {
   clearRoomTimers(room);
   const ac = room.activeClue;
   room.phase = 'clue_skribbl';
-  const durationMs = room.settings.clueTimeSec * 1000;
+  const durationMs = computeDynamicClueDurationMs(room, ac);
   room.phaseEndsAt = Date.now() + durationMs;
   ac.hintMask = buildLetterMask(ac.clueObj.answer, 0);
 
@@ -2122,6 +2442,18 @@ function handleSkribblGuessOrChat(room, player, text) {
       room.pickerId = player.id;
       ac.winnerName = player.name;
       ac.winnerDelta = points;
+      recordCorrectAnswer(room, player, points);
+      notifyBotGameEvent(
+        room,
+        (player.stats?.currentStreak || 0) >= 3 ? 'streak' : 'correct_answer',
+        {
+          player,
+          points,
+          streak: player.stats?.currentStreak || 1,
+          categoryName: ac.categoryName,
+        },
+        botHooks
+      );
     }
 
     sendChat(room, {
@@ -2336,6 +2668,7 @@ function enterGameOverPhase(room) {
   }
   broadcastRoomEvent(room, { type: 'sfx', sound: 'victory' });
   broadcastRoomState(room);
+  notifyBotGameEvent(room, 'game_over', { winner }, botHooks);
 }
 
 function getAvailablePublicRooms() {
@@ -2427,6 +2760,7 @@ const server = http.createServer((req, res) => {
         activeRooms: rooms.size,
         terminatedRooms: terminatedRooms.size,
         hostReconnectGraceMs: HOST_RECONNECT_GRACE_MS,
+        botAi: getBotAiServiceDescriptor(),
       })
     );
     return;
@@ -2547,6 +2881,9 @@ attachWebSocketServer(server, (ws) => {
           color: 'leave',
           text: `${player.name} (Host) left the room. Host privileges transferred to ${nextHuman.name}!`,
         });
+        if (room.phase === 'lobby') {
+          syncAutoScaledSettingsForLobby(room);
+        }
         advanceGameIfBlockedByDepartedNonHost(room, player.id);
         broadcastRoomEvent(room, {
           type: 'host_transferred',
@@ -2567,6 +2904,9 @@ attachWebSocketServer(server, (ws) => {
 
     // Non-host intentional leave: remove player and invalidate their old room token
     room.players = room.players.filter((p) => p.id !== player.id);
+    if (room.phase === 'lobby') {
+      syncAutoScaledSettingsForLobby(room);
+    }
     sendChat(room, {
       color: 'leave',
       text: `${player.name} left the room.`,
@@ -2629,6 +2969,9 @@ attachWebSocketServer(server, (ws) => {
               newHostId: nextHuman.id,
               newHostName: nextHuman.name,
             });
+            if (room.phase === 'lobby') {
+              syncAutoScaledSettingsForLobby(room);
+            }
             broadcastRoomState(room);
           } else {
             terminateRoom(
@@ -2643,11 +2986,17 @@ attachWebSocketServer(server, (ws) => {
         color: 'warn',
         text: `Host ${player.name} disconnected — waiting ${graceSecs}s to reconnect...`,
       });
+      if (room.phase === 'lobby') {
+        syncAutoScaledSettingsForLobby(room);
+      }
       broadcastRoomState(room);
       return;
     }
 
     // Non-host temporary disconnect: keep player record & token for reconnect
+    if (room.phase === 'lobby') {
+      syncAutoScaledSettingsForLobby(room);
+    }
     sendChat(room, {
       color: 'warn',
       text: `${player.name} disconnected.`,
@@ -2779,6 +3128,9 @@ attachWebSocketServer(server, (ws) => {
       addBotToRoom(room);
     }
 
+    if (room.phase === 'lobby') {
+      syncAutoScaledSettingsForLobby(room);
+    }
     broadcastRoomState(room);
   }
 
@@ -2942,12 +3294,15 @@ attachWebSocketServer(server, (ws) => {
           return;
         }
 
-        const formattedClues = cluesRaw.slice(0, 5).map((c, idx) => ({
-          baseValue: (idx + 1) * 200,
-          clue: String(c.clue || '').trim().slice(0, 260) || 'Bonus Mystery Clue!',
-          answer: String(c.answer || '').trim().slice(0, 80) || 'Mystery',
-          accept: [],
-        }));
+        const formattedClues = cluesRaw
+          .slice(0, 6)
+          .filter((c, idx) => idx < 5 || (String(c?.clue || '').trim() && String(c?.answer || '').trim()))
+          .map((c, idx) => ({
+            baseValue: (idx + 1) * 200,
+            clue: String(c.clue || '').trim().slice(0, 260) || 'Bonus Mystery Clue!',
+            answer: String(c.answer || '').trim().slice(0, 80) || 'Mystery',
+            accept: [],
+          }));
 
         const customCat = {
           id: 'custom_' + randomId(4),
@@ -3036,6 +3391,9 @@ attachWebSocketServer(server, (ws) => {
           target.connected = false;
           target.ws = null;
           target.clearConnectionRoomRef = null;
+        }
+        if (currentRoom.phase === 'lobby') {
+          syncAutoScaledSettingsForLobby(currentRoom);
         }
         sendChat(currentRoom, {
           color: 'leave',
@@ -3135,6 +3493,7 @@ attachWebSocketServer(server, (ws) => {
         for (const p of currentRoom.players) {
           p.score = 0;
         }
+        syncAutoScaledSettingsForLobby(currentRoom);
         broadcastRoomState(currentRoom);
         break;
       }
@@ -3183,12 +3542,16 @@ attachWebSocketServer(server, (ws) => {
             msg.answer
           );
           if (!consumed) {
-            sendChat(currentRoom, {
-              kind: 'chat',
-              color: 'chat',
-              author: currentPlayer.name,
-              text: String(msg.answer || '').trim().slice(0, 140),
-            });
+            const chatText = String(msg.answer || '').trim().slice(0, 140);
+            if (chatText) {
+              sendChat(currentRoom, {
+                kind: 'chat',
+                color: 'chat',
+                author: currentPlayer.name,
+                text: chatText,
+              });
+              handleHumanChatForBots(currentRoom, currentPlayer, chatText, botHooks);
+            }
           }
         }
         break;
@@ -3245,6 +3608,21 @@ attachWebSocketServer(server, (ws) => {
             currentPlayer.id === currentRoom.pickerId)
         ) {
           enterBoardPhase(currentRoom);
+        }
+        break;
+      }
+
+      case 'continue_intermission': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        if (
+          currentRoom.phase === 'round_intermission' &&
+          currentPlayer.id === currentRoom.hostId &&
+          typeof currentRoom.intermissionCallback === 'function'
+        ) {
+          clearRoomTimers(currentRoom);
+          const cb = currentRoom.intermissionCallback;
+          currentRoom.intermissionCallback = null;
+          cb();
         }
         break;
       }
@@ -3344,6 +3722,7 @@ attachWebSocketServer(server, (ws) => {
           author: currentPlayer.name,
           text,
         });
+        handleHumanChatForBots(currentRoom, currentPlayer, text, botHooks);
         break;
       }
 

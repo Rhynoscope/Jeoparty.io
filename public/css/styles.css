@@ -4515,3 +4515,219 @@ button:hover .sprite-plus {
     height: 20px !important;
   }
 }
+
+/* ==========================================================================
+   v3.1.0 — HUMAN-LIKE AI BOT PERSONALITIES, BOT CHAT & DYNAMIC MATCH SCALING
+   ========================================================================== */
+
+/* Lobby Auto-Scale Header Row & Live Player-Count Scaling Badge */
+.pace-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auto-scale-banner {
+  font-family: var(--font-pixel);
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #0b3d1c;
+  color: #55ff94;
+  border: 2px solid #000000;
+  border-radius: 4px;
+  padding: 2px 8px;
+  box-shadow: 2px 2px 0 #000000;
+  letter-spacing: 0.4px;
+}
+
+.auto-scale-banner.is-manual {
+  background: #3d2604;
+  color: #ffd32a;
+}
+
+/* AI Bot Chat Messages, [BOT] Tag, Personality Chip & Typing Bar */
+.chat-line.c-bot,
+.chat-line.chat-msg-bot {
+  background: #f2eeff;
+  border-left: 3px solid #6c5ce7;
+  color: #1c1638;
+}
+
+.chat-bot-tag {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.2;
+  background: #5f27cd;
+  color: #ffffff;
+  border: 1.5px solid #000000;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-right: 4px;
+  vertical-align: 1px;
+  letter-spacing: 0.4px;
+}
+
+.chat-persona-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1.25;
+  background: #e4dcff;
+  color: #3b1c85;
+  border: 1px solid #aa96f5;
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+
+.bot-typing-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  background: #eceeff;
+  border-top: 2px dashed #c2c9ef;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #4527a0;
+}
+
+.bot-typing-bar[hidden] {
+  display: none !important;
+}
+
+.bot-typing-bar .sprite-loading {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Sidebar Bot Personality & Typing Chips */
+.player-status-chip {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.player-status-chip.is-bot-typing {
+  color: #0969da;
+  font-weight: 800;
+}
+
+/* Individual Bot Difficulty Modal — Personality Independence Note */
+.bot-modal-persona-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #eef1ff;
+  color: #1a1640;
+  border: 2px solid #000000;
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin: 2px 0 10px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 #000000;
+}
+
+.bot-modal-persona-note .pixel-sprite {
+  flex-shrink: 0;
+}
+
+/* Dynamic 6, 7 & 8 Column Boards + 6-Row Clues (7-10 Player Scaling) */
+.jeopardy-board-grid[data-rows="6"] {
+  grid-template-rows: minmax(60px, auto) repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.jeopardy-board-grid[data-cols="6"] .j-cat-header {
+  font-size: clamp(0.66rem, 0.5rem + 0.52vw, 0.86rem);
+  padding: 6px 4px;
+}
+
+.jeopardy-board-grid[data-cols="6"] .j-tile-btn {
+  font-size: clamp(0.84rem, 0.6rem + 0.95vw, 1.45rem);
+}
+
+.jeopardy-board-grid[data-cols="7"] {
+  gap: 5px;
+}
+
+.jeopardy-board-grid[data-cols="7"] .j-cat-header {
+  font-size: clamp(0.58rem, 0.45rem + 0.42vw, 0.76rem);
+  padding: 5px 3px;
+  overflow-wrap: anywhere;
+}
+
+.jeopardy-board-grid[data-cols="7"] .j-tile-btn {
+  font-size: clamp(0.75rem, 0.54rem + 0.76vw, 1.18rem);
+}
+
+.jeopardy-board-grid[data-cols="8"] {
+  gap: 4px;
+}
+
+.jeopardy-board-grid[data-cols="8"] .j-cat-header {
+  font-size: clamp(0.54rem, 0.42rem + 0.36vw, 0.7rem);
+  padding: 4px 2px;
+  overflow-wrap: anywhere;
+}
+
+.jeopardy-board-grid[data-cols="8"] .j-tile-btn {
+  font-size: clamp(0.68rem, 0.48rem + 0.65vw, 1.04rem);
+}
+
+.jeopardy-board-grid[data-cols="7"] .tile-modifier-tag,
+.jeopardy-board-grid[data-cols="8"] .tile-modifier-tag {
+  top: 2px;
+  right: 2px;
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  justify-content: center;
+}
+
+.jeopardy-board-grid[data-cols="7"] .tile-modifier-tag .tile-mod-text,
+.jeopardy-board-grid[data-cols="8"] .tile-modifier-tag .tile-mod-text {
+  display: none !important;
+}
+
+.jeopardy-board-grid[data-cols="7"] .j-tile-btn.tile-with-modifier .j-tile-value,
+.jeopardy-board-grid[data-cols="8"] .j-tile-btn.tile-with-modifier .j-tile-value {
+  margin-top: 4px;
+}
+
+/* Mobile Touch-Friendly Horizontal Scroll for Wide 7-8 Column Large-Party Boards */
+@media (max-width: 768px) {
+  .board-panel:has(.jeopardy-board-grid[data-cols="7"]),
+  .board-panel:has(.jeopardy-board-grid[data-cols="8"]) {
+    container-type: normal;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .jeopardy-board-grid[data-cols="7"] {
+    min-width: 540px;
+  }
+
+  .jeopardy-board-grid[data-cols="8"] {
+    min-width: 616px;
+  }
+
+  .jeopardy-board-grid[data-rows="6"] .j-tile-btn {
+    min-height: 44px !important;
+  }
+
+  .jeopardy-board-grid[data-cols="7"] .j-tile-btn.tile-with-modifier .j-tile-value,
+  .jeopardy-board-grid[data-cols="8"] .j-tile-btn.tile-with-modifier .j-tile-value {
+    font-size: 0.72rem !important;
+    padding: 0 !important;
+    margin: 10px 0 0 0 !important;
+  }
+}
