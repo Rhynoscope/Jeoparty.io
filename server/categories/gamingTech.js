@@ -4,7 +4,7 @@ module.exports = [
   {
     "id": "video-games",
     "name": "VIDEO GAME WORLDS",
-    "icon": "🎮",
+    "icon": "video-games",
     "group": "nerdy",
     "blurb": "Iconic boss fights, open worlds & legendary video game franchises",
     "clues": [
@@ -254,7 +254,7 @@ module.exports = [
   {
     "id": "tech-gadgets",
     "name": "TECH & GADGETS",
-    "icon": "💻",
+    "icon": "tech-gadgets",
     "group": "nerdy",
     "blurb": "Silicon valley revolutions, everyday tech & retro electronics",
     "clues": [
@@ -481,7 +481,7 @@ module.exports = [
   {
     "id": "minecraft-roblox",
     "name": "MINECRAFT & ROBLOX LORE",
-    "icon": "🧱",
+    "icon": "minecraft-roblox",
     "group": "nerdy",
     "blurb": "Creepers, crafting tables, bloxburg & sandbox game culture",
     "clues": [
@@ -662,7 +662,7 @@ module.exports = [
   {
     "id": "nintendo-classics",
     "name": "NINTENDO & MARIO MULTIVERSE",
-    "icon": "🍄",
+    "icon": "nintendo-classics",
     "group": "nerdy",
     "blurb": "Mushroom Kingdom royalty, Hyrule adventures & retro Nintendo magic",
     "clues": [
@@ -849,7 +849,7 @@ module.exports = [
   {
     "id": "horror-games",
     "name": "HORROR GAMES & CREEPYPASTAS",
-    "icon": "👻",
+    "icon": "horror-games",
     "group": "nerdy",
     "blurb": "Jumpscares, haunted pizzas, slender figures & atmospheric chills",
     "clues": [

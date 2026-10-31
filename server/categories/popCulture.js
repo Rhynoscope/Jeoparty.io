@@ -4,7 +4,7 @@ module.exports = [
   {
     "id": "internet-memes",
     "name": "INTERNET LORE & MEMES",
-    "icon": "🌐",
+    "icon": "internet-memes",
     "group": "pop",
     "blurb": "Viral videos, cursed debates & classic internet moments",
     "clues": [
@@ -270,7 +270,7 @@ module.exports = [
   {
     "id": "blockbuster-movies",
     "name": "BLOCKBUSTER MOVIES",
-    "icon": "🎬",
+    "icon": "blockbuster-movies",
     "group": "pop",
     "blurb": "Hollywood smash hits, cinematic twists & box-office royalty",
     "clues": [
@@ -491,7 +491,7 @@ module.exports = [
   {
     "id": "pop-music",
     "name": "POP & THROWBACK BANGERS",
-    "icon": "🎵",
+    "icon": "pop-music",
     "group": "pop",
     "blurb": "Chart-topping hooks, iconic pop icons & karaoke legends",
     "clues": [
@@ -710,7 +710,7 @@ module.exports = [
   {
     "id": "binge-tv",
     "name": "BINGE-WORTHY TV",
-    "icon": "📺",
+    "icon": "binge-tv",
     "group": "pop",
     "blurb": "Streaming addiction, peak prestige drama & sitcom classics",
     "clues": [
@@ -922,7 +922,7 @@ module.exports = [
   {
     "id": "slang-translator",
     "name": "SLANG TRANSLATOR",
-    "icon": "💬",
+    "icon": "slang-translator",
     "group": "pop",
     "blurb": "Gen Z, Alpha & internet slang explained for mere mortals",
     "clues": [
@@ -1160,7 +1160,7 @@ module.exports = [
   {
     "id": "superheroes",
     "name": "SUPERHEROES & VILLAINS",
-    "icon": "🦸",
+    "icon": "superheroes",
     "group": "pop",
     "blurb": "Comics, capes, mutant powers & comic-book showdowns",
     "clues": [
@@ -1376,7 +1376,7 @@ module.exports = [
   {
     "id": "cartoons-anime",
     "name": "CARTOONS & ANIME",
-    "icon": "⚡",
+    "icon": "cartoons-anime",
     "group": "pop",
     "blurb": "Animated icons, Saturday mornings & epic anime battles",
     "clues": [
@@ -1597,7 +1597,7 @@ module.exports = [
   {
     "id": "nostalgia-90s-00s",
     "name": "90s & 2000s NOSTALGIA",
-    "icon": "📼",
+    "icon": "nostalgia-90s-00s",
     "group": "pop",
     "blurb": "Blockbuster rentals, dial-up screech & Millennial childhood",
     "clues": [
@@ -1820,7 +1820,7 @@ module.exports = [
   {
     "id": "identify-the-song",
     "name": "IDENTIFY THE SONG",
-    "icon": "🎤",
+    "icon": "identify-the-song",
     "group": "pop",
     "blurb": "Finish the lyric, identify the mega-hit & name that tune",
     "clues": [

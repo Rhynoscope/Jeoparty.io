@@ -566,14 +566,101 @@ function drawHatOrCrown(g, hatIdx, showCrown, bobY, frameIdx) {
   }
 }
 
-function getSpriteStripUrl(avatar = {}, showCrown = false) {
+function drawPixelStar(g, cx, cy, arm, fillCol) {
+  g.line(cx - arm, cy, cx + arm, cy, 1.1, BLACK);
+  g.line(cx, cy - arm, cx, cy + arm, 1.1, BLACK);
+  g.line(cx - arm + 1, cy, cx + arm - 1, cy, 0.7, fillCol);
+  g.line(cx, cy - arm + 1, cx, cy + arm - 1, 0.7, fillCol);
+  g.px(cx, cy, WHITE);
+}
+
+function drawMoodEffects(g, palette, mood, bobY, f) {
+  const fill = hexToRgba(palette.fill);
+  if (mood === 'happy') {
+    // Rosy pixel cheeks + twinkling stars
+    g.brush(15, 27 + bobY, 1.4, PINK);
+    g.brush(37, 27 + bobY, 1.4, PINK);
+    const s1y = f % 2 === 0 ? 11 : 9;
+    const s2y = f % 2 === 0 ? 14 : 16;
+    drawPixelStar(g, 7, s1y, f % 2 === 0 ? 3 : 2, GOLD);
+    drawPixelStar(g, 45, s2y, f % 2 === 1 ? 3 : 2, LIME);
+  } else if (mood === 'excited') {
+    // Comic MS Paint excitement action lines flashing around head
+    const off = f % 2 === 0 ? 0 : 2;
+    g.line(4, 15 + off, 9, 18 + off, 1.3, BLACK);
+    g.line(4, 15 + off, 8, 17 + off, 0.8, GOLD);
+    g.line(48, 15 + (2 - off), 43, 18 + (2 - off), 1.3, BLACK);
+    g.line(48, 15 + (2 - off), 44, 17 + (2 - off), 0.8, GOLD);
+    if (f === 1 || f === 3) {
+      g.line(5, 27, 9, 27, 1.2, BLACK);
+      g.line(5, 27, 8, 27, 0.8, CYAN);
+      g.line(47, 27, 43, 27, 1.2, BLACK);
+      g.line(47, 27, 44, 27, 0.8, CYAN);
+    }
+  } else if (mood === 'sad') {
+    // Animated falling blue pixel teardrop down cheek across 4 frames
+    const dropY = 25 + bobY + f * 3;
+    g.brush(36, dropY, 2.0, BLACK);
+    g.px(36, dropY - 2, BLACK);
+    g.brush(36, dropY, 1.1, CYAN);
+  } else if (mood === 'victory') {
+    // Cheering little MS Paint hands waving + confetti stars
+    const handWaveL = f % 2 === 0 ? -3 : 0;
+    const handWaveR = f % 2 === 1 ? -3 : 0;
+    g.oval(7, 36 + bobY + handWaveL, 3.2, 3.2, 1.2, BLACK);
+    g.floodFill(7, 36 + bobY + handWaveL, fill);
+    g.oval(45, 36 + bobY + handWaveR, 3.2, 3.2, 1.2, BLACK);
+    g.floodFill(45, 36 + bobY + handWaveR, fill);
+    drawPixelStar(g, 7, 10 + (f % 2) * 2, 3, GOLD);
+    drawPixelStar(g, 45, 12 - (f % 2) * 2, 3, CYAN);
+    g.rect(11, 5 + ((f * 3) % 7), 2, 2, PINK);
+    g.rect(41, 6 + (((f + 2) * 3) % 7), 2, 2, LIME);
+  } else if (mood === 'defeat') {
+    // Orbiting dizzy stars + sweat drop
+    const angles = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5];
+    const a1 = angles[f];
+    const a2 = angles[(f + 2) % 4];
+    const sx1 = Math.round(26 + Math.cos(a1) * 14);
+    const sy1 = Math.round(9 + Math.sin(a1) * 3);
+    const sx2 = Math.round(26 + Math.cos(a2) * 14);
+    const sy2 = Math.round(9 + Math.sin(a2) * 3);
+    drawPixelStar(g, sx1, sy1, 2, GOLD);
+    drawPixelStar(g, sx2, sy2, 2, CYAN);
+  } else if (mood === 'speaking') {
+    // Animated MS Paint green voice waves beside mouth
+    g.line(42, 26 + bobY, 42, 30 + bobY, 1.3, BLACK);
+    g.line(42, 26 + bobY, 42, 30 + bobY, 0.8, LIME);
+    if (f >= 1) {
+      g.poly([[45, 23 + bobY], [46, 28 + bobY], [45, 33 + bobY]], 1.3, BLACK);
+      g.poly([[45, 23 + bobY], [46, 28 + bobY], [45, 33 + bobY]], 0.8, LIME);
+    }
+    if (f === 2 || f === 3) {
+      g.poly([[48, 20 + bobY], [50, 28 + bobY], [48, 36 + bobY]], 1.3, BLACK);
+      g.poly([[48, 20 + bobY], [50, 28 + bobY], [48, 36 + bobY]], 0.8, LIME);
+    }
+  }
+}
+
+const VALID_MOODS = new Set([
+  'idle',
+  'happy',
+  'sad',
+  'excited',
+  'victory',
+  'defeat',
+  'speaking',
+]);
+
+export function getSpriteStripUrl(avatar = {}, showCrown = false, mood = 'idle') {
+  const safeMood = VALID_MOODS.has(mood) ? mood : 'idle';
+  const effectiveCrown = Boolean(showCrown || safeMood === 'victory');
   const cIdx =
     (((Number(avatar.color) || 0) % AVATAR_COLORS.length) + AVATAR_COLORS.length) %
     AVATAR_COLORS.length;
   const eIdx = (((Number(avatar.eyes) || 0) % EYE_COUNT) + EYE_COUNT) % EYE_COUNT;
   const mIdx = (((Number(avatar.mouth) || 0) % MOUTH_COUNT) + MOUTH_COUNT) % MOUTH_COUNT;
   const hIdx = (((Number(avatar.hat) || 0) % HAT_COUNT) + HAT_COUNT) % HAT_COUNT;
-  const key = `${cIdx}:${eIdx}:${mIdx}:${hIdx}:${showCrown ? 1 : 0}`;
+  const key = `${cIdx}:${eIdx}:${mIdx}:${hIdx}:${effectiveCrown ? 1 : 0}:${safeMood}`;
 
   if (spriteUrlCache.has(key)) {
     return spriteUrlCache.get(key);
@@ -588,16 +675,46 @@ function getSpriteStripUrl(avatar = {}, showCrown = false) {
   const palette = AVATAR_COLORS[cIdx];
   const shapeVariant = (cIdx + eIdx * 2 + hIdx) % 5;
 
+  const BOB_BY_MOOD = {
+    idle: [0, -1, 0, 0],
+    happy: [0, -2, 0, -1],
+    excited: [0, -2, -1, -3],
+    sad: [1, 1, 2, 1],
+    victory: [-3, -1, -2, 0],
+    defeat: [1, 2, 1, 2],
+    speaking: [0, -1, 0, -1],
+  };
+
   for (let f = 0; f < FRAME_COUNT; f++) {
     const grid = new MiniPixelGrid(FRAME_W, FRAME_H);
-    const bobY = f === 1 ? -1 : 0;
+    const bobY = (BOB_BY_MOOD[safeMood] || BOB_BY_MOOD.idle)[f];
     const boilSeed = f * 0.85;
-    const isBlink = f === 3;
+    const isBlink = safeMood === 'idle' && f === 3;
+
+    // Expressive mood face overrides while keeping sunglasses/special traits recognizable
+    let frameEyes = eIdx;
+    let frameMouth = mIdx;
+    if (safeMood === 'happy' || safeMood === 'victory') {
+      if (eIdx !== 7 && eIdx !== 9 && eIdx !== 13) frameEyes = f % 2 === 0 ? 5 : eIdx;
+      frameMouth = 1;
+    } else if (safeMood === 'excited') {
+      if (eIdx !== 7) frameEyes = 6;
+      frameMouth = f % 2 === 0 ? 1 : 12;
+    } else if (safeMood === 'sad') {
+      if (eIdx !== 7) frameEyes = 10;
+      frameMouth = 3;
+    } else if (safeMood === 'defeat') {
+      frameEyes = 8;
+      frameMouth = 2;
+    } else if (safeMood === 'speaking') {
+      frameMouth = f % 2 === 0 ? 1 : 5;
+    }
 
     drawBodyAndHead(grid, palette, shapeVariant, bobY, boilSeed);
-    drawEyes(grid, eIdx, bobY, isBlink, f);
-    drawMouth(grid, mIdx, bobY, f);
-    drawHatOrCrown(grid, hIdx, showCrown, bobY, f);
+    drawEyes(grid, frameEyes, bobY, isBlink, f);
+    drawMouth(grid, frameMouth, bobY, f);
+    drawHatOrCrown(grid, hIdx, effectiveCrown, bobY, f);
+    drawMoodEffects(grid, palette, safeMood, bobY, f);
 
     const imgData = new ImageData(grid.buf, FRAME_W, FRAME_H);
     ctx.putImageData(imgData, f * FRAME_W, 0);
@@ -605,7 +722,7 @@ function getSpriteStripUrl(avatar = {}, showCrown = false) {
 
   const url = canvas.toDataURL('image/png');
   // Cap cache size safely
-  if (spriteUrlCache.size > 400) {
+  if (spriteUrlCache.size > 600) {
     const firstKey = spriteUrlCache.keys().next().value;
     spriteUrlCache.delete(firstKey);
   }
@@ -619,13 +736,16 @@ function getSpriteStripUrl(avatar = {}, showCrown = false) {
 export function buildAvatarHTML(avatar = {}, options = {}) {
   const size = Number(options.size) || 88;
   const showCrown = Boolean(options.crown);
+  const mood = VALID_MOODS.has(options.mood) ? options.mood : 'idle';
   const delaySec =
     typeof options.delaySec === 'number'
       ? options.delaySec
-      : (((Number(avatar.color) || 0) * 0.37 + (Number(avatar.eyes) || 0) * 0.23) % 2.4);
+      : mood === 'idle'
+      ? (((Number(avatar.color) || 0) * 0.37 + (Number(avatar.eyes) || 0) * 0.23) % 2.4)
+      : 0;
 
-  const url = getSpriteStripUrl(avatar, showCrown);
-  return `<span class="pixel-avatar" style="--av-size:${size}px; --av-delay:-${delaySec.toFixed(2)}s; background-image:url('${url}');" aria-hidden="true"></span>`;
+  const url = getSpriteStripUrl(avatar, showCrown, mood);
+  return `<span class="pixel-avatar mood-${mood}" data-mood="${mood}" style="--av-size:${size}px; --av-delay:-${delaySec.toFixed(2)}s; background-image:url('${url}');" aria-hidden="true"></span>`;
 }
 
 // Keep buildAvatarSVG alias pointing to buildAvatarHTML so any existing callers stay seamless

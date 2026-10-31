@@ -4,7 +4,7 @@ module.exports = [
   {
     "id": "weird-food",
     "name": "WEIRD & WONDERFUL FOOD",
-    "icon": "🍕",
+    "icon": "weird-food",
     "group": "everyday",
     "blurb": "Culinary curiosities, global snacks & delicious oddities",
     "clues": [
@@ -240,7 +240,7 @@ module.exports = [
   {
     "id": "riddles-wordplay",
     "name": "RIDDLES & BRAIN TEASERS",
-    "icon": "🧩",
+    "icon": "riddles-wordplay",
     "group": "everyday",
     "blurb": "Clever word puzzles, palindromes & mind-bending clues",
     "clues": [
@@ -470,7 +470,7 @@ module.exports = [
   {
     "id": "sports-records",
     "name": "SPORTS & WILD RECORDS",
-    "icon": "🏆",
+    "icon": "sports-records",
     "group": "everyday",
     "blurb": "Legendary champions, unbreakable streaks & athletic feats",
     "clues": [
@@ -704,7 +704,7 @@ module.exports = [
   {
     "id": "famous-books",
     "name": "BOOKS & PLOT TWISTS",
-    "icon": "📖",
+    "icon": "famous-books",
     "group": "everyday",
     "blurb": "Literary classics, shocking twists & world-famous authors",
     "clues": [
@@ -938,7 +938,7 @@ module.exports = [
   {
     "id": "board-games-toys",
     "name": "BOARD GAMES & TOYS",
-    "icon": "🎲",
+    "icon": "board-games-toys",
     "group": "everyday",
     "blurb": "Boardroom rivalries, tabletop classics & nostalgic childhood toys",
     "clues": [
@@ -1171,7 +1171,7 @@ module.exports = [
   {
     "id": "before-and-after",
     "name": "BEFORE & AFTER MASHUPS",
-    "icon": "🔀",
+    "icon": "before-and-after",
     "group": "everyday",
     "blurb": "Jeopardy-style double clue wordplay mashups",
     "clues": [
@@ -1388,7 +1388,7 @@ module.exports = [
   {
     "id": "brands-logos",
     "name": "SECRET LOGOS & BRANDS",
-    "icon": "🏷️",
+    "icon": "brands-logos",
     "group": "everyday",
     "blurb": "Hidden symbols, corporate secrets & famous logos decoded",
     "clues": [
@@ -1613,7 +1613,7 @@ module.exports = [
   {
     "id": "cars-transport",
     "name": "CARS, SPEED & TRANSPORTATION",
-    "icon": "🏎️",
+    "icon": "cars-transport",
     "group": "everyday",
     "blurb": "Supercars, iconic roadsters, aviation & high-speed transit",
     "clues": [
@@ -1811,7 +1811,7 @@ module.exports = [
   {
     "id": "famous-paintings-art",
     "name": "MASTERPIECES & ART MOVEMENTS",
-    "icon": "🎨",
+    "icon": "famous-paintings-art",
     "group": "everyday",
     "blurb": "Mona Lisa smiles, melting clocks & art history wonders",
     "clues": [

@@ -4,7 +4,7 @@ module.exports = [
   {
     "id": "space-reality",
     "name": "SPACE & COSMIC FACTS",
-    "icon": "🪐",
+    "icon": "space-reality",
     "group": "science",
     "blurb": "Cosmic wonders, black holes & astrophysics mysteries",
     "clues": [
@@ -231,7 +231,7 @@ module.exports = [
   {
     "id": "everyday-science",
     "name": "EVERYDAY SCIENCE",
-    "icon": "🔬",
+    "icon": "everyday-science",
     "group": "science",
     "blurb": "Kitchen chemistry, household physics & everyday wonders",
     "clues": [
@@ -452,7 +452,7 @@ module.exports = [
   {
     "id": "freaky-animals",
     "name": "FREAKY ANIMAL FACTS",
-    "icon": "🦎",
+    "icon": "freaky-animals",
     "group": "science",
     "blurb": "Weird adaptations, camouflage masters & biological oddities",
     "clues": [
@@ -673,7 +673,7 @@ module.exports = [
   {
     "id": "dinosaurs-prehistoric",
     "name": "DINOSAURS & PREHISTORIC LIFE",
-    "icon": "🦖",
+    "icon": "dinosaurs-prehistoric",
     "group": "science",
     "blurb": "Apex predators, jurassic giants & fossilized mysteries",
     "clues": [
@@ -857,7 +857,7 @@ module.exports = [
   {
     "id": "ocean-deep",
     "name": "MYSTERIES OF THE DEEP OCEAN",
-    "icon": "🌊",
+    "icon": "ocean-deep",
     "group": "science",
     "blurb": "Mariana trench, bioluminescence & abyssal sea monsters",
     "clues": [
@@ -1047,7 +1047,7 @@ module.exports = [
   {
     "id": "human-biology",
     "name": "HUMAN BODY & MEDICAL MARVELS",
-    "icon": "🫀",
+    "icon": "human-biology",
     "group": "science",
     "blurb": "Organs, bloodlines, anatomy surprises & medical science",
     "clues": [
@@ -1228,7 +1228,7 @@ module.exports = [
   {
     "id": "weather-disasters",
     "name": "WILD WEATHER & EXTREME NATURE",
-    "icon": "⚡",
+    "icon": "weather-disasters",
     "group": "science",
     "blurb": "Tornadoes, supercells, tsunamis & nature's raw power",
     "clues": [

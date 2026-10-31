@@ -29,6 +29,9 @@ const MIME_TYPES = {
   '.png': 'image/png',
   '.gif': 'image/gif',
   '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
@@ -520,7 +523,7 @@ function broadcastRoomEvent(room, payload) {
   }
 }
 
-function sendChat(room, { kind = 'system', color = 'info', text, author = null }) {
+function sendChat(room, { kind = 'system', color = 'info', text, author = null, icon = null }) {
   if (!room || room.terminated) return;
   broadcastRoomEvent(room, {
     type: 'chat',
@@ -529,6 +532,7 @@ function sendChat(room, { kind = 'system', color = 'info', text, author = null }
       kind,
       color,
       author,
+      icon,
       text,
       ts: Date.now(),
     },
@@ -670,7 +674,7 @@ function handleVoiceStatus(room, player, msg) {
   });
 }
 
-function sendPrivateChat(player, { color = 'warn', text }) {
+function sendPrivateChat(player, { color = 'warn', text, icon = null }) {
   if (player && !player.isBot && player.connected && player.ws) {
     player.ws.send({
       type: 'chat',
@@ -679,6 +683,7 @@ function sendPrivateChat(player, { color = 'warn', text }) {
         kind: 'system',
         color,
         author: null,
+        icon,
         text,
         ts: Date.now(),
       },
@@ -1066,7 +1071,8 @@ function advanceAfterRoundComplete(room) {
       }
       sendChat(room, {
         color: 'gold',
-        text: `⚡ DOUBLE JEOPARTY! Point values are doubled ($400 - $2000)!`,
+        icon: 'blitz',
+        text: `DOUBLE JEOPARTY! Point values are doubled ($400 - $2000)!`,
       });
       broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
       enterBoardPhase(room);
@@ -1096,7 +1102,8 @@ function enterIntermissionPhase(room, nextPhaseCallback, nextTitle) {
 
   sendChat(room, {
     color: 'info',
-    text: `☕ Intermission! Catch your breath — ${nextTitle} starting in 12s...`,
+    icon: 'coffee',
+    text: `Intermission! Catch your breath — ${nextTitle} starting in 12s...`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'hint' });
   broadcastRoomState(room);
@@ -1161,7 +1168,8 @@ function handleSelectTile(room, player, col, row) {
     room.activeClue.value = Math.round(tile.value * 1.5);
     sendChat(room, {
       color: 'gold',
-      text: `⚡ SPEED BLITZ! 8s rapid buzzer with +50% bonus points ($${room.activeClue.value})!`,
+      icon: 'blitz',
+      text: `SPEED BLITZ! 8s rapid buzzer with +50% bonus points ($${room.activeClue.value})!`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'blitz' });
     enterBuzzerClueOpenPhase(room, 8000, true);
@@ -1171,7 +1179,8 @@ function handleSelectTile(room, player, col, row) {
   if (modifier === 'steal') {
     sendChat(room, {
       color: 'gold',
-      text: `🦹 STEAL TILE! Correct buzz earns $${room.activeClue.value} AND steals $200 from the leader!`,
+      icon: 'steal',
+      text: `STEAL TILE! Correct buzz earns $${room.activeClue.value} AND steals $200 from the leader!`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'steal' });
     enterBuzzerClueOpenPhase(room, room.settings.clueTimeSec * 1000, true);
@@ -1182,7 +1191,8 @@ function handleSelectTile(room, player, col, row) {
     room.activeClue.value = tile.value * 2;
     sendChat(room, {
       color: 'gold',
-      text: `🍀 DOUBLE TROUBLE! 2X points ($${room.activeClue.value}), but 2X penalty for incorrect guesses!`,
+      icon: 'double',
+      text: `DOUBLE TROUBLE! 2X points ($${room.activeClue.value}), but 2X penalty for incorrect guesses!`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
     enterBuzzerClueOpenPhase(room, room.settings.clueTimeSec * 1000, true);
@@ -1466,7 +1476,8 @@ function applyCorrectBuzz(room, player) {
     underdogBonus = 200;
     sendChat(room, {
       color: 'gold',
-      text: `🚀 UNDERDOG BOOST! ${player.name} earned a +$200 Comeback Bonus!`,
+      icon: 'rocket',
+      text: `UNDERDOG BOOST! ${player.name} earned a +$200 Comeback Bonus!`,
     });
   }
 
@@ -1488,7 +1499,8 @@ function applyCorrectBuzz(room, player) {
       player.score += stolen;
       sendChat(room, {
         color: 'gold',
-        text: `🦹 STEAL! ${player.name} stole $${stolen.toLocaleString()} from ${leader.name}!`,
+        icon: 'steal',
+        text: `STEAL! ${player.name} stole $${stolen.toLocaleString()} from ${leader.name}!`,
       });
     }
   }
@@ -1663,7 +1675,8 @@ function recordCorrectAnswer(room, player, basePoints) {
       player.score += bounty;
       sendChat(room, {
         color: 'gold',
-        text: `🎯 BOUNTY CLAIMED! ${player.name} broke ${other.name}'s streak and claimed a +$${bounty} bounty!`,
+        icon: 'target',
+        text: `BOUNTY CLAIMED! ${player.name} broke ${other.name}'s streak and claimed a +$${bounty} bounty!`,
       });
       broadcastRoomEvent(room, { type: 'sfx', sound: 'victory' });
       other.stats.currentStreak = 0;
@@ -1674,7 +1687,8 @@ function recordCorrectAnswer(room, player, basePoints) {
   if (player.stats.currentStreak === 2) {
     sendChat(room, {
       color: 'gold',
-      text: `🔥 ${player.name} is ON FIRE! (2 in a row!)`,
+      icon: 'fire',
+      text: `${player.name} is ON FIRE! (2 in a row!)`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'streak' });
   } else if (player.stats.currentStreak >= 3) {
@@ -1682,7 +1696,8 @@ function recordCorrectAnswer(room, player, basePoints) {
     player.score += comboBonus;
     sendChat(room, {
       color: 'gold',
-      text: `🔥 MEGA COMBO! ${player.name} gets +$${comboBonus} streak bonus! (${player.stats.currentStreak} in a row!)`,
+      icon: 'fire',
+      text: `MEGA COMBO! ${player.name} gets +$${comboBonus} streak bonus! (${player.stats.currentStreak} in a row!)`,
     });
   }
 }
@@ -1700,50 +1715,91 @@ function recordWrongAnswer(player) {
   player.stats.currentStreak = 0;
 }
 
-const BOT_REACTIONS = ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'];
+const ALLOWED_REACTION_IDS = [
+  'laugh',
+  'rofl',
+  'happy',
+  'shocked',
+  'confused',
+  'sad',
+  'celebrate',
+  'facepalm',
+  'angry',
+  'thinking',
+  'fire',
+];
+
+const LEGACY_REACTION_MAP = {
+  '\u{1F602}': 'rofl',
+  '\u{1F525}': 'fire',
+  '\u{1F480}': 'facepalm',
+  '\u{1F389}': 'celebrate',
+  '\u{1F631}': 'shocked',
+  '\u{1F914}': 'thinking',
+  '\u{1F4A9}': 'sad',
+};
+
+function normalizeReactionId(raw) {
+  const val = String(raw || '').trim().slice(0, 24);
+  if (ALLOWED_REACTION_IDS.includes(val)) return val;
+  if (LEGACY_REACTION_MAP[val]) return LEGACY_REACTION_MAP[val];
+  return null;
+}
+
+const BOT_REACTIONS = [
+  'laugh',
+  'rofl',
+  'happy',
+  'shocked',
+  'confused',
+  'celebrate',
+  'facepalm',
+  'thinking',
+  'fire',
+];
 
 const BOT_BANTER = {
   buzz: [
-    "Hold my coffee, I know this! ☕",
-    "Beep boop, calculating answer... 🤖",
-    "I was programmed for this moment! ⚡",
-    "Too slow, humans! 💨",
-    "Let a real intelligence handle this. 🧠",
-    "I think I saw this on TV once! 📺",
-    "Pressing buzzers is my favorite hobby!",
-    "Data retrieval indexed in 0.4s! ⚡",
+    'Hold my coffee, I know this!',
+    'Beep boop, calculating answer...',
+    'I was programmed for this moment!',
+    'Too slow, humans!',
+    'Let a real intelligence handle this.',
+    'I think I saw this on TV once!',
+    'Pressing buzzers is my favorite hobby!',
+    'Data retrieval indexed in 0.4s!',
   ],
   correct: [
-    "100% calculation accuracy! 🎯",
-    "Neural networks never lie. ✨",
-    "Easy points for the bot squad!",
-    "That was practically in my BIOS. 💻",
-    "Beginner's luck strikes again! 🥳",
-    "Calculated with 99.8% confidence. 🎯",
-    "Statistically expected result. ✨",
+    '100% calculation accuracy!',
+    'Neural networks never lie.',
+    'Easy points for the bot squad!',
+    'That was practically in my BIOS.',
+    "Beginner's luck strikes again!",
+    'Calculated with 99.8% confidence.',
+    'Statistically expected result.',
   ],
   wrong: [
-    "Does not compute! 💥",
-    "Who programmed that clue?! 💢",
-    "I blame high network latency! 📡",
-    "Error 404: Brain not found.",
-    "My database was bribed! 🫠",
-    "I was confident and wrong! 🙃",
-    "Anomalous dataset. Recalibrating. 🤖",
-    "Was that a trick question?! 🤔",
+    'Does not compute!',
+    'Who programmed that clue?!',
+    'I blame high network latency!',
+    'Error 404: Brain not found.',
+    'My database was bribed!',
+    'I was confident and wrong!',
+    'Anomalous dataset. Recalibrating.',
+    'Was that a trick question?!',
   ],
   streak: [
-    "I am unstoppable! 🔥",
-    "Bow down to your new pixel overlord! 👑",
-    "Try to break my streak if you dare! 🏆",
+    'I am unstoppable!',
+    'Bow down to your new pixel overlord!',
+    'Try to break my streak if you dare!',
   ],
   praise_human: [
-    "Lightning fast buzzer speed! ⚡",
-    "Respectable trivia reflexes! 👏",
-    "Nice solve, didn't see that coming! ✨",
-    "Good buzz, human! 🧠",
+    'Lightning fast buzzer speed!',
+    'Respectable trivia reflexes!',
+    "Nice solve, didn't see that coming!",
+    'Good buzz, human!',
   ],
-  reaction: ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'],
+  reaction: BOT_REACTIONS,
 };
 
 function triggerBotBanter(room, bot, category) {
@@ -1756,15 +1812,17 @@ function triggerBotBanter(room, bot, category) {
     if (room && !room.terminated) {
       sendChat(room, {
         color: 'bot',
+        icon: 'bot',
         text: `[${bot.name}]: ${quote}`,
       });
       if (Math.random() < 0.45) {
-        const emoji = BOT_BANTER.reaction[Math.floor(Math.random() * BOT_BANTER.reaction.length)];
+        const reactionId = BOT_BANTER.reaction[Math.floor(Math.random() * BOT_BANTER.reaction.length)];
         broadcastRoomEvent(room, {
           type: 'reaction_spawn',
           playerId: bot.id,
           playerName: bot.name,
-          emoji,
+          reaction: reactionId,
+          emoji: reactionId,
           avatarConfig: bot.avatar,
         });
       }
@@ -1785,7 +1843,7 @@ function computeSuperlatives(room) {
     const p = speedDemons[0];
     const sec = (p.stats.fastestBuzzMs / 1000).toFixed(2);
     superlatives.push({
-      badge: '⚡',
+      badge: 'blitz',
       title: 'Speed Demon',
       playerName: p.name,
       avatarConfig: p.avatar,
@@ -1800,7 +1858,7 @@ function computeSuperlatives(room) {
   if (streakKings.length > 0) {
     const p = streakKings[0];
     superlatives.push({
-      badge: '🔥',
+      badge: 'fire',
       title: 'Streak King',
       playerName: p.name,
       avatarConfig: p.avatar,
@@ -1820,7 +1878,7 @@ function computeSuperlatives(room) {
   if (shooters.length > 0 && shooters[0].acc >= 50) {
     const s = shooters[0];
     superlatives.push({
-      badge: '🎯',
+      badge: 'target',
       title: 'Sharpshooter',
       playerName: s.p.name,
       avatarConfig: s.p.avatar,
@@ -1835,7 +1893,7 @@ function computeSuperlatives(room) {
   if (partiers.length > 0) {
     const p = partiers[0];
     superlatives.push({
-      badge: '🎉',
+      badge: 'celebrate',
       title: 'Party Animal',
       playerName: p.name,
       avatarConfig: p.avatar,
@@ -1861,7 +1919,8 @@ function enterChaosAllPlayPhase(room) {
 
   sendChat(room, {
     color: 'danger',
-    text: `💥 CHAOS ALL-PLAY! No buzzer — EVERYONE answers simultaneously for 14 seconds!`,
+    icon: 'chaos',
+    text: `CHAOS ALL-PLAY! No buzzer — EVERYONE answers simultaneously for 14 seconds!`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'chaos' });
   broadcastRoomState(room);
@@ -1933,11 +1992,13 @@ function handleChaosAnswer(room, player, text) {
     const rankSuffix = order === 0 ? '1st' : order === 1 ? '2nd' : `${order + 1}th`;
     sendPrivateChat(player, {
       color: 'success',
-      text: `✅ Correct! Locked in "${answerText}" (+$${points.toLocaleString()})!`,
+      icon: 'correct',
+      text: `Correct! Locked in "${answerText}" (+$${points.toLocaleString()})!`,
     });
     sendChat(room, {
       color: 'success',
-      text: `💥 ${player.name} solved it! [${rankSuffix}] (+$${points.toLocaleString()})${bonus > 0 ? ' (Underdog Boost!)' : ''}`,
+      icon: 'chaos',
+      text: `${player.name} solved it! [${rankSuffix}] (+$${points.toLocaleString()})${bonus > 0 ? ' (Underdog Boost!)' : ''}`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
   } else {
@@ -1945,7 +2006,8 @@ function handleChaosAnswer(room, player, text) {
     recordWrongAnswer(player);
     sendPrivateChat(player, {
       color: 'danger',
-      text: `❌ "${answerText}" is incorrect. Answer locked in!`,
+      icon: 'wrong',
+      text: `"${answerText}" is incorrect. Answer locked in!`,
     });
     // Send feedback SFX only to the guessing player
     if (player.ws && player.ws.readyState === 1) {
@@ -1975,14 +2037,16 @@ function resolveChaosRound(room) {
   if (!ac.chaosSolvedList || ac.chaosSolvedList.length === 0) {
     sendChat(room, {
       color: 'warn',
-      text: `💥 Time's up! Nobody solved it. The answer was: ${ac.clueObj.answer}`,
+      icon: 'chaos',
+      text: `Time's up! Nobody solved it. The answer was: ${ac.clueObj.answer}`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'timeout' });
   } else {
     const winners = ac.chaosSolvedList.map((s) => `${s.name} (+$${s.points.toLocaleString()})`).join(', ');
     sendChat(room, {
       color: 'gold',
-      text: `💥 CHAOS ALL-PLAY OVER! Solvers: ${winners}`,
+      icon: 'chaos',
+      text: `CHAOS ALL-PLAY OVER! Solvers: ${winners}`,
     });
   }
 
@@ -2330,7 +2394,7 @@ const server = http.createServer((req, res) => {
     const meta = BUILTIN_CATEGORIES.map((c) => ({
       id: c.id,
       name: c.name,
-      icon: c.icon,
+      icon: c.id,
       group: c.group,
       blurb: c.blurb,
       sampleClue: c.clues[0]?.clue || '',
@@ -2556,7 +2620,8 @@ attachWebSocketServer(server, (ws) => {
             clearHostDisconnectTimer(room);
             sendChat(room, {
               color: 'gold',
-              text: `👑 Host did not reconnect. Host privileges automatically transferred to ${nextHuman.name}!`,
+              icon: 'crown',
+              text: `Host did not reconnect. Host privileges automatically transferred to ${nextHuman.name}!`,
             });
             broadcastRoomEvent(room, {
               type: 'host_transferred',
@@ -2887,7 +2952,7 @@ attachWebSocketServer(server, (ws) => {
         const customCat = {
           id: 'custom_' + randomId(4),
           name: catName,
-          icon: '✨',
+          icon: 'custom',
           group: 'custom',
           blurb: `Custom category by ${currentPlayer.name}`,
           clues: formattedClues,
@@ -2940,7 +3005,8 @@ attachWebSocketServer(server, (ws) => {
         bot.botDifficulty = difficulty;
         sendChat(currentRoom, {
           color: 'system',
-          text: `⚙️ Host configured ${bot.name}'s difficulty to ${difficulty.toUpperCase()}.`,
+          icon: 'gear',
+          text: `Host configured ${bot.name}'s difficulty to ${difficulty.toUpperCase()}.`,
         });
         broadcastRoomState(currentRoom);
         break;
@@ -3022,7 +3088,8 @@ attachWebSocketServer(server, (ws) => {
 
         sendChat(currentRoom, {
           color: 'gold',
-          text: `👑 Host privileges transferred from ${prevHostName} to ${target.name}!`,
+          icon: 'crown',
+          text: `Host privileges transferred from ${prevHostName} to ${target.name}!`,
         });
         broadcastRoomEvent(currentRoom, {
           type: 'host_transferred',
@@ -3135,9 +3202,8 @@ attachWebSocketServer(server, (ws) => {
 
       case 'reaction': {
         if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
-        const emoji = String(msg.emoji || '').slice(0, 10);
-        const ALLOWED_REACTIONS = ['😂', '🔥', '💀', '🎉', '😱', '🤔', '💩'];
-        if (!ALLOWED_REACTIONS.includes(emoji)) return;
+        const reactionId = normalizeReactionId(msg.reaction || msg.emoji);
+        if (!reactionId) return;
 
         const now = Date.now();
         if (currentPlayer.lastReactionAt && now - currentPlayer.lastReactionAt < 250) {
@@ -3158,7 +3224,8 @@ attachWebSocketServer(server, (ws) => {
           type: 'reaction_spawn',
           playerId: currentPlayer.id,
           playerName: currentPlayer.name,
-          emoji,
+          reaction: reactionId,
+          emoji: reactionId,
           avatarConfig: currentPlayer.avatar,
         });
         break;
@@ -3321,7 +3388,7 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`  Phone/LAN: ${url}  (open on your phone!)`);
   }
   console.log(`--------------------------------------------------`);
-  console.log(`  📱 TO PLAY ON YOUR PHONE:`);
+  console.log(`  [PHONE] TO PLAY ON YOUR PHONE:`);
   console.log(`  1. Make sure your phone is connected to the same Wi-Fi.`);
   if (lan.length > 0) {
     console.log(`  2. In your phone's browser, open: ${lan[0]}`);

@@ -4,7 +4,7 @@ module.exports = [
   {
     "id": "dumb-laws",
     "name": "WEIRD LAWS & RULES",
-    "icon": "⚖️",
+    "icon": "dumb-laws",
     "group": "funny",
     "blurb": "Ridiculous real statutes, legal oddities & historical bans",
     "clues": [
@@ -263,7 +263,7 @@ module.exports = [
   {
     "id": "nature-is-broken",
     "name": "WHAT IS WRONG WITH NATURE?",
-    "icon": "🤯",
+    "icon": "nature-is-broken",
     "group": "funny",
     "blurb": "Bizarre evolutionary blunders & biological nonsense",
     "clues": [
@@ -473,7 +473,7 @@ module.exports = [
   {
     "id": "internet-brainrot",
     "name": "INTERNET BRAINROT & MEME LORE",
-    "icon": "🚽",
+    "icon": "internet-brainrot",
     "group": "funny",
     "blurb": "Skibidi, mewing, Ohio memes & unhinged TikTok slang",
     "clues": [
@@ -669,7 +669,7 @@ module.exports = [
   {
     "id": "why-does-this-exist",
     "name": "WHY DOES THIS EXIST?",
-    "icon": "🤦",
+    "icon": "why-does-this-exist",
     "group": "funny",
     "blurb": "Useless inventions, ridiculous gadgets & infomercial regrets",
     "clues": [
@@ -878,7 +878,7 @@ module.exports = [
   {
     "id": "animals-are-weird",
     "name": "ANIMALS ARE WEIRD",
-    "icon": "🦥",
+    "icon": "animals-are-weird",
     "group": "funny",
     "blurb": "Quirky habits, animal besties & shocking creature facts",
     "clues": [
@@ -1089,7 +1089,7 @@ module.exports = [
   {
     "id": "cursed-food",
     "name": "CURSED FOOD COMBINATIONS",
-    "icon": "🤢",
+    "icon": "cursed-food",
     "group": "funny",
     "blurb": "Culinary atrocities, bizarre recipes & taste test regrets",
     "clues": [
@@ -1288,7 +1288,7 @@ module.exports = [
   {
     "id": "useless-knowledge",
     "name": "ABSOLUTELY USELESS KNOWLEDGE",
-    "icon": "🧠",
+    "icon": "useless-knowledge",
     "group": "funny",
     "blurb": "Fascinating trivialities that won't help your career at all",
     "clues": [
@@ -1482,7 +1482,7 @@ module.exports = [
   {
     "id": "terrible-superpowers",
     "name": "TERRIBLE SUPERPOWERS",
-    "icon": "🦸‍♂️",
+    "icon": "terrible-superpowers",
     "group": "funny",
     "blurb": "Useless mutations, tragic comic heroes & backfiring gifts",
     "clues": [
@@ -1686,7 +1686,7 @@ module.exports = [
   {
     "id": "game-logic-broken",
     "name": "GAME LOGIC MAKES NO SENSE",
-    "icon": "🕹️",
+    "icon": "game-logic-broken",
     "group": "funny",
     "blurb": "Skyrim cheese wheels, GTA spray garages & gaming absurdities",
     "clues": [
@@ -1895,7 +1895,7 @@ module.exports = [
   {
     "id": "movies-are-weird",
     "name": "MOVIES ARE WEIRD & WILD",
-    "icon": "🍿",
+    "icon": "movies-are-weird",
     "group": "funny",
     "blurb": "Absurd set accidents, weird casting trivia & behind-the-scenes madness",
     "clues": [
@@ -2092,7 +2092,7 @@ module.exports = [
   {
     "id": "common-sense-test",
     "name": "COMMON SENSE & TRICK TRIVIA",
-    "icon": "💡",
+    "icon": "common-sense-test",
     "group": "funny",
     "blurb": "Lateral thinking, classic brain teasers & trick questions",
     "clues": [
@@ -2302,7 +2302,7 @@ module.exports = [
   {
     "id": "name-that-nonsense",
     "name": "NAME THAT NONSENSE",
-    "icon": "🤪",
+    "icon": "name-that-nonsense",
     "group": "funny",
     "blurb": "Hilarious words, silly descriptions & funny vocabulary",
     "clues": [
@@ -2484,7 +2484,7 @@ module.exports = [
   {
     "id": "school-lies",
     "name": "YOU LEARNED THAT IN SCHOOL?",
-    "icon": "📚",
+    "icon": "school-lies",
     "group": "funny",
     "blurb": "Classroom myths debunked, historical lies & textbook blunders",
     "clues": [
@@ -2695,7 +2695,7 @@ module.exports = [
   {
     "id": "absurd-comparisons",
     "name": "ABSURD ANIMAL COMPARISONS",
-    "icon": "⚖️",
+    "icon": "absurd-comparisons",
     "group": "funny",
     "blurb": "Mind-boggling scales, weird sizes & animal stat comparisons",
     "clues": [
@@ -2896,7 +2896,7 @@ module.exports = [
   {
     "id": "internet-strange",
     "name": "THE INTERNET IS A STRANGE PLACE",
-    "icon": "🕸️",
+    "icon": "internet-strange",
     "group": "funny",
     "blurb": "Wild internet history, obscure experiments & weird lore",
     "clues": [

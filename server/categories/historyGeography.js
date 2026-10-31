@@ -4,7 +4,7 @@ module.exports = [
   {
     "id": "chaotic-history",
     "name": "CHAOTIC HISTORY",
-    "icon": "⚔️",
+    "icon": "chaotic-history",
     "group": "history",
     "blurb": "Bizarre historical blunders, animal wars & absurd turning points",
     "clues": [
@@ -255,7 +255,7 @@ module.exports = [
   {
     "id": "where-is-that",
     "name": "WAIT, WHERE IS THAT?",
-    "icon": "📍",
+    "icon": "where-is-that",
     "group": "history",
     "blurb": "Iconic landmarks, world wonders & jaw-dropping destinations",
     "clues": [
@@ -482,7 +482,7 @@ module.exports = [
   {
     "id": "spooky-myths",
     "name": "MYTHS & URBAN LEGENDS",
-    "icon": "👁️",
+    "icon": "spooky-myths",
     "group": "history",
     "blurb": "Cryptids, haunted lore, campfire horrors & folklore",
     "clues": [
@@ -707,7 +707,7 @@ module.exports = [
   {
     "id": "ancient-civilizations",
     "name": "ANCIENT CIVILIZATIONS & EMPIRES",
-    "icon": "🏛️",
+    "icon": "ancient-civilizations",
     "group": "history",
     "blurb": "Pharaohs, gladiators, mesopotamia & lost classical wonders",
     "clues": [
@@ -892,7 +892,7 @@ module.exports = [
   {
     "id": "world-wars-conflicts",
     "name": "WORLD WARS & TURNING POINTS",
-    "icon": "🎖️",
+    "icon": "world-wars-conflicts",
     "group": "history",
     "blurb": "Front lines, codebreakers, D-Day & history-altering conflicts",
     "clues": [
@@ -1078,7 +1078,7 @@ module.exports = [
   {
     "id": "world-capitals",
     "name": "WORLD CAPITALS & GEOGRAPHY",
-    "icon": "🌍",
+    "icon": "world-capitals",
     "group": "history",
     "blurb": "Global seats of power, major capitals & geography trivia",
     "clues": [
@@ -1252,7 +1252,7 @@ module.exports = [
   {
     "id": "flags-of-world",
     "name": "FLAGS, BORDERS & LANDMARKS",
-    "icon": "🚩",
+    "icon": "flags-of-world",
     "group": "history",
     "blurb": "Vexillology trivia, strange borders & national symbols",
     "clues": [
@@ -1441,7 +1441,7 @@ module.exports = [
   {
     "id": "mythology-folklore",
     "name": "GODS, HEROES & MYTHOLOGY",
-    "icon": "⚡",
+    "icon": "mythology-folklore",
     "group": "history",
     "blurb": "Olympian gods, norse legends, egyptian lore & mythic beasts",
     "clues": [

@@ -56,63 +56,101 @@ function syncHasFallbackClass(containerEl, inputEl) {
 }
 
 /* =========================================================================
-   MS PAINT CATEGORY ICON SPRITE SHEET MAPPING (25 icons @ 24x24)
+   54-CATEGORY ANIMATED MS PAINT SPRITES & UI SPRITE HELPERS
    ========================================================================= */
 
-const CATEGORY_ICON_ORDER = [
+const KNOWN_CATEGORY_IDS = new Set([
   'internet-memes',
-  'video-games',
   'blockbuster-movies',
-  'weird-food',
-  'freaky-animals',
   'pop-music',
   'binge-tv',
-  'space-reality',
-  'chaotic-history',
-  'where-is-that',
-  'everyday-science',
   'slang-translator',
   'superheroes',
   'cartoons-anime',
-  'riddles-wordplay',
+  'nostalgia-90s-00s',
+  'identify-the-song',
+  'video-games',
   'tech-gadgets',
+  'minecraft-roblox',
+  'nintendo-classics',
+  'horror-games',
+  'space-reality',
+  'everyday-science',
+  'freaky-animals',
+  'dinosaurs-prehistoric',
+  'ocean-deep',
+  'human-biology',
+  'weather-disasters',
+  'chaotic-history',
+  'where-is-that',
+  'spooky-myths',
+  'ancient-civilizations',
+  'world-wars-conflicts',
+  'world-capitals',
+  'flags-of-world',
+  'mythology-folklore',
+  'dumb-laws',
+  'nature-is-broken',
+  'internet-brainrot',
+  'why-does-this-exist',
+  'animals-are-weird',
+  'cursed-food',
+  'useless-knowledge',
+  'terrible-superpowers',
+  'game-logic-broken',
+  'movies-are-weird',
+  'common-sense-test',
+  'name-that-nonsense',
+  'school-lies',
+  'absurd-comparisons',
+  'internet-strange',
+  'weird-food',
+  'riddles-wordplay',
   'sports-records',
   'famous-books',
-  'spooky-myths',
   'board-games-toys',
-  'dumb-laws',
   'before-and-after',
   'brands-logos',
-  'nostalgia-90s-00s',
+  'cars-transport',
+  'famous-paintings-art',
   'custom',
-];
+]);
 
-const CATEGORY_ICON_INDEX = new Map(
-  CATEGORY_ICON_ORDER.map((id, idx) => [id, idx])
-);
-
-function getCategorySpriteOffsetPct(categoryId) {
-  const idx = CATEGORY_ICON_INDEX.has(categoryId)
-    ? CATEGORY_ICON_INDEX.get(categoryId)
-    : 24;
-  return `${((idx / 24) * 100).toFixed(4)}%`;
+function normalizeCategorySpriteId(categoryId) {
+  const id = String(categoryId || '').trim();
+  if (!id || id.startsWith('custom_')) return 'custom';
+  return KNOWN_CATEGORY_IDS.has(id) ? id : 'custom';
 }
 
-function createCategoryPixelIcon(categoryId, sizePx = 22, fallbackIcon = '💡') {
-  if (CATEGORY_ICON_INDEX.has(categoryId)) {
-    const span = document.createElement('span');
-    span.className = 'cat-pixel-icon';
-    span.setAttribute('aria-hidden', 'true');
-    span.style.setProperty('--icon-size', `${sizePx}px`);
-    span.style.setProperty('--cat-pos', getCategorySpriteOffsetPct(categoryId));
-    return span;
-  }
+function getCategorySpriteUrl(categoryId) {
+  return `/assets/sprites/categories/${normalizeCategorySpriteId(categoryId)}.png`;
+}
+
+function createCategoryPixelIcon(categoryId, sizePx = 22) {
   const span = document.createElement('span');
-  span.className = 'cat-emoji-icon';
+  span.className = 'cat-pixel-icon';
   span.setAttribute('aria-hidden', 'true');
-  span.style.fontSize = `${Math.round(sizePx * 0.9)}px`;
-  span.textContent = fallbackIcon || '💡';
+  span.style.setProperty('--icon-size', `${sizePx}px`);
+  span.style.setProperty('--cat-url', `url('${getCategorySpriteUrl(categoryId)}')`);
   return span;
+}
+
+function createPixelSprite(spriteClass, extraClass = '') {
+  const span = document.createElement('span');
+  span.className = `pixel-sprite ${spriteClass}${extraClass ? ` ${extraClass}` : ''}`;
+  span.setAttribute('aria-hidden', 'true');
+  return span;
+}
+
+function setButtonSpriteAndText(btn, spriteClass, labelText) {
+  if (!btn) return;
+  btn.textContent = '';
+  btn.appendChild(createPixelSprite(spriteClass));
+  if (labelText) {
+    const txt = document.createElement('span');
+    txt.textContent = labelText;
+    btn.appendChild(txt);
+  }
 }
 
 /* =========================================================================
@@ -234,15 +272,7 @@ const state = {
     return { color: 2, eyes: 0, mouth: 0, hat: 0 };
   })(),
 
-  reduceMotion: (() => {
-    const saved = localStorage.getItem('jeoparty_reduce_motion');
-    if (saved === '1') return true;
-    if (saved === '0') return false;
-    return Boolean(
-      window.matchMedia &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    );
-  })(),
+  reduceMotion: localStorage.getItem('jeoparty_reduce_motion') === '1',
 
   preferredSettings: loadPreferredSettings(),
   builtinCategories: [],
@@ -482,12 +512,17 @@ const el = {
    UTILITIES & ACCESSIBILITY CONTROLS
    ========================================================================= */
 
-function showToast(text, variant = 'info') {
+function showToast(text, variant = 'info', spriteClass = '') {
   const item = document.createElement('div');
   item.className = `toast-item ${
     variant === 'error' ? 'is-error' : variant === 'success' ? 'is-success' : ''
   }`;
-  item.textContent = text;
+  if (spriteClass) {
+    item.appendChild(createPixelSprite(spriteClass, 'chat-inline-sprite'));
+  }
+  const span = document.createElement('span');
+  span.textContent = text;
+  item.appendChild(span);
   el.toastContainer.appendChild(item);
   setTimeout(() => {
     item.remove();
@@ -525,20 +560,25 @@ function saveProfile() {
 
 function syncSoundButtons() {
   const muted = sfx.muted;
-  el.homeSoundBtn.textContent = muted ? 'Sound: Off' : 'Sound: On';
-  el.soundToggleBtn.textContent = muted ? 'Sound: Off' : 'Sound: On';
+  const sprite = muted ? 'sprite-sound-off' : 'sprite-sound-on';
+  const label = muted ? 'Sound: Off' : 'Sound: On';
+  setButtonSpriteAndText(el.homeSoundBtn, sprite, label);
+  setButtonSpriteAndText(el.soundToggleBtn, sprite, label);
 }
 
 function applyMotionPreference() {
-  const explicitOptIn =
-    !state.reduceMotion &&
-    localStorage.getItem('jeoparty_reduce_motion') === '0';
   document.body.classList.toggle('reduce-motion', state.reduceMotion);
-  document.body.classList.toggle('allow-motion', explicitOptIn);
-  el.homeMotionBtn.textContent = state.reduceMotion
-    ? 'Animations: Off'
-    : 'Animations: On';
-  el.motionToggleBtn.textContent = state.reduceMotion ? 'Anim: Off' : 'Anim: On';
+  document.body.classList.toggle('allow-motion', !state.reduceMotion);
+  setButtonSpriteAndText(
+    el.homeMotionBtn,
+    'sprite-anim-star',
+    state.reduceMotion ? 'Animations: Off' : 'Animations: On'
+  );
+  setButtonSpriteAndText(
+    el.motionToggleBtn,
+    'sprite-anim-star',
+    state.reduceMotion ? 'Anim: Off' : 'Anim: On'
+  );
 }
 
 function toggleMotionPreference() {
@@ -583,14 +623,14 @@ function syncHomeLanBanner() {
       const sub = el.homeLanBanner.querySelector('.home-lan-sub');
       if (sub) sub.textContent = 'Worldwide Online link:';
       const badge = el.homeLanBanner.querySelector('.home-lan-badge');
-      if (badge) badge.textContent = '🌐 PUBLIC';
+      if (badge) setButtonSpriteAndText(badge, 'sprite-globe', 'PUBLIC');
     } else if (state.lanUrls && state.lanUrls.length > 0) {
       el.homeLanBanner.hidden = false;
       el.homeLanUrlText.textContent = state.lanUrls[0];
       const sub = el.homeLanBanner.querySelector('.home-lan-sub');
       if (sub) sub.textContent = 'Connect phone on same Wi-Fi:';
       const badge = el.homeLanBanner.querySelector('.home-lan-badge');
-      if (badge) badge.textContent = '📱 PHONE';
+      if (badge) setButtonSpriteAndText(badge, 'sprite-phone', 'PHONE');
     } else {
       el.homeLanBanner.hidden = true;
     }
@@ -615,16 +655,16 @@ async function copyText(str, label = 'Invite link') {
    ========================================================================= */
 
 function renderHomeMascots() {
-  // 8 distinct MS Paint cartoon personalities: angry, goofy, confused, happy, sleepy, cool, wizard, crowned!
+  // 8 distinct MS Paint cartoon personalities with live multi-state moods!
   const lineup = [
-    { color: 0, eyes: 3, mouth: 6, hat: 3, crown: false },
-    { color: 1, eyes: 1, mouth: 0, hat: 0, crown: false },
-    { color: 2, eyes: 8, mouth: 4, hat: 1, crown: false },
-    { color: 3, eyes: 4, mouth: 14, hat: 0, crown: false },
-    { color: 4, eyes: 5, mouth: 9, hat: 9, crown: false },
-    { color: 18, eyes: 6, mouth: 12, hat: 0, crown: false },
-    { color: 6, eyes: 11, mouth: 11, hat: 5, crown: false },
-    { color: 7, eyes: 1, mouth: 2, hat: 0, crown: true },
+    { color: 0, eyes: 3, mouth: 6, hat: 3, crown: false, mood: 'excited' },
+    { color: 1, eyes: 1, mouth: 0, hat: 0, crown: false, mood: 'happy' },
+    { color: 2, eyes: 8, mouth: 4, hat: 1, crown: false, mood: 'idle' },
+    { color: 3, eyes: 4, mouth: 14, hat: 0, crown: false, mood: 'happy' },
+    { color: 4, eyes: 5, mouth: 9, hat: 9, crown: false, mood: 'idle' },
+    { color: 18, eyes: 6, mouth: 12, hat: 0, crown: false, mood: 'excited' },
+    { color: 6, eyes: 11, mouth: 11, hat: 5, crown: false, mood: 'happy' },
+    { color: 7, eyes: 1, mouth: 2, hat: 0, crown: true, mood: 'victory' },
   ];
   el.mascotRow.innerHTML = lineup
     .map(
@@ -632,7 +672,8 @@ function renderHomeMascots() {
         `<div class="home-mascot-item">${buildAvatarHTML(m, {
           crown: m.crown,
           size: 44,
-          delaySec: idx * 0.28,
+          mood: m.mood,
+          delaySec: idx * 0.24,
         })}</div>`
     )
     .join('');
@@ -728,13 +769,25 @@ function renderPublicRooms(roomList) {
     metaRow.className = 'public-room-meta';
 
     const countSpan = document.createElement('span');
-    countSpan.textContent = `👥 ${r.playerCount} / ${r.maxPlayers || 10} Players`;
+    setButtonSpriteAndText(
+      countSpan,
+      'sprite-users',
+      `${r.playerCount} / ${r.maxPlayers || 10} Players`
+    );
 
     const statusSpan = document.createElement('span');
-    statusSpan.textContent = `⚡ ${r.status || 'Waiting in Lobby'}`;
+    setButtonSpriteAndText(
+      statusSpan,
+      'sprite-mod-blitz',
+      r.status || 'Waiting in Lobby'
+    );
 
     const catSpan = document.createElement('span');
-    catSpan.textContent = `📚 ${r.categoryCount || 5} Categories`;
+    setButtonSpriteAndText(
+      catSpan,
+      'sprite-books',
+      `${r.categoryCount || 5} Categories`
+    );
 
     metaRow.appendChild(countSpan);
     metaRow.appendChild(statusSpan);
@@ -1003,9 +1056,13 @@ function handleServerMessage(msg) {
     case 'host_transferred': {
       sfx.play('daily_double');
       if (msg.newHostId === state.playerId) {
-        showToast('👑 You are now the Room Host!', 'gold');
+        showToast('You are now the Room Host!', 'gold', 'sprite-crown');
       } else {
-        showToast(`👑 ${msg.newHostName || 'Another player'} is now the Room Host!`, 'info');
+        showToast(
+          `${msg.newHostName || 'Another player'} is now the Room Host!`,
+          'info',
+          'sprite-crown'
+        );
       }
       break;
     }
@@ -1018,7 +1075,7 @@ function handleServerMessage(msg) {
     case 'reaction_spawn': {
       sfx.play('reaction');
       if (msg.playerId !== state.playerId) {
-        spawnReactionParticle(msg.emoji, msg.playerName);
+        spawnReactionParticle(msg.reaction || msg.emoji, msg.playerName);
       }
       break;
     }
@@ -1068,10 +1125,31 @@ function returnToHomeScreen({ clearInvite = true } = {}) {
    CHAT FEED RENDERING
    ========================================================================= */
 
+const CHAT_ICON_SPRITES = {
+  blitz: 'sprite-mod-blitz',
+  steal: 'sprite-mod-steal',
+  chaos: 'sprite-mod-chaos',
+  double: 'sprite-mod-double',
+  fire: 'sprite-fire',
+  crown: 'sprite-crown',
+  gear: 'sprite-gear',
+  trophy: 'sprite-medal',
+  target: 'sprite-target',
+  correct: 'sprite-check',
+  wrong: 'sprite-close-x',
+  bot: 'sprite-bot',
+  coffee: 'sprite-preset-everyday',
+  rocket: 'sprite-rocket',
+};
+
 function appendChatMessage(m) {
   if (!m) return;
   const div = document.createElement('div');
   div.className = `chat-line c-${m.color || 'chat'}${m.color === 'bot' ? ' chat-msg-bot' : ''}`;
+
+  if (m.icon && CHAT_ICON_SPRITES[m.icon]) {
+    div.appendChild(createPixelSprite(CHAT_ICON_SPRITES[m.icon], 'chat-inline-sprite'));
+  }
 
   if (m.kind === 'chat' && m.author) {
     const authorSpan = document.createElement('span');
@@ -1081,7 +1159,9 @@ function appendChatMessage(m) {
     textSpan.textContent = m.text;
     div.append(authorSpan, textSpan);
   } else {
-    div.textContent = m.text;
+    const textSpan = document.createElement('span');
+    textSpan.textContent = m.text;
+    div.appendChild(textSpan);
   }
 
   el.chatMessages.appendChild(div);
@@ -1278,7 +1358,7 @@ function renderPlayersSidebar(room, amHost) {
         gearBtn.className = 'bot-gear-btn';
         gearBtn.title = `Configure ${p.name}'s difficulty`;
         gearBtn.setAttribute('aria-label', `Configure ${p.name}'s difficulty`);
-        gearBtn.textContent = '⚙️';
+        gearBtn.appendChild(createPixelSprite('sprite-gear'));
         gearBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           openBotSettingsModal(p);
@@ -1291,7 +1371,10 @@ function renderPlayersSidebar(room, amHost) {
     if (isOnFire) {
       const streakBadge = document.createElement('span');
       streakBadge.className = 'player-streak-badge';
-      streakBadge.textContent = `🔥 x${p.streak || 2}`;
+      streakBadge.appendChild(createPixelSprite('sprite-fire'));
+      const streakTxt = document.createElement('span');
+      streakTxt.textContent = `x${p.streak || 2}`;
+      streakBadge.appendChild(streakTxt);
       nameLine.appendChild(streakBadge);
     }
 
@@ -1303,7 +1386,11 @@ function renderPlayersSidebar(room, amHost) {
       voiceBadge.title = isSpeaking
         ? `${p.name} is speaking`
         : (p.voiceMuted ? `${p.name} is muted` : `${p.name} is in voice chat`);
-      voiceBadge.textContent = isSpeaking ? '🗣️' : (p.voiceMuted ? '🔇' : '🎙️');
+      voiceBadge.appendChild(
+        createPixelSprite(
+          isSpeaking ? 'sprite-mic-speaking' : (p.voiceMuted ? 'sprite-mic-muted' : 'sprite-mic-on')
+        )
+      );
       nameLine.appendChild(voiceBadge);
 
       if (p.id !== state.playerId && !p.isBot) {
@@ -1312,12 +1399,19 @@ function renderPlayersSidebar(room, amHost) {
         peerMuteBtn.className = 'player-peer-mute-btn';
         const isMutedByMe = voiceChat.peerMutes.get(p.id) || false;
         peerMuteBtn.title = isMutedByMe ? `Unmute ${p.name}` : `Mute ${p.name}`;
-        peerMuteBtn.textContent = isMutedByMe ? '🔇' : '🔊';
+        peerMuteBtn.setAttribute('aria-label', peerMuteBtn.title);
+        peerMuteBtn.appendChild(
+          createPixelSprite(isMutedByMe ? 'sprite-speaker-off' : 'sprite-speaker-on')
+        );
         peerMuteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           const mutedNow = voiceChat.togglePeerMute(p.id);
-          peerMuteBtn.textContent = mutedNow ? '🔇' : '🔊';
+          peerMuteBtn.textContent = '';
+          peerMuteBtn.appendChild(
+            createPixelSprite(mutedNow ? 'sprite-speaker-off' : 'sprite-speaker-on')
+          );
           peerMuteBtn.title = mutedNow ? `Unmute ${p.name}` : `Mute ${p.name}`;
+          peerMuteBtn.setAttribute('aria-label', peerMuteBtn.title);
         });
         nameLine.appendChild(peerMuteBtn);
       }
@@ -1342,65 +1436,81 @@ function renderPlayersSidebar(room, amHost) {
       statusEl.textContent = 'Bot';
     }
 
-    infoEl.append(nameLine, scoreEl);
-    if (statusEl.textContent) infoEl.appendChild(statusEl);
+    const metaRow = document.createElement('div');
+    metaRow.className = 'player-meta-row';
+    metaRow.appendChild(scoreEl);
+    if (statusEl.textContent) metaRow.appendChild(statusEl);
+
+    if (amHost && p.id !== state.playerId && !p.isBot && p.connected) {
+      const transferBtn = document.createElement('button');
+      transferBtn.type = 'button';
+      transferBtn.className = 'transfer-host-btn';
+      transferBtn.title = `Transfer room host privileges to ${p.name}`;
+      transferBtn.setAttribute('aria-label', `Transfer host to ${p.name}`);
+      setButtonSpriteAndText(transferBtn, 'sprite-crown', 'Host');
+      transferBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.pendingTransferPlayerId = p.id;
+        if (el.transferTargetName) {
+          el.transferTargetName.textContent = p.name;
+        }
+        if (el.transferHostDialog) {
+          if (typeof el.transferHostDialog.showModal === 'function') {
+            el.transferHostDialog.showModal();
+          } else {
+            el.transferHostDialog.setAttribute('open', '');
+          }
+        }
+      });
+      metaRow.appendChild(transferBtn);
+    }
+
+    infoEl.append(nameLine, metaRow);
 
     const avatarCell = document.createElement('div');
     avatarCell.className = 'player-avatar-cell';
     const wearsLeaderCrown =
       (room.phase !== 'lobby' && idx === 0 && topScore > 0) ||
       (room.phase === 'lobby' && p.id === room.hostId);
+    const isSpeakingAvatar = p.voiceSpeaking || (p.id === state.playerId && voiceChat.isSpeaking);
+    const missedCurrentClue =
+      Boolean(room.activeClue?.attemptedIds?.includes(p.id)) && !isSolved;
+    const avatarMood = isSpeakingAvatar
+      ? 'speaking'
+      : isSolved
+      ? 'happy'
+      : isBuzzed
+      ? 'excited'
+      : missedCurrentClue
+      ? 'sad'
+      : room.phase === 'game_over' && idx === 0 && topScore > 0
+      ? 'victory'
+      : isOnFire
+      ? 'happy'
+      : 'idle';
     avatarCell.innerHTML = buildAvatarHTML(p.avatar, {
       size: 44,
       crown: wearsLeaderCrown,
+      mood: avatarMood,
+      delaySec: (idx % 4) * 0.18,
     });
-    const isSpeakingAvatar = p.voiceSpeaking || (p.id === state.playerId && voiceChat.isSpeaking);
     if (isSpeakingAvatar) {
       avatarCell.classList.add('is-speaking');
       row.classList.add('is-speaking');
     }
 
     if (amHost && p.id !== state.playerId) {
-      const actionsWrap = document.createElement('div');
-      actionsWrap.className = 'player-admin-actions';
-
-      if (!p.isBot && p.connected) {
-        const transferBtn = document.createElement('button');
-        transferBtn.type = 'button';
-        transferBtn.className = 'transfer-host-btn';
-        transferBtn.title = `Transfer room host privileges to ${p.name}`;
-        transferBtn.setAttribute('aria-label', `Transfer host to ${p.name}`);
-        transferBtn.textContent = '👑 Host';
-        transferBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          state.pendingTransferPlayerId = p.id;
-          if (el.transferTargetName) {
-            el.transferTargetName.textContent = p.name;
-          }
-          if (el.transferHostDialog) {
-            if (typeof el.transferHostDialog.showModal === 'function') {
-              el.transferHostDialog.showModal();
-            } else {
-              el.transferHostDialog.setAttribute('open', '');
-            }
-          }
-        });
-        actionsWrap.appendChild(transferBtn);
-      }
-
       const kickBtn = document.createElement('button');
       kickBtn.type = 'button';
       kickBtn.className = 'kick-player-btn';
       kickBtn.setAttribute('aria-label', `Remove ${p.name}`);
       kickBtn.title = `Remove ${p.name}`;
-      kickBtn.textContent = '✕';
+      kickBtn.appendChild(createPixelSprite('sprite-close-x'));
       kickBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         sendWs({ type: 'remove_player', playerId: p.id });
       });
-      actionsWrap.appendChild(kickBtn);
-
-      avatarCell.appendChild(actionsWrap);
+      avatarCell.appendChild(kickBtn);
     }
 
     row.append(rankEl, infoEl, avatarCell);
@@ -1562,7 +1672,7 @@ function renderLobbyStage(room, amHost) {
     const leftCluster = document.createElement('span');
     leftCluster.className = 'cat-card-label';
 
-    const iconEl = createCategoryPixelIcon(cat.id, 22, cat.icon);
+    const iconEl = createCategoryPixelIcon(cat.id, 22);
     const nameEl = document.createElement('span');
     nameEl.className = 'cat-card-name';
     nameEl.textContent = cat.name;
@@ -1573,7 +1683,7 @@ function renderLobbyStage(room, amHost) {
 
     const checkBadge = document.createElement('span');
     checkBadge.className = 'cat-check-badge';
-    checkBadge.textContent = '✓';
+    checkBadge.appendChild(createPixelSprite('sprite-check'));
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -1638,12 +1748,12 @@ function renderBoardStage(room) {
   el.boardGrid.style.setProperty('--board-rows', String(rows));
   el.boardGrid.innerHTML = '';
 
-  // Row 0: Category Headers with MS Paint Pixel Icons
+  // Row 0: Category Headers with 2-Frame Animated MS Paint Pixel Icons
   for (const cat of board.categories) {
     const header = document.createElement('div');
     header.className = 'j-cat-header';
 
-    const iconEl = createCategoryPixelIcon(cat.id, 24, cat.icon);
+    const iconEl = createCategoryPixelIcon(cat.id, 24);
     const nameSpan = document.createElement('span');
     nameSpan.textContent = cat.name;
 
@@ -1672,28 +1782,28 @@ function renderBoardStage(room) {
         if (tile.modifier) {
           const MOD_INFO = {
             speed_blitz: {
-              icon: '⚡',
+              sprite: 'sprite-mod-blitz',
               shortLabel: 'BLITZ',
               title: 'Speed Blitz: +50% Bonus Points!',
               cls: 'mod-blitz',
               tileCls: 'mod-tile-blitz',
             },
             steal: {
-              icon: '🦹',
+              sprite: 'sprite-mod-steal',
               shortLabel: 'STEAL',
               title: 'Steal Tile: Docks $200 from leader on correct solve!',
               cls: 'mod-steal',
               tileCls: 'mod-tile-steal',
             },
             chaos_all_play: {
-              icon: '💥',
+              sprite: 'sprite-mod-chaos',
               shortLabel: 'CHAOS',
-              title: 'Chaos All-Play: Everyone buzzes in simultaneously!',
+              title: 'Chaos All-Play: Everyone answers simultaneously!',
               cls: 'mod-chaos',
               tileCls: 'mod-tile-chaos',
             },
             double_trouble: {
-              icon: '🍀',
+              sprite: 'sprite-mod-double',
               shortLabel: '2X',
               title: 'Double Trouble: 2x points on correct solve!',
               cls: 'mod-double',
@@ -1701,7 +1811,7 @@ function renderBoardStage(room) {
             },
           };
           const info = MOD_INFO[tile.modifier] || {
-            icon: '✨',
+            sprite: 'sprite-sparkle',
             shortLabel: 'PERK',
             title: 'Party Modifier Tile',
             cls: 'mod-blitz',
@@ -1714,11 +1824,7 @@ function renderBoardStage(room) {
           const modTag = document.createElement('span');
           modTag.className = `tile-modifier-tag ${info.cls}`;
           modTag.setAttribute('aria-label', info.title);
-
-          const iconEl = document.createElement('span');
-          iconEl.className = 'tile-mod-icon';
-          iconEl.textContent = info.icon;
-          modTag.appendChild(iconEl);
+          modTag.appendChild(createPixelSprite(info.sprite));
 
           const textEl = document.createElement('span');
           textEl.className = 'tile-mod-text';
@@ -1754,8 +1860,8 @@ function renderClueStage(room, amHost, phaseChanged) {
 
   el.clueCatIcon.style.setProperty('--icon-size', '22px');
   el.clueCatIcon.style.setProperty(
-    '--cat-pos',
-    getCategorySpriteOffsetPct(ac.categoryId)
+    '--cat-url',
+    `url('${getCategorySpriteUrl(ac.categoryId)}')`
   );
   el.clueCatName.textContent = ac.categoryName;
   el.clueValuePill.textContent = ac.dailyDouble
@@ -1774,14 +1880,14 @@ function renderClueStage(room, amHost, phaseChanged) {
   if (ac.modifier) {
     el.clueModifierBadge.hidden = false;
     const MOD_INFO = {
-      speed_blitz: { label: '⚡ SPEED BLITZ (+50% Pts)', cls: 'mod-blitz' },
-      steal: { label: '🦹 STEAL TILE (-$200 Leader)', cls: 'mod-steal' },
-      chaos_all_play: { label: '💥 CHAOS ALL-PLAY', cls: 'mod-chaos' },
-      double_trouble: { label: '🍀 DOUBLE TROUBLE (2X)', cls: 'mod-double' },
+      speed_blitz: { sprite: 'sprite-mod-blitz', label: 'SPEED BLITZ (+50% Pts)', cls: 'mod-blitz' },
+      steal: { sprite: 'sprite-mod-steal', label: 'STEAL TILE (-$200 Leader)', cls: 'mod-steal' },
+      chaos_all_play: { sprite: 'sprite-mod-chaos', label: 'CHAOS ALL-PLAY', cls: 'mod-chaos' },
+      double_trouble: { sprite: 'sprite-mod-double', label: 'DOUBLE TROUBLE (2X)', cls: 'mod-double' },
     };
-    const m = MOD_INFO[ac.modifier] || { label: '✨ PERK', cls: 'mod-blitz' };
+    const m = MOD_INFO[ac.modifier] || { sprite: 'sprite-sparkle', label: 'PERK', cls: 'mod-blitz' };
     el.clueModifierBadge.className = `clue-modifier-badge ${m.cls}`;
-    el.clueModifierBadge.textContent = m.label;
+    setButtonSpriteAndText(el.clueModifierBadge, m.sprite, m.label);
   } else {
     el.clueModifierBadge.hidden = true;
   }
@@ -1883,12 +1989,12 @@ function renderClueStage(room, amHost, phaseChanged) {
 
     if (alreadySubmitted) {
       if (mySub.correct) {
-        el.chaosStatusMsg.innerHTML = `<span style="color:#70f558; font-weight:700;">✅ Correct! Locked in "${escapeHtml(mySub.text)}" (+${formatCash(mySub.points)})</span> <span style="opacity:0.8;">(Waiting for ${Math.max(0, totalCount - submittedCount)} player${totalCount - submittedCount === 1 ? '' : 's'}...)</span>`;
+        el.chaosStatusMsg.innerHTML = `<span class="pixel-sprite sprite-check chat-inline-sprite" aria-hidden="true"></span><span style="color:#70f558; font-weight:700;">Correct! Locked in "${escapeHtml(mySub.text)}" (+${formatCash(mySub.points)})</span> <span style="opacity:0.8;">(Waiting for ${Math.max(0, totalCount - submittedCount)} player${totalCount - submittedCount === 1 ? '' : 's'}...)</span>`;
       } else {
-        el.chaosStatusMsg.innerHTML = `<span style="color:#ffb3b3; font-weight:700;">❌ Locked in "${escapeHtml(mySub.text)}" (Incorrect)</span> <span style="opacity:0.8;">(Waiting for round to finish...)</span>`;
+        el.chaosStatusMsg.innerHTML = `<span class="pixel-sprite sprite-close-x chat-inline-sprite" aria-hidden="true"></span><span style="color:#ffb3b3; font-weight:700;">Locked in "${escapeHtml(mySub.text)}" (Incorrect)</span> <span style="opacity:0.8;">(Waiting for round to finish...)</span>`;
       }
     } else {
-      el.chaosStatusMsg.innerHTML = `💥 <strong>EVERYONE ANSWERS SIMULTANEOUSLY!</strong> Type and submit: <span class="chaos-pill">(${submittedCount}/${totalCount} answered)</span>`;
+      el.chaosStatusMsg.innerHTML = `<span class="pixel-sprite sprite-mod-chaos chat-inline-sprite" aria-hidden="true"></span><strong>EVERYONE ANSWERS SIMULTANEOUSLY!</strong> Type and submit: <span class="chaos-pill">(${submittedCount}/${totalCount} answered)</span>`;
       if (phaseChanged && !alreadySubmitted) {
         el.chaosAnswerInput.value = '';
         setTimeout(() => el.chaosAnswerInput.focus(), 40);
@@ -1944,7 +2050,10 @@ function renderIntermissionStage(room) {
 
       const left = document.createElement('div');
       left.className = 'fb-left';
-      const rankBadge = idx === 0 ? '👑' : `#${idx + 1}`;
+      const rankBadge =
+        idx === 0
+          ? '<span class="pixel-sprite sprite-crown" aria-hidden="true"></span>'
+          : `#${idx + 1}`;
       left.innerHTML = `<span class="intermission-rank">${rankBadge}</span> <strong>${escapeHtml(p.name)}</strong>`;
 
       const right = document.createElement('strong');
@@ -2026,9 +2135,12 @@ function renderGameoverStage(room, amHost) {
     spot.className = 'podium-spot';
 
     const avWrap = document.createElement('div');
+    const podiumMood =
+      slot.place === 1 ? 'victory' : p.score < 0 ? 'defeat' : 'happy';
     avWrap.innerHTML = buildAvatarHTML(p.avatar, {
       size: slot.place === 1 ? 92 : 72,
       crown: slot.place === 1,
+      mood: podiumMood,
     });
 
     const nameEl = document.createElement('div');
@@ -2071,9 +2183,14 @@ function renderGameoverStage(room, amHost) {
 
       const right = document.createElement('strong');
       right.style.color = r.correct ? '#53e237' : '#ff6b6b';
-      right.textContent = `${r.correct ? '+' : '-'}$${Math.abs(
+      const deltaSpan = document.createElement('span');
+      deltaSpan.textContent = `${r.correct ? '+' : '-'}$${Math.abs(
         r.wager
-      ).toLocaleString()} → ${formatCash(r.finalScore)}`;
+      ).toLocaleString()} `;
+      const arrowSprite = createPixelSprite('sprite-arrow-right', 'chat-inline-sprite');
+      const finalSpan = document.createElement('span');
+      finalSpan.textContent = formatCash(r.finalScore);
+      right.append(deltaSpan, arrowSprite, finalSpan);
 
       row.append(left, right);
       el.finalBreakdownList.appendChild(row);
@@ -2082,7 +2199,14 @@ function renderGameoverStage(room, amHost) {
     el.finalBreakdownWrap.hidden = true;
   }
 
-  // Render Match Superlatives & Awards
+  // Render Match Superlatives & Awards with Animated MS Paint Pixel Sprites
+  const SUPERLATIVE_SPRITES = {
+    blitz: { type: 'pixel', cls: 'sprite-mod-blitz' },
+    fire: { type: 'pixel', cls: 'sprite-fire' },
+    target: { type: 'pixel', cls: 'sprite-target' },
+    celebrate: { type: 'reaction', cls: 'reaction-celebrate' },
+  };
+
   if (Array.isArray(room.superlatives) && room.superlatives.length > 0) {
     el.superlativesSection.hidden = false;
     el.superlativesGrid.innerHTML = '';
@@ -2092,7 +2216,15 @@ function renderGameoverStage(room, amHost) {
 
       const icon = document.createElement('span');
       icon.className = 'superlative-badge-icon';
-      icon.textContent = sup.badge;
+      const spec = SUPERLATIVE_SPRITES[sup.badge] || { type: 'pixel', cls: 'sprite-medal' };
+      if (spec.type === 'reaction') {
+        const reactSpan = document.createElement('span');
+        reactSpan.className = `reaction-sprite ${spec.cls}`;
+        reactSpan.setAttribute('aria-hidden', 'true');
+        icon.appendChild(reactSpan);
+      } else {
+        icon.appendChild(createPixelSprite(spec.cls));
+      }
 
       const name = document.createElement('span');
       name.className = 'superlative-name';
@@ -2404,9 +2536,7 @@ function bindEvents() {
   if (el.settingMasterMute) {
     el.settingMasterMute.addEventListener('change', () => {
       sfx.setMuted(el.settingMasterMute.checked);
-      if (el.soundToggleBtn) {
-        el.soundToggleBtn.textContent = sfx.muted ? 'Sound: Off' : 'Sound: On';
-      }
+      syncSoundButtons();
     });
   }
 
@@ -2886,21 +3016,55 @@ function bindEvents() {
     });
   }
 
-  // Floating Pixel Reaction Buttons
+  // Floating Animated MS Paint Pixel Reaction Buttons
   document.querySelectorAll('.reaction-trigger-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      const emoji = btn.getAttribute('data-emoji');
-      if (!emoji) return;
+      const reactionId = normalizeClientReactionId(
+        btn.getAttribute('data-reaction') || btn.getAttribute('data-emoji')
+      );
+      if (!reactionId) return;
       sfx.play('reaction');
-      sendWs({ type: 'reaction', emoji });
-      spawnReactionParticle(emoji, state.name || 'You');
+      sendWs({ type: 'reaction', reaction: reactionId, emoji: reactionId });
+      spawnReactionParticle(reactionId, state.name || 'You');
     });
   });
 }
 
-function spawnReactionParticle(emoji, playerName) {
+const CLIENT_REACTION_IDS = new Set([
+  'laugh',
+  'rofl',
+  'happy',
+  'shocked',
+  'confused',
+  'sad',
+  'celebrate',
+  'facepalm',
+  'angry',
+  'thinking',
+  'fire',
+]);
+
+const CLIENT_LEGACY_REACTION_MAP = {
+  '\u{1F602}': 'rofl',
+  '\u{1F525}': 'fire',
+  '\u{1F480}': 'facepalm',
+  '\u{1F389}': 'celebrate',
+  '\u{1F631}': 'shocked',
+  '\u{1F914}': 'thinking',
+  '\u{1F4A9}': 'sad',
+};
+
+function normalizeClientReactionId(raw) {
+  const val = String(raw || '').trim();
+  if (CLIENT_REACTION_IDS.has(val)) return val;
+  if (CLIENT_LEGACY_REACTION_MAP[val]) return CLIENT_LEGACY_REACTION_MAP[val];
+  return 'laugh';
+}
+
+function spawnReactionParticle(reactionOrEmoji, playerName) {
   if (!el.reactionParticlesContainer) return;
+  const reactionId = normalizeClientReactionId(reactionOrEmoji);
   const particle = document.createElement('div');
   particle.className = 'floating-particle';
 
@@ -2910,15 +3074,15 @@ function spawnReactionParticle(emoji, playerName) {
   const rot = (Math.random() * 14 - 7).toFixed(1);
   particle.style.setProperty('--rot', `${rot}deg`);
 
-  const emojiSpan = document.createElement('span');
-  emojiSpan.className = 'particle-emoji';
-  emojiSpan.textContent = emoji;
+  const spriteSpan = document.createElement('span');
+  spriteSpan.className = `reaction-sprite reaction-${reactionId}`;
+  spriteSpan.setAttribute('aria-hidden', 'true');
 
   const authorSpan = document.createElement('span');
   authorSpan.className = 'particle-author';
   authorSpan.textContent = playerName || '';
 
-  particle.append(emojiSpan, authorSpan);
+  particle.append(spriteSpan, authorSpan);
   el.reactionParticlesContainer.appendChild(particle);
 
   particle.addEventListener('animationend', () => {
@@ -2964,17 +3128,28 @@ function updateVoiceDockUI(status) {
     if (el.voicePttBtn) el.voicePttBtn.hidden = true;
     if (el.voiceLeaveBtn) el.voiceLeaveBtn.hidden = true;
     if (el.voiceDockLabel) el.voiceDockLabel.textContent = 'Voice Chat';
-    if (el.voiceDockIcon) el.voiceDockIcon.textContent = '🎙️';
+    if (el.voiceDockIcon) {
+      el.voiceDockIcon.textContent = '';
+      el.voiceDockIcon.className = 'voice-dock-icon pixel-sprite sprite-mic-on';
+    }
   } else {
     if (el.voiceJoinBtn) el.voiceJoinBtn.hidden = true;
     if (el.voiceMuteBtn) {
       el.voiceMuteBtn.hidden = false;
-      el.voiceMuteBtn.textContent = status.isMuted ? '🔇 Muted' : '🎤 Mic';
+      setButtonSpriteAndText(
+        el.voiceMuteBtn,
+        status.isMuted ? 'sprite-mic-muted' : 'sprite-mic-on',
+        status.isMuted ? 'Muted' : 'Mic'
+      );
       el.voiceMuteBtn.classList.toggle('is-muted', status.isMuted);
     }
     if (el.voiceDeafenBtn) {
       el.voiceDeafenBtn.hidden = false;
-      el.voiceDeafenBtn.textContent = status.isDeafened ? '🔇 Deafened' : '🎧 Deafen';
+      setButtonSpriteAndText(
+        el.voiceDeafenBtn,
+        status.isDeafened ? 'sprite-headset-deaf' : 'sprite-headset-on',
+        status.isDeafened ? 'Deafened' : 'Deafen'
+      );
       el.voiceDeafenBtn.classList.toggle('is-deafened', status.isDeafened);
     }
     if (el.voicePttBtn) {
@@ -2988,7 +3163,11 @@ function updateVoiceDockUI(status) {
         : (status.isMuted ? 'Mic Muted' : 'Voice Active');
     }
     if (el.voiceDockIcon) {
-      el.voiceDockIcon.textContent = status.isSpeaking ? '🗣️' : (status.isMuted ? '🔇' : '🎙️');
+      el.voiceDockIcon.textContent = '';
+      const dockSprite = status.isSpeaking
+        ? 'sprite-mic-speaking'
+        : (status.isMuted ? 'sprite-mic-muted' : 'sprite-mic-on');
+      el.voiceDockIcon.className = `voice-dock-icon pixel-sprite ${dockSprite}`;
     }
   }
 

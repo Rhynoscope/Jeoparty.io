@@ -2,10 +2,45 @@
    JEOPARTY.IO — MS Paint Pixel-Art + Simplified Skribbl.io Interface
    ========================================================================== */
 
+/* Self-Hosted MS Paint Pixel Fonts (100% Pixel Typography Across All Screens) */
+@font-face {
+  font-family: 'Pixelify Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/assets/fonts/PixelifySans-Variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Pixelify Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/assets/fonts/PixelifySans-LatinExt.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/assets/fonts/Silkscreen-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/assets/fonts/Silkscreen-Bold.woff2') format('woff2');
+}
+
 :root {
   --skribbl-bg: #3529a8;
   --skribbl-bg-deep: #291e8c;
-  --skribbl-panel: rgba(24, 15, 96, 0.88);
+  --skribbl-panel: rgba(24, 15, 96, 0.9);
   --skribbl-panel-solid: #1e1375;
   --skribbl-stage-dark: #140c54;
   --skribbl-green: #53e237;
@@ -23,9 +58,11 @@
   --jeopardy-header-blue: #0b1870;
   --jeopardy-gold: #ffd900;
   --ink: #000000;
-  --font-ui: 'Fredoka', 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
-  --font-pixel: 'Silkscreen', 'Courier New', monospace;
-  --font-doodle: 'Patrick Hand', 'Comic Sans MS', cursive, sans-serif;
+  --font-ui: 'Pixelify Sans', 'Courier New', monospace;
+  --font-body: 'Pixelify Sans', 'Courier New', monospace;
+  --font-hand: 'Pixelify Sans', 'Courier New', monospace;
+  --font-doodle: 'Pixelify Sans', 'Courier New', monospace;
+  --font-pixel: 'Silkscreen', 'Pixelify Sans', 'Courier New', monospace;
 }
 
 *,
@@ -44,12 +81,14 @@ body {
   padding: 0;
   min-height: 100dvh;
   font-family: var(--font-ui);
+  font-size-adjust: from-font;
   background-color: var(--skribbl-bg);
-  background-image: url('/assets/doodle-bg.png');
+  background-image: url('/assets/sprites/interface/doodle-bg.png');
   background-repeat: repeat;
   background-size: 180px 180px;
   image-rendering: pixelated;
   color: #ffffff;
+  letter-spacing: 0.15px;
 }
 
 body * {
@@ -60,13 +99,14 @@ button,
 input,
 select,
 textarea {
-  font-family: inherit;
+  font-family: var(--font-ui);
+  font-size-adjust: from-font;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
 /* ==========================================================================
-   CRISP MS PAINT PIXEL-ART SPRITES & ANIMATIONS
+   CRISP MS PAINT PIXEL-ART SPRITES & FRAME-BASED ANIMATIONS
    ========================================================================== */
 .pixel-img {
   image-rendering: pixelated;
@@ -83,13 +123,13 @@ textarea {
   display: block;
   width: min(460px, 92vw);
   aspect-ratio: 340 / 68;
-  background-image: url('/assets/logo-sheet.png');
+  background-image: url('/assets/sprites/interface/logo-sheet.png');
   background-repeat: no-repeat;
   background-size: 100% 300%;
   background-position: 0% 0%;
   image-rendering: pixelated;
   filter: drop-shadow(0 4px 0 #12094a);
-  animation: logoPixelBoil 1.35s steps(1) infinite;
+  animation: logoPixelBoil 1.25s steps(1) infinite;
 
   @media (prefers-reduced-motion: reduce) {
     body:not(.allow-motion) & {
@@ -111,7 +151,7 @@ textarea {
   }
 }
 
-/* 4-Frame Animated MS Paint Cartoon Avatar (208x52 -> 4 frames of 52x52) */
+/* 4-Frame Multi-State Animated MS Paint Cartoon Avatar (208x52 -> 4 frames of 52x52) */
 .pixel-avatar {
   display: inline-block;
   width: var(--av-size, 48px);
@@ -121,7 +161,7 @@ textarea {
   background-size: 400% 100%;
   background-position: 0% 0%;
   image-rendering: pixelated;
-  animation: avatarPixelLoop 2.2s steps(1) infinite;
+  animation: sprite4Frame 2.1s steps(1) infinite;
   animation-delay: var(--av-delay, 0s);
 
   @media (prefers-reduced-motion: reduce) {
@@ -132,24 +172,47 @@ textarea {
   }
 }
 
-@keyframes avatarPixelLoop {
+.pixel-avatar.mood-idle {
+  animation: avatarIdleBlink 2.4s steps(1) infinite;
+}
+.pixel-avatar.mood-happy {
+  animation: sprite4Frame 0.85s steps(1) infinite;
+}
+.pixel-avatar.mood-excited {
+  animation: sprite4Frame 0.6s steps(1) infinite;
+}
+.pixel-avatar.mood-sad {
+  animation: sprite4Frame 1.2s steps(1) infinite;
+}
+.pixel-avatar.mood-victory {
+  animation: sprite4Frame 0.72s steps(1) infinite;
+}
+.pixel-avatar.mood-defeat {
+  animation: sprite4Frame 1.15s steps(1) infinite;
+}
+.pixel-avatar.mood-speaking {
+  animation: sprite4Frame 0.52s steps(1) infinite;
+}
+
+@keyframes avatarIdleBlink {
   0% {
     background-position: 0% 0%;
   }
-  36% {
+  38% {
     background-position: 33.3333% 0%;
   }
-  58% {
+  70% {
     background-position: 66.6667% 0%;
   }
-  88% {
+  90% {
     background-position: 100% 0%;
   }
 }
 
-/* Reusable 2-Frame & 3-Frame Animated Pixel UI Illustrations */
+/* Reusable Multi-Frame Animated MS Paint Pixel Sprites */
 .pixel-sprite {
   display: inline-block;
+  vertical-align: middle;
   background-repeat: no-repeat;
   background-position: 0% 0%;
   image-rendering: pixelated;
@@ -161,70 +224,6 @@ textarea {
       background-position: 0% 0% !important;
     }
   }
-}
-
-.sprite-crown {
-  width: 22px;
-  height: 22px;
-  background-image: url('/assets/crown-strip.png');
-  background-size: 200% 100%;
-  animation: sprite2Frame 0.9s steps(1) infinite;
-}
-
-.sprite-trophy {
-  width: 44px;
-  height: 44px;
-  background-image: url('/assets/trophy-strip.png');
-  background-size: 200% 100%;
-  animation: sprite2Frame 0.85s steps(1) infinite;
-}
-
-.sprite-correct {
-  width: 36px;
-  height: 36px;
-  background-image: url('/assets/correct-strip.png');
-  background-size: 200% 100%;
-  animation: sprite2Frame 0.7s steps(1) infinite;
-}
-
-.sprite-wrong {
-  width: 36px;
-  height: 36px;
-  background-image: url('/assets/wrong-strip.png');
-  background-size: 200% 100%;
-  animation: sprite2Frame 0.7s steps(1) infinite;
-}
-
-.sprite-dd-star {
-  width: 40px;
-  height: 40px;
-  background-image: url('/assets/dd-star-strip.png');
-  background-size: 200% 100%;
-  animation: sprite2Frame 0.65s steps(1) infinite;
-}
-
-.sprite-buzzer {
-  width: 36px;
-  height: 36px;
-  background-image: url('/assets/buzzer-strip.png');
-  background-size: 200% 100%;
-  animation: sprite2Frame 0.8s steps(1) infinite;
-}
-
-.sprite-confetti {
-  width: 112px;
-  height: 30px;
-  background-image: url('/assets/confetti-strip.png');
-  background-size: 200% 100%;
-  animation: sprite2Frame 0.75s steps(1) infinite;
-}
-
-.sprite-loading {
-  width: 48px;
-  height: 24px;
-  background-image: url('/assets/loading-strip.png');
-  background-size: 300% 100%;
-  animation: sprite3Frame 0.9s steps(1) infinite;
 }
 
 @keyframes sprite2Frame {
@@ -248,26 +247,124 @@ textarea {
   }
 }
 
+@keyframes sprite4Frame {
+  0% {
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 33.3333% 0%;
+  }
+  50% {
+    background-position: 66.6667% 0%;
+  }
+  75% {
+    background-position: 100% 0%;
+  }
+}
+
+/* Primary Game Event & Award Sprite Sheets (4-Frame Animated) */
+.sprite-crown {
+  width: 20px;
+  height: 20px;
+  background-image: url('/assets/sprites/icons/crown-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.9s steps(1) infinite;
+}
+
+.sprite-trophy {
+  width: 44px;
+  height: 44px;
+  background-image: url('/assets/sprites/icons/trophy-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.9s steps(1) infinite;
+}
+
+.sprite-medal {
+  width: 22px;
+  height: 22px;
+  background-image: url('/assets/sprites/icons/medal-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 1.0s steps(1) infinite;
+}
+
+.sprite-correct {
+  width: 36px;
+  height: 36px;
+  background-image: url('/assets/sprites/effects/correct-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.72s steps(1) infinite;
+}
+
+.sprite-wrong {
+  width: 36px;
+  height: 36px;
+  background-image: url('/assets/sprites/effects/wrong-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.68s steps(1) infinite;
+}
+
+.sprite-dd-star {
+  width: 40px;
+  height: 40px;
+  background-image: url('/assets/sprites/effects/dd-star-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.7s steps(1) infinite;
+}
+
+.sprite-buzzer {
+  width: 36px;
+  height: 36px;
+  background-image: url('/assets/sprites/effects/buzzer-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.8s steps(1) infinite;
+}
+
+.sprite-confetti {
+  width: 112px;
+  height: 30px;
+  background-image: url('/assets/sprites/effects/confetti-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.75s steps(1) infinite;
+}
+
+.sprite-loading {
+  width: 48px;
+  height: 24px;
+  background-image: url('/assets/sprites/interface/loading-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.85s steps(1) infinite;
+}
+
 /* Explicit User Animation Pause Toggle */
 body.reduce-motion .pixel-logo,
 body.reduce-motion .pixel-avatar,
 body.reduce-motion .pixel-sprite,
+body.reduce-motion .cat-pixel-icon,
+body.reduce-motion .reaction-sprite,
 body.reduce-motion .timer-badge.is-urgent {
   animation: none !important;
   background-position: 0% 0% !important;
 }
 
-/* 25-Icon Hand-Drawn MS Paint Category Sprite Sheet (600x24 -> 25 frames of 24x24) */
+/* 54-Category 2-Frame Animated Hand-Drawn MS Paint Sprite Icons (48x24 -> 2 frames of 24x24) */
 .cat-pixel-icon {
   display: inline-block;
   width: var(--icon-size, 24px);
   height: var(--icon-size, 24px);
   flex-shrink: 0;
-  background-image: url('/assets/cat-icons-sheet.png');
+  background-image: var(--cat-url, url('/assets/sprites/categories/custom.png'));
   background-repeat: no-repeat;
-  background-size: 2500% 100%;
-  background-position: var(--cat-pos, 0%) 0%;
+  background-size: 200% 100%;
+  background-position: 0% 0%;
   image-rendering: pixelated;
+  animation: sprite2Frame 1.2s steps(1) infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    body:not(.allow-motion) & {
+      animation: none !important;
+      background-position: 0% 0% !important;
+    }
+  }
 }
 
 /* ==========================================================================
@@ -796,15 +893,16 @@ summary:focus-visible {
 .players-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
 
 .player-row {
   display: grid;
-  grid-template-columns: 32px 1fr 48px;
+  grid-template-columns: 28px minmax(0, 1fr) 48px;
   align-items: center;
-  padding: 7px 8px;
+  padding: 7px 7px;
   border-bottom: 1.5px solid #e4e7f2;
   background: #ffffff;
   gap: 5px;
@@ -837,22 +935,31 @@ summary:focus-visible {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
 }
 
 .player-name-line {
   font-weight: 700;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
+  font-size: 0.88rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 3px 4px;
+  min-width: 0;
 }
 
-.player-name-line > span:last-child {
+.player-name-text {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.player-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
 }
 
 .player-name-line.is-me-name {
@@ -1257,29 +1364,50 @@ summary:focus-visible {
 }
 
 .cat-card-right {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cat-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.cat-card:has(.cat-checkbox:focus-visible) {
+  outline: 2.5px solid var(--jeopardy-gold);
+  outline-offset: 2px;
 }
 
 .cat-check-badge {
-  display: none;
-  background: #2ed573;
-  color: #052e16;
-  font-size: 11px;
-  font-weight: 900;
-  width: 17px;
-  height: 17px;
-  line-height: 17px;
-  text-align: center;
-  border-radius: 3px;
-  border: 1px solid #000000;
+  display: inline-grid;
+  place-items: center;
+  background: rgba(8, 5, 36, 0.55);
+  width: 19px;
+  height: 19px;
+  border-radius: 4px;
+  border: 2px solid #574ec2;
+}
+
+.cat-check-badge .pixel-sprite {
+  opacity: 0;
 }
 
 .cat-card.selected .cat-check-badge,
 .cat-card:has(.cat-checkbox:checked) .cat-check-badge {
-  display: inline-block;
+  background: #2ed573;
+  border-color: #000000;
   animation: settingSelectPulse 0.2s ease-out;
+}
+
+.cat-card.selected .cat-check-badge .pixel-sprite,
+.cat-card:has(.cat-checkbox:checked) .cat-check-badge .pixel-sprite {
+  opacity: 1;
 }
 
 .cat-card-label {
@@ -2204,12 +2332,17 @@ dialog::backdrop {
 
   /* Mobile scoreboard - fit players cleanly side-by-side with no avatar clipping */
   .player-row {
-    flex: 1 1 0;
-    min-width: 125px;
-    max-width: 210px;
-    padding: 4px 6px;
+    flex: 1 0 146px;
+    min-width: 146px;
+    max-width: 220px;
+    padding: 5px 6px;
     grid-template-columns: 20px minmax(0, 1fr) 34px;
-    gap: 4px;
+    gap: 5px;
+  }
+
+  .player-row .player-avatar-cell {
+    width: 34px;
+    height: 34px;
   }
 
   .player-row .player-avatar-cell .pixel-avatar {
@@ -2904,7 +3037,7 @@ dialog::backdrop {
   }
 }
 
-/* Player "ON FIRE! 🔥" Win Streak Styles */
+/* Player "ON FIRE!" Win Streak Styles */
 .player-item.is-on-fire {
   position: relative;
   background: linear-gradient(135deg, rgba(255, 71, 87, 0.25), rgba(255, 165, 2, 0.25)) !important;
@@ -3345,6 +3478,13 @@ dialog::backdrop {
   gap: 6px;
 }
 
+.bot-diff-container .match-pace-title {
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .diff-title-row {
   display: flex;
   align-items: center;
@@ -3565,24 +3705,30 @@ dialog::backdrop {
   }
 
   .j-tile-value {
-    font-size: clamp(0.72rem, 3vw, 1.05rem) !important;
-    letter-spacing: -0.3px !important;
+    font-size: clamp(0.68rem, 2.75vw, 0.96rem) !important;
+    letter-spacing: -0.4px !important;
     margin: 0 !important;
-    padding-right: 14px !important; /* Always leave room for the 13px corner tag */
+    padding: 0 !important;
     display: inline-block !important;
   }
 
-  /* Compact 13px square icon badge in top-right corner */
+  .j-tile-btn:has(.tile-modifier-tag) .j-tile-value,
+  .j-tile-btn.tile-with-modifier .j-tile-value {
+    padding-top: 6px !important;
+    padding-right: 10px !important;
+  }
+
+  /* Compact 12px square icon badge in top-right corner */
   .tile-modifier-tag {
     position: absolute !important;
     top: 2px !important;
     right: 2px !important;
-    width: 13px !important;
-    height: 13px !important;
-    min-width: 13px !important;
-    max-width: 13px !important;
-    min-height: 13px !important;
-    max-height: 13px !important;
+    width: 12px !important;
+    height: 12px !important;
+    min-width: 12px !important;
+    max-width: 12px !important;
+    min-height: 12px !important;
+    max-height: 12px !important;
     padding: 0 !important;
     margin: 0 !important;
     border-radius: 2px !important;
@@ -3814,14 +3960,558 @@ dialog::backdrop {
   line-height: 1.25;
 }
 
-/* Category Emoji Icon Fallback */
-.cat-emoji-icon {
+/* =========================================================================
+   COMPLETE MS PAINT PIXEL-ART SPRITE SYSTEM & REACTION SHEETS (v3.0)
+   ========================================================================= */
+
+/* Interface & Control Sprites (Multi-Frame Animated) */
+.sprite-dice {
+  width: 28px;
+  height: 28px;
+  background-image: url('/assets/sprites/interface/dice-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 1.6s steps(1) infinite;
+}
+
+.dice-btn:hover .sprite-dice {
+  animation: sprite4Frame 0.45s steps(1) infinite;
+}
+
+.sprite-dice-sm {
+  width: 14px;
+  height: 14px;
+  background-image: url('/assets/sprites/interface/dice-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 1.6s steps(1) infinite;
+}
+
+.sprite-clock {
+  width: 20px;
+  height: 20px;
+  background-image: url('/assets/sprites/interface/clock-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.9s steps(1) infinite;
+}
+
+.sprite-gear {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/gear-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 1.8s steps(1) infinite;
+}
+
+button:hover .sprite-gear {
+  animation: sprite4Frame 0.55s steps(1) infinite;
+}
+
+.sprite-sound-on {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/sound-on-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 0.95s steps(1) infinite;
+}
+
+.sprite-sound-off {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/sound-off-strip.png');
+  background-size: 200% 100%;
+}
+
+.sprite-anim-star {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/anim-star-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 1.1s steps(1) infinite;
+}
+
+.sprite-help-q {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/help-q-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.4s steps(1) infinite;
+}
+
+.sprite-phone {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/phone-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.3s steps(1) infinite;
+}
+
+.sprite-globe {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/interface/globe-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.4s steps(1) infinite;
+}
+
+.sprite-lock {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/lock-strip.png');
+  background-size: 200% 100%;
+}
+
+button:hover .sprite-lock {
+  animation: sprite2Frame 0.6s steps(1) infinite;
+}
+
+.sprite-key {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/key-code-strip.png');
+  background-size: 200% 100%;
+}
+
+button:hover .sprite-key {
+  animation: sprite2Frame 0.6s steps(1) infinite;
+}
+
+.sprite-check {
+  width: 13px;
+  height: 13px;
+  background-image: url('/assets/sprites/interface/check-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.1s steps(1) infinite;
+}
+
+.sprite-close-x {
+  width: 13px;
+  height: 13px;
+  background-image: url('/assets/sprites/interface/close-x-strip.png');
+  background-size: 200% 100%;
+}
+
+button:hover .sprite-close-x {
+  animation: sprite2Frame 0.5s steps(1) infinite;
+}
+
+.sprite-arrow-left {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/arrow-left-strip.png');
+  background-size: 200% 100%;
+}
+
+button:hover .sprite-arrow-left {
+  animation: sprite2Frame 0.45s steps(1) infinite;
+}
+
+.sprite-arrow-right {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/arrow-right-strip.png');
+  background-size: 200% 100%;
+}
+
+button:hover .sprite-arrow-right {
+  animation: sprite2Frame 0.45s steps(1) infinite;
+}
+
+.sprite-copy {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/copy-strip.png');
+  background-size: 200% 100%;
+}
+
+button:hover .sprite-copy {
+  animation: sprite2Frame 0.55s steps(1) infinite;
+}
+
+.sprite-refresh {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/interface/refresh-strip.png');
+  background-size: 400% 100%;
+}
+
+button:hover .sprite-refresh {
+  animation: sprite4Frame 0.55s steps(1) infinite;
+}
+
+.sprite-plus {
+  width: 13px;
+  height: 13px;
+  background-image: url('/assets/sprites/interface/plus-strip.png');
+  background-size: 200% 100%;
+}
+
+button:hover .sprite-plus {
+  animation: sprite2Frame 0.5s steps(1) infinite;
+}
+
+/* Voice Chat, Bot, Lobby & Category Preset Icon Sprites */
+.sprite-mic-on {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/mic-on-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 1.2s steps(1) infinite;
+}
+
+.sprite-mic-speaking {
+  width: 17px;
+  height: 17px;
+  background-image: url('/assets/sprites/icons/mic-speaking-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.45s steps(1) infinite;
+}
+
+.sprite-mic-muted {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/mic-muted-strip.png');
+  background-size: 200% 100%;
+}
+
+.sprite-headset-on {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/headset-on-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.4s steps(1) infinite;
+}
+
+.sprite-headset-deaf {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/headset-deaf-strip.png');
+  background-size: 200% 100%;
+}
+
+.sprite-speaker-on {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/speaker-peer-on-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 0.9s steps(1) infinite;
+}
+
+.sprite-speaker-off {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/speaker-peer-off-strip.png');
+  background-size: 200% 100%;
+}
+
+.sprite-bot {
+  width: 17px;
+  height: 17px;
+  background-image: url('/assets/sprites/icons/bot-head-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 1.5s steps(1) infinite;
+}
+
+.sprite-users {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/users-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.3s steps(1) infinite;
+}
+
+.sprite-books {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/books-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.4s steps(1) infinite;
+}
+
+.sprite-target {
+  width: 17px;
+  height: 17px;
+  background-image: url('/assets/sprites/icons/target-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 1.1s steps(1) infinite;
+}
+
+.sprite-preset-funny {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/preset-funny-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 1.0s steps(1) infinite;
+}
+
+.sprite-preset-science {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/preset-science-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 0.95s steps(1) infinite;
+}
+
+.sprite-preset-history {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/preset-history-strip.png');
+  background-size: 200% 100%;
+  animation: sprite2Frame 1.4s steps(1) infinite;
+}
+
+.sprite-preset-pop {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/preset-pop-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 1.0s steps(1) infinite;
+}
+
+.sprite-preset-everyday {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/preset-everyday-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 1.05s steps(1) infinite;
+}
+
+.sprite-rocket {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/rocket-strip.png');
+  background-size: 300% 100%;
+  animation: sprite3Frame 0.65s steps(1) infinite;
+}
+
+/* Special Board & Clue Modifier Sprites (4-Frame Animated) */
+.sprite-mod-blitz {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/effects/mod-blitz-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.65s steps(1) infinite;
+}
+
+.sprite-mod-steal {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/effects/mod-steal-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.95s steps(1) infinite;
+}
+
+.sprite-mod-chaos {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/effects/mod-chaos-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.6s steps(1) infinite;
+}
+
+.sprite-mod-double {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/effects/mod-double-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.85s steps(1) infinite;
+}
+
+.sprite-fire {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/effects/fire-streak-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.55s steps(1) infinite;
+}
+
+.sprite-sparkle {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/effects/sparkle-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.8s steps(1) infinite;
+}
+
+/* 11 Expressive 4-Frame Animated MS Paint Reaction Sprite Sheets (128x32 -> 4 frames of 32x32) */
+.reaction-sprite {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background-repeat: no-repeat;
+  background-size: 400% 100%;
+  background-position: 0% 0%;
+  image-rendering: pixelated;
+  animation: sprite4Frame 0.72s steps(1) infinite;
+  flex-shrink: 0;
+
+  @media (prefers-reduced-motion: reduce) {
+    body:not(.allow-motion) & {
+      animation: none !important;
+      background-position: 0% 0% !important;
+    }
+  }
+}
+
+.reaction-laugh { background-image: url('/assets/sprites/reactions/reaction-laugh.png'); }
+.reaction-rofl { background-image: url('/assets/sprites/reactions/reaction-rofl.png'); }
+.reaction-happy { background-image: url('/assets/sprites/reactions/reaction-happy.png'); }
+.reaction-shocked { background-image: url('/assets/sprites/reactions/reaction-shocked.png'); }
+.reaction-confused { background-image: url('/assets/sprites/reactions/reaction-confused.png'); }
+.reaction-sad { background-image: url('/assets/sprites/reactions/reaction-sad.png'); }
+.reaction-celebrate { background-image: url('/assets/sprites/reactions/reaction-celebrate.png'); }
+.reaction-facepalm { background-image: url('/assets/sprites/reactions/reaction-facepalm.png'); }
+.reaction-angry { background-image: url('/assets/sprites/reactions/reaction-angry.png'); }
+.reaction-thinking { background-image: url('/assets/sprites/reactions/reaction-thinking.png'); }
+.reaction-fire { background-image: url('/assets/sprites/reactions/reaction-fire.png'); }
+
+.floating-reaction-bar {
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 14px;
+  flex-wrap: wrap;
+}
+
+.reaction-trigger-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  background: #fff9db;
+  border: 2px solid #000000;
+  box-shadow: 0 3px 0 #000000;
+}
+
+.reaction-trigger-btn:hover {
+  transform: translateY(-3px) scale(1.1);
+  background: #ffffff;
+}
+
+.reaction-trigger-btn:hover .reaction-sprite {
+  animation-duration: 0.42s;
+}
+
+.floating-particle .reaction-sprite {
+  width: 32px;
+  height: 32px;
+}
+
+/* Superlative Badge Sprite Sizing */
+.superlative-badge-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
-  line-height: 1;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
+  min-height: 28px;
+}
+
+.superlative-badge-icon .pixel-sprite,
+.superlative-badge-icon .reaction-sprite {
+  width: 26px;
+  height: 26px;
+}
+
+/* Inline Button & Heading Pixel Sprite Alignment */
+.utility-pill-btn,
+.btn-skribbl,
+.btn-top-tool,
+.preset-chip,
+.pace-btn,
+.home-lan-badge,
+.clue-modifier-badge,
+.chaos-headline-banner,
+.superlatives-title,
+.skribbl-dialog h2,
+.dialog-x,
+.tiny-link-btn,
+.arrow-btn,
+.bot-gear-btn,
+.player-kick-btn,
+.player-peer-mute-btn,
+.transfer-host-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.diff-btn {
+  display: flex;
+}
+
+.diff-check,
+.cat-check-badge,
+.bot-modal-check {
+  align-items: center;
+  justify-content: center;
+}
+
+.diff-btn.active .diff-check,
+.cat-card.selected .cat-check-badge,
+.cat-card:has(.cat-checkbox:checked) .cat-check-badge,
+.bot-modal-diff-btn.active .bot-modal-check {
+  display: inline-flex;
+}
+
+.pace-btn.active .pace-check {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Chat Inline Pixel Badge Icons */
+.chat-inline-sprite {
+  margin-right: 5px;
+  vertical-align: -3px;
+}
+
+/* Board Tile Corner Modifier Sprite Sizing (Clean & Never Covers Money!) */
+.tile-modifier-tag {
+  width: 15px;
+  height: 15px;
+}
+
+.tile-modifier-tag .pixel-sprite {
+  width: 11px;
+  height: 11px;
+}
+
+/* Crisp MS Paint Paper Card Contrast Inside Modals */
+.audio-settings-box {
+  background: #f5f7ff;
+  border: 2.5px solid #000000;
+  border-radius: 6px;
+  padding: 10px 14px;
+  box-shadow: 2px 2px 0 #000000;
+}
+
+.transfer-dialog-detail {
+  background: #f5f7ff;
+  color: #161626;
+  border: 2px solid #000000;
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 2px 2px 0 #000000;
+}
+
+/* Mobile Responsive Refinements for 11-Reaction Bar & Corner Modifier Sprites */
+@media (max-width: 768px) {
+  .tile-modifier-tag .pixel-sprite {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .floating-reaction-bar {
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    max-width: 98% !important;
+  }
+
+  .reaction-trigger-btn {
+    width: 29px !important;
+    height: 29px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 0 #000000 !important;
+  }
+
+  .reaction-trigger-btn .reaction-sprite {
+    width: 20px !important;
+    height: 20px !important;
+  }
 }

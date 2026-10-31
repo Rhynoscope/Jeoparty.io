@@ -27,7 +27,10 @@ const BUILTIN_CATEGORIES = [
   ...historyGeography,
   ...funnyAbsurd,
   ...everydayLife,
-];
+].map((cat) => ({
+  ...cat,
+  icon: cat.id,
+}));
 
 module.exports = {
   BUILTIN_CATEGORIES,

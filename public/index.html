@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>jeoparty.io - Multiplayer MS Paint Jeopardy Game</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Patrick+Hand&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="preload" as="image" href="/assets/logo-sheet.png" fetchpriority="high" />
-  <link rel="stylesheet" href="/css/styles.css?v=2.6.0" />
+  <title>jeoparty.io - Multiplayer MS Paint Pixel Jeopardy</title>
+  <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
+  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
+  <link rel="stylesheet" href="/css/styles.css?v=3.0.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -21,13 +20,16 @@
     <!-- Compact Top Utility Controls (keeps secondary options out of the way) -->
     <header class="home-utility-bar">
       <button type="button" id="home-sound-btn" class="utility-pill-btn" aria-label="Toggle sound effects">
-        Sound: On
+        <span class="pixel-sprite sprite-sound-on" aria-hidden="true"></span>
+        <span>Sound: On</span>
       </button>
       <button type="button" id="home-motion-btn" class="utility-pill-btn" aria-label="Toggle pixel animations">
-        Animations: On
+        <span class="pixel-sprite sprite-anim-star" aria-hidden="true"></span>
+        <span>Animations: On</span>
       </button>
       <button type="button" id="open-howto-btn" class="utility-pill-btn">
-        ? How to Play
+        <span class="pixel-sprite sprite-help-q" aria-hidden="true"></span>
+        <span>How to Play</span>
       </button>
     </header>
 
@@ -44,7 +46,9 @@
       <div class="login-card">
         <div id="invite-room-banner" class="invite-room-banner" hidden>
           <span>Invited to Room <strong id="invite-room-code-label"></strong></span>
-          <button type="button" id="cancel-invite-btn" class="tiny-link-btn" aria-label="Clear room invite">✕</button>
+          <button type="button" id="cancel-invite-btn" class="tiny-link-btn" aria-label="Clear room invite">
+            <span class="pixel-sprite sprite-close-x" aria-hidden="true"></span>
+          </button>
         </div>
 
         <input
@@ -57,7 +61,7 @@
           aria-label="Enter your name"
         />
 
-        <!-- Animated MS Paint Avatar Customizer (Eyes, Mouth, Color, Hat + Pixel Dice) -->
+        <!-- Animated MS Paint Avatar Customizer (Eyes, Mouth, Color, Hat + Animated Pixel Dice) -->
         <div class="avatar-customizer-stage">
           <button
             type="button"
@@ -65,14 +69,22 @@
             class="dice-btn"
             aria-label="Randomize avatar"
           >
-            <img src="/assets/dice.png" width="28" height="28" alt="" class="pixel-img" />
+            <span class="pixel-sprite sprite-dice" aria-hidden="true"></span>
           </button>
 
           <div class="avatar-arrows-col">
-            <button type="button" class="arrow-btn" data-part="hat" data-dir="-1" aria-label="Previous hat">&lt;</button>
-            <button type="button" class="arrow-btn" data-part="eyes" data-dir="-1" aria-label="Previous eyes">&lt;</button>
-            <button type="button" class="arrow-btn" data-part="mouth" data-dir="-1" aria-label="Previous mouth">&lt;</button>
-            <button type="button" class="arrow-btn" data-part="color" data-dir="-1" aria-label="Previous color">&lt;</button>
+            <button type="button" class="arrow-btn" data-part="hat" data-dir="-1" aria-label="Previous hat">
+              <span class="pixel-sprite sprite-arrow-left" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="arrow-btn" data-part="eyes" data-dir="-1" aria-label="Previous eyes">
+              <span class="pixel-sprite sprite-arrow-left" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="arrow-btn" data-part="mouth" data-dir="-1" aria-label="Previous mouth">
+              <span class="pixel-sprite sprite-arrow-left" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="arrow-btn" data-part="color" data-dir="-1" aria-label="Previous color">
+              <span class="pixel-sprite sprite-arrow-left" aria-hidden="true"></span>
+            </button>
           </div>
 
           <div class="avatar-preview-center">
@@ -81,10 +93,18 @@
           </div>
 
           <div class="avatar-arrows-col">
-            <button type="button" class="arrow-btn" data-part="hat" data-dir="1" aria-label="Next hat">&gt;</button>
-            <button type="button" class="arrow-btn" data-part="eyes" data-dir="1" aria-label="Next eyes">&gt;</button>
-            <button type="button" class="arrow-btn" data-part="mouth" data-dir="1" aria-label="Next mouth">&gt;</button>
-            <button type="button" class="arrow-btn" data-part="color" data-dir="1" aria-label="Next color">&gt;</button>
+            <button type="button" class="arrow-btn" data-part="hat" data-dir="1" aria-label="Next hat">
+              <span class="pixel-sprite sprite-arrow-right" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="arrow-btn" data-part="eyes" data-dir="1" aria-label="Next eyes">
+              <span class="pixel-sprite sprite-arrow-right" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="arrow-btn" data-part="mouth" data-dir="1" aria-label="Next mouth">
+              <span class="pixel-sprite sprite-arrow-right" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="arrow-btn" data-part="color" data-dir="1" aria-label="Next color">
+              <span class="pixel-sprite sprite-arrow-right" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
 
@@ -94,10 +114,12 @@
           </button>
           <div class="home-secondary-actions">
             <button type="button" id="create-private-btn" class="btn-skribbl btn-blue">
-              Create Private Room
+              <span class="pixel-sprite sprite-lock" aria-hidden="true"></span>
+              <span>Create Private Room</span>
             </button>
             <button type="button" id="open-join-dialog-btn" class="btn-skribbl btn-purple">
-              Join Room
+              <span class="pixel-sprite sprite-key" aria-hidden="true"></span>
+              <span>Join Room</span>
             </button>
           </div>
         </div>
@@ -105,7 +127,10 @@
         <!-- Phone Access Helper Banner (shown when hosting on PC via localhost) -->
         <div id="home-lan-banner" class="home-lan-banner" hidden>
           <div class="home-lan-inner">
-            <span class="home-lan-badge" aria-hidden="true">📱 PHONE</span>
+            <span class="home-lan-badge" aria-hidden="true">
+              <span class="pixel-sprite sprite-phone" aria-hidden="true"></span>
+              <span>PHONE</span>
+            </span>
             <div class="home-lan-text-col">
               <span class="home-lan-sub">Connect phone on same Wi-Fi:</span>
               <button type="button" id="home-lan-copy-btn" class="home-lan-pill-btn" title="Click to copy address">
@@ -135,7 +160,7 @@
 
       <div class="topbar-center">
         <div id="timer-badge" class="timer-badge" hidden>
-          <img src="/assets/clock.png" width="22" height="22" alt="" class="pixel-img" />
+          <span class="pixel-sprite sprite-clock" aria-hidden="true"></span>
           <span id="timer-seconds">20</span>
         </div>
         <div id="topbar-status-text" class="topbar-status-text">
@@ -145,13 +170,16 @@
 
       <div class="topbar-right">
         <button type="button" id="sound-toggle-btn" class="btn-top-tool" aria-label="Toggle sound effects">
-          Sound: On
+          <span class="pixel-sprite sprite-sound-on" aria-hidden="true"></span>
+          <span>Sound: On</span>
         </button>
-        <button type="button" id="audio-settings-btn" class="btn-top-tool" aria-label="Audio and voice settings" title="Audio & Voice Settings">
-          ⚙️ Audio
+        <button type="button" id="audio-settings-btn" class="btn-top-tool" aria-label="Audio and voice settings" title="Audio &amp; Voice Settings">
+          <span class="pixel-sprite sprite-gear" aria-hidden="true"></span>
+          <span>Audio</span>
         </button>
         <button type="button" id="motion-toggle-btn" class="btn-top-tool" aria-label="Toggle animations">
-          Anim: On
+          <span class="pixel-sprite sprite-anim-star" aria-hidden="true"></span>
+          <span>Anim: On</span>
         </button>
         <button type="button" id="leave-room-btn" class="btn-top-tool btn-top-leave">
           Leave
@@ -168,23 +196,35 @@
         <!-- Compact Pixel-Art Voice Chat Dock -->
         <div id="voice-chat-dock" class="voice-chat-dock">
           <div class="voice-dock-status">
-            <span class="voice-dock-icon" id="voice-dock-icon">🎙️</span>
+            <span class="voice-dock-icon pixel-sprite sprite-mic-on" id="voice-dock-icon" aria-hidden="true"></span>
             <span id="voice-dock-label" class="voice-dock-label">Voice Chat</span>
             <span id="voice-dock-count" class="voice-dock-count" title="Players in voice">0</span>
           </div>
           <div class="voice-dock-actions">
-            <button type="button" id="voice-join-btn" class="btn-voice btn-voice-join" title="Join Voice Chat">Join Voice</button>
-            <button type="button" id="voice-mute-btn" class="btn-voice btn-voice-mute" hidden title="Mute/Unmute Mic">🎤 Mic</button>
-            <button type="button" id="voice-deafen-btn" class="btn-voice btn-voice-deafen" hidden title="Deafen/Undeafen Audio">🎧 Deafen</button>
+            <button type="button" id="voice-join-btn" class="btn-voice btn-voice-join" title="Join Voice Chat">
+              <span class="pixel-sprite sprite-mic-on" aria-hidden="true"></span>
+              <span>Join Voice</span>
+            </button>
+            <button type="button" id="voice-mute-btn" class="btn-voice btn-voice-mute" hidden title="Mute/Unmute Mic">
+              <span class="pixel-sprite sprite-mic-on" aria-hidden="true"></span>
+              <span>Mic</span>
+            </button>
+            <button type="button" id="voice-deafen-btn" class="btn-voice btn-voice-deafen" hidden title="Deafen/Undeafen Audio">
+              <span class="pixel-sprite sprite-headset-on" aria-hidden="true"></span>
+              <span>Deafen</span>
+            </button>
             <button type="button" id="voice-ptt-btn" class="btn-voice btn-voice-ptt" hidden title="Hold to Talk (Spacebar or 'V')">Talk</button>
-            <button type="button" id="voice-leave-btn" class="btn-voice btn-voice-leave" hidden title="Leave Voice Session">✕</button>
+            <button type="button" id="voice-leave-btn" class="btn-voice btn-voice-leave" hidden title="Leave Voice Session" aria-label="Leave Voice Session">
+              <span class="pixel-sprite sprite-close-x" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
 
         <div id="players-list" class="players-list"></div>
         <div id="host-bot-controls" class="host-bot-controls" hidden>
           <button type="button" id="add-bot-btn" class="btn-skribbl btn-small btn-purple">
-            + Add Bot
+            <span class="pixel-sprite sprite-plus" aria-hidden="true"></span>
+            <span>Add Bot</span>
           </button>
         </div>
       </aside>
@@ -206,7 +246,8 @@
                   <p id="lan-hint-text" class="lan-hint-text"></p>
                 </div>
                 <button type="button" id="copy-invite-main-btn" class="btn-skribbl btn-blue">
-                  Copy Invite Link
+                  <span class="pixel-sprite sprite-copy" aria-hidden="true"></span>
+                  <span>Copy Invite Link</span>
                 </button>
               </div>
             </section>
@@ -222,13 +263,19 @@
                 <span id="match-pace-heading" class="match-pace-title">Match Length &amp; Pace:</span>
                 <div class="match-pace-buttons" role="radiogroup" aria-label="Match Length and Pace">
                   <button type="button" class="pace-btn active" data-pace="quick" role="radio" aria-checked="true" title="3 Categories x 3 Rows = 9 Clues (Fast, Casual, Fun!)">
-                    <span class="pace-check">✓</span> ⚡ Quick Match (5–8m • 9 Clues)
+                    <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-mod-blitz" aria-hidden="true"></span>
+                    <span>Quick Match (5-8m | 9 Clues)</span>
                   </button>
                   <button type="button" class="pace-btn" data-pace="standard" role="radio" aria-checked="false" title="4 Categories x 4 Rows = 16 Clues">
-                    <span class="pace-check">✓</span> 🎯 Standard (12–15m • 16 Clues)
+                    <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-target" aria-hidden="true"></span>
+                    <span>Standard (12-15m | 16 Clues)</span>
                   </button>
                   <button type="button" class="pace-btn" data-pace="epic" role="radio" aria-checked="false" title="5 Categories x 5 Rows x 2 Rounds (Full Marathon)">
-                    <span class="pace-check">✓</span> 🏆 Epic (20–25m • 2 Rounds)
+                    <span class="pace-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-medal" aria-hidden="true"></span>
+                    <span>Epic (20-25m | 2 Rounds)</span>
                   </button>
                 </div>
               </div>
@@ -236,35 +283,38 @@
               <!-- Bot Difficulty Selector (Easy, Medium, Hard, Champion) -->
               <div class="bot-diff-container" role="group" aria-labelledby="bot-diff-heading">
                 <div class="diff-title-row">
-                  <span id="bot-diff-heading" class="match-pace-title">🤖 Bot Difficulty:</span>
+                  <span id="bot-diff-heading" class="match-pace-title">
+                    <span class="pixel-sprite sprite-bot" aria-hidden="true"></span>
+                    <span>Default Bot Difficulty:</span>
+                  </span>
                   <span class="diff-active-label" id="active-difficulty-indicator">MEDIUM</span>
                 </div>
                 <div class="bot-diff-buttons" role="radiogroup" aria-label="Bot Difficulty">
                   <button type="button" class="diff-btn" data-diff="easy" role="radio" aria-checked="false" title="Relaxed opponents who make frequent mistakes">
                     <span class="diff-btn-header">
                       <span class="diff-badge">EASY</span>
-                      <span class="diff-check">✓</span>
+                      <span class="diff-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     </span>
                     <span class="diff-desc">Relaxed opponents who make frequent mistakes.</span>
                   </button>
                   <button type="button" class="diff-btn active" data-diff="medium" role="radio" aria-checked="true" title="Balanced opponents with a mix of correct and incorrect answers">
                     <span class="diff-btn-header">
                       <span class="diff-badge">MEDIUM</span>
-                      <span class="diff-check">✓</span>
+                      <span class="diff-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     </span>
                     <span class="diff-desc">Balanced opponents with a mix of correct and incorrect answers.</span>
                   </button>
                   <button type="button" class="diff-btn" data-diff="hard" role="radio" aria-checked="false" title="Skilled opponents who answer quickly and accurately">
                     <span class="diff-btn-header">
                       <span class="diff-badge">HARD</span>
-                      <span class="diff-check">✓</span>
+                      <span class="diff-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     </span>
                     <span class="diff-desc">Skilled opponents who answer quickly and accurately.</span>
                   </button>
                   <button type="button" class="diff-btn" data-diff="champion" role="radio" aria-checked="false" title="Expert opponents designed to challenge experienced trivia players">
                     <span class="diff-btn-header">
                       <span class="diff-badge">CHAMPION</span>
-                      <span class="diff-check">✓</span>
+                      <span class="diff-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     </span>
                     <span class="diff-desc">Expert opponents designed to challenge experienced trivia players.</span>
                   </button>
@@ -285,9 +335,9 @@
                 <label class="setting-field">
                   <span>Rows &amp; Difficulty</span>
                   <select id="set-clues-per-cat" class="skribbl-select">
-                    <option value="3" selected>Quick (3 rows: $200–$600)</option>
-                    <option value="4">Medium (4 rows: $200–$800)</option>
-                    <option value="5">Classic (5 rows: $200–$1000)</option>
+                    <option value="3" selected>Quick (3 rows: $200-$600)</option>
+                    <option value="4">Medium (4 rows: $200-$800)</option>
+                    <option value="5">Classic (5 rows: $200-$1000)</option>
                   </select>
                 </label>
 
@@ -308,10 +358,11 @@
                 <div class="cat-customizer-top">
                   <div class="cat-title-cluster">
                     <h3>Select Categories</h3>
-                    <span id="included-counter-badge" class="included-counter-badge">24 / 24</span>
+                    <span id="included-counter-badge" class="included-counter-badge">53 / 53</span>
                   </div>
                   <button type="button" id="open-custom-cat-btn" class="preset-chip preset-chip-gold">
-                    + Custom Category
+                    <span class="pixel-sprite sprite-plus" aria-hidden="true"></span>
+                    <span>Custom Category</span>
                   </button>
                 </div>
 
@@ -328,12 +379,30 @@
                   <div class="cat-presets-bar">
                     <button type="button" class="preset-chip" data-preset="all">All</button>
                     <button type="button" class="preset-chip" data-preset="none">None</button>
-                    <button type="button" class="preset-chip" data-preset="random6">Random 6</button>
-                    <button type="button" class="preset-chip" data-preset="funny">😂 Funny &amp; Weird</button>
-                    <button type="button" class="preset-chip" data-preset="science">🔬 Science</button>
-                    <button type="button" class="preset-chip" data-preset="history">🏛️ History</button>
-                    <button type="button" class="preset-chip" data-preset="pop">🎮 Pop &amp; Games</button>
-                    <button type="button" class="preset-chip" data-preset="everyday">☕ Everyday</button>
+                    <button type="button" class="preset-chip" data-preset="random6">
+                      <span class="pixel-sprite sprite-dice-sm" aria-hidden="true"></span>
+                      <span>Random 6</span>
+                    </button>
+                    <button type="button" class="preset-chip" data-preset="funny">
+                      <span class="pixel-sprite sprite-preset-funny" aria-hidden="true"></span>
+                      <span>Funny &amp; Weird</span>
+                    </button>
+                    <button type="button" class="preset-chip" data-preset="science">
+                      <span class="pixel-sprite sprite-preset-science" aria-hidden="true"></span>
+                      <span>Science</span>
+                    </button>
+                    <button type="button" class="preset-chip" data-preset="history">
+                      <span class="pixel-sprite sprite-preset-history" aria-hidden="true"></span>
+                      <span>History</span>
+                    </button>
+                    <button type="button" class="preset-chip" data-preset="pop">
+                      <span class="pixel-sprite sprite-preset-pop" aria-hidden="true"></span>
+                      <span>Pop &amp; Games</span>
+                    </button>
+                    <button type="button" class="preset-chip" data-preset="everyday">
+                      <span class="pixel-sprite sprite-preset-everyday" aria-hidden="true"></span>
+                      <span>Everyday</span>
+                    </button>
                   </div>
                 </div>
 
@@ -397,10 +466,22 @@
             Pick a clue from the board!
           </div>
           <div class="board-perk-legend" aria-label="Game Modifier Perks">
-            <span class="legend-chip mod-blitz" title="Speed Blitz: +50% Bonus Points!"><span class="legend-icon">⚡</span> Blitz +50%</span>
-            <span class="legend-chip mod-steal" title="Steal Tile: Docks $200 from leader on solve!"><span class="legend-icon">🦹</span> Steal</span>
-            <span class="legend-chip mod-chaos" title="Chaos All-Play: Everyone answers simultaneously!"><span class="legend-icon">💥</span> Chaos</span>
-            <span class="legend-chip mod-double" title="Double Trouble: 2X Points!"><span class="legend-icon">🍀</span> 2X</span>
+            <span class="legend-chip mod-blitz" title="Speed Blitz: +50% Bonus Points!">
+              <span class="pixel-sprite sprite-mod-blitz" aria-hidden="true"></span>
+              <span>Blitz +50%</span>
+            </span>
+            <span class="legend-chip mod-steal" title="Steal Tile: Docks $200 from leader on solve!">
+              <span class="pixel-sprite sprite-mod-steal" aria-hidden="true"></span>
+              <span>Steal</span>
+            </span>
+            <span class="legend-chip mod-chaos" title="Chaos All-Play: Everyone answers simultaneously!">
+              <span class="pixel-sprite sprite-mod-chaos" aria-hidden="true"></span>
+              <span>Chaos</span>
+            </span>
+            <span class="legend-chip mod-double" title="Double Trouble: 2X Points!">
+              <span class="pixel-sprite sprite-mod-double" aria-hidden="true"></span>
+              <span>2X</span>
+            </span>
           </div>
           <div id="jeopardy-board-grid" class="jeopardy-board-grid"></div>
         </div>
@@ -493,7 +574,10 @@
 
               <!-- Chaos All-Play Simultaneous Answer Input -->
               <form id="chaos-answer-form" class="clue-answer-form chaos-answer-form" hidden>
-                <div class="chaos-headline-banner">💥 CHAOS ALL-PLAY! No buzzer — everyone answers at once!</div>
+                <div class="chaos-headline-banner">
+                  <span class="pixel-sprite sprite-mod-chaos" aria-hidden="true"></span>
+                  <span>CHAOS ALL-PLAY! No buzzer — everyone answers at once!</span>
+                </div>
                 <div class="chaos-input-row">
                   <input
                     type="text"
@@ -530,7 +614,8 @@
                 </div>
                 <div id="clue-winner-line" class="clue-winner-line"></div>
                 <button type="button" id="next-clue-btn" class="btn-skribbl btn-blue btn-small" hidden>
-                  Next Clue →
+                  <span>Next Clue</span>
+                  <span class="pixel-sprite sprite-arrow-right" aria-hidden="true"></span>
                 </button>
               </div>
             </div>
@@ -555,7 +640,8 @@
             </div>
             <div class="intermission-actions">
               <button type="button" id="continue-intermission-btn" class="btn-skribbl btn-green btn-lg">
-                Continue Now →
+                <span>Continue Now</span>
+                <span class="pixel-sprite sprite-arrow-right" aria-hidden="true"></span>
               </button>
             </div>
           </div>
@@ -635,7 +721,10 @@
 
             <!-- Match Awards & Fun Superlatives -->
             <div id="superlatives-section" class="superlatives-section" hidden>
-              <h3 class="superlatives-title">🎖️ Match Awards & Superlatives</h3>
+              <h3 class="superlatives-title">
+                <span class="pixel-sprite sprite-medal" aria-hidden="true"></span>
+                <span>Match Awards &amp; Superlatives</span>
+              </h3>
               <div id="superlatives-grid" class="superlatives-grid"></div>
             </div>
 
@@ -652,15 +741,42 @@
             </div>
           </div>
         </div>
-        <!-- Live Floating Pixel Reaction Bar -->
-        <div id="floating-reaction-bar" class="floating-reaction-bar" aria-label="Live Reactions">
-          <button type="button" class="reaction-trigger-btn" data-emoji="😂" title="Laugh">😂</button>
-          <button type="button" class="reaction-trigger-btn" data-emoji="🔥" title="On Fire!">🔥</button>
-          <button type="button" class="reaction-trigger-btn" data-emoji="💀" title="Dead">💀</button>
-          <button type="button" class="reaction-trigger-btn" data-emoji="🎉" title="Party!">🎉</button>
-          <button type="button" class="reaction-trigger-btn" data-emoji="😱" title="Shock!">😱</button>
-          <button type="button" class="reaction-trigger-btn" data-emoji="🤔" title="Thinking">🤔</button>
-          <button type="button" class="reaction-trigger-btn" data-emoji="💩" title="Poop">💩</button>
+
+        <!-- Live Floating Animated MS Paint Pixel-Art Reaction Bar -->
+        <div id="floating-reaction-bar" class="floating-reaction-bar" aria-label="Live Pixel Reactions">
+          <button type="button" class="reaction-trigger-btn" data-reaction="laugh" data-emoji="laugh" title="Laughing" aria-label="Laughing reaction">
+            <span class="reaction-sprite reaction-laugh" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="rofl" data-emoji="rofl" title="Crying from Laughter" aria-label="Crying from laughter reaction">
+            <span class="reaction-sprite reaction-rofl" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="happy" data-emoji="happy" title="Happy / Smiling" aria-label="Happy reaction">
+            <span class="reaction-sprite reaction-happy" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="celebrate" data-emoji="celebrate" title="Celebrating" aria-label="Celebrating reaction">
+            <span class="reaction-sprite reaction-celebrate" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="fire" data-emoji="fire" title="On Fire!" aria-label="On fire reaction">
+            <span class="reaction-sprite reaction-fire" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="shocked" data-emoji="shocked" title="Shocked / Surprised" aria-label="Shocked reaction">
+            <span class="reaction-sprite reaction-shocked" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="confused" data-emoji="confused" title="Confused" aria-label="Confused reaction">
+            <span class="reaction-sprite reaction-confused" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="thinking" data-emoji="thinking" title="Thinking" aria-label="Thinking reaction">
+            <span class="reaction-sprite reaction-thinking" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="facepalm" data-emoji="facepalm" title="Facepalm" aria-label="Facepalm reaction">
+            <span class="reaction-sprite reaction-facepalm" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="sad" data-emoji="sad" title="Sad / Crying" aria-label="Sad reaction">
+            <span class="reaction-sprite reaction-sad" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="reaction-trigger-btn" data-reaction="angry" data-emoji="angry" title="Playfully Angry" aria-label="Playfully angry reaction">
+            <span class="reaction-sprite reaction-angry" aria-hidden="true"></span>
+          </button>
         </div>
       </section>
 
@@ -689,10 +805,19 @@
   <!-- Modal 0: Public Matchmaking Browser (Opened by Play!) -->
   <dialog id="public-rooms-dialog" class="skribbl-dialog skribbl-dialog-wide" closedby="any" aria-labelledby="public-rooms-dialog-title">
     <div class="dialog-header-row">
-      <h2 id="public-rooms-dialog-title">Public Matchmaking</h2>
+      <h2 id="public-rooms-dialog-title">
+        <span class="pixel-sprite sprite-globe" aria-hidden="true"></span>
+        <span>Public Matchmaking</span>
+      </h2>
       <div class="dialog-header-actions">
-        <button type="button" id="create-public-from-header-btn" class="btn-skribbl btn-green btn-sm">+ Host Public Room</button>
-        <button type="button" id="refresh-public-rooms-btn" class="btn-skribbl btn-blue btn-sm">Refresh</button>
+        <button type="button" id="create-public-from-header-btn" class="btn-skribbl btn-green btn-sm">
+          <span class="pixel-sprite sprite-plus" aria-hidden="true"></span>
+          <span>Host Public Room</span>
+        </button>
+        <button type="button" id="refresh-public-rooms-btn" class="btn-skribbl btn-blue btn-sm">
+          <span class="pixel-sprite sprite-refresh" aria-hidden="true"></span>
+          <span>Refresh</span>
+        </button>
       </div>
     </div>
     <p class="dialog-sub">Join an active public game waiting for players around the world, or host your own:</p>
@@ -711,7 +836,10 @@
   <!-- Modal 0B: Audio & Voice Settings Dialog -->
   <dialog id="audio-settings-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="audio-settings-title">
     <div class="dialog-header-row">
-      <h2 id="audio-settings-title">⚙️ Audio &amp; Voice Settings</h2>
+      <h2 id="audio-settings-title">
+        <span class="pixel-sprite sprite-gear" aria-hidden="true"></span>
+        <span>Audio &amp; Voice Settings</span>
+      </h2>
     </div>
     <div class="audio-settings-box">
       <label class="audio-setting-row">
@@ -756,7 +884,10 @@
   <!-- Modal 0C: Microphone Permission Help Dialog -->
   <dialog id="mic-help-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="mic-help-title">
     <div class="dialog-header-row">
-      <h2 id="mic-help-title">🎙️ Microphone Access</h2>
+      <h2 id="mic-help-title">
+        <span class="pixel-sprite sprite-mic-on" aria-hidden="true"></span>
+        <span>Microphone Access</span>
+      </h2>
     </div>
     <p id="mic-help-message" class="dialog-sub">Jeoparty needs permission to use your microphone so you can talk with players in your room.</p>
     <div class="mic-help-instructions">
@@ -775,7 +906,10 @@
 
   <!-- Modal 1: Join Room by Code -->
   <dialog id="join-code-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="join-code-dialog-title">
-    <h2 id="join-code-dialog-title">Join a Room</h2>
+    <h2 id="join-code-dialog-title">
+      <span class="pixel-sprite sprite-key" aria-hidden="true"></span>
+      <span>Join a Room</span>
+    </h2>
     <p class="dialog-sub">Enter the 6-character room code from your friend:</p>
     <form id="join-code-form" class="dialog-stack">
       <input
@@ -803,10 +937,10 @@
         <strong>Start or Join:</strong> Click <strong>Play!</strong> for an instant match with bots, or <strong>Create Private Room</strong> to share a code/link with friends.
       </li>
       <li>
-        <strong>Pick Categories:</strong> In the lobby, check any of the 24 built-in trivia categories (or write your own custom category!).
+        <strong>Pick Categories:</strong> In the lobby, check any of the 53 built-in trivia categories (or write your own custom category!).
       </li>
       <li>
-        <strong>Answer Clues:</strong> Take turns picking dollar tiles. Slam <strong>Spacebar / BUZZ IN!</strong> first (or race simultaneously in <em>Everyone Answers</em> mode).
+        <strong>Answer Clues:</strong> Take turns picking dollar tiles. Slam <strong>Spacebar / BUZZ IN!</strong> first (or race simultaneously in <em>Chaos All-Play</em> and <em>Everyone Answers</em> modes).
       </li>
       <li>
         <strong>Win the Crown:</strong> Bet big on hidden <strong>Daily Doubles</strong> and <strong>Final Jeoparty</strong> to finish with the highest score!
@@ -834,8 +968,13 @@
   <!-- Modal 3.5: Transfer Host Confirmation Dialog -->
   <dialog id="transfer-host-dialog" class="skribbl-dialog" closedby="any" aria-labelledby="transfer-host-title">
     <div class="dialog-header-row">
-      <h2 id="transfer-host-title">👑 TRANSFER HOST</h2>
-      <button type="button" class="dialog-x" id="close-transfer-dialog-x" aria-label="Close">✕</button>
+      <h2 id="transfer-host-title">
+        <span class="pixel-sprite sprite-crown" aria-hidden="true"></span>
+        <span>TRANSFER HOST</span>
+      </h2>
+      <button type="button" class="dialog-x" id="close-transfer-dialog-x" aria-label="Close">
+        <span class="pixel-sprite sprite-close-x" aria-hidden="true"></span>
+      </button>
     </div>
     <p class="dialog-sub" id="transfer-host-message">
       Transfer room host privileges to <strong id="transfer-target-name">Player</strong>?
@@ -852,8 +991,13 @@
   <!-- Modal 3.6: Individual Bot Difficulty Settings Dialog -->
   <dialog id="bot-settings-dialog" class="skribbl-dialog bot-settings-dialog" closedby="any" aria-labelledby="bot-settings-title">
     <div class="dialog-header-row">
-      <h2 id="bot-settings-title">⚙️ BOT DIFFICULTY</h2>
-      <button type="button" class="dialog-x" id="close-bot-settings-x" aria-label="Close">×</button>
+      <h2 id="bot-settings-title">
+        <span class="pixel-sprite sprite-gear" aria-hidden="true"></span>
+        <span>BOT DIFFICULTY</span>
+      </h2>
+      <button type="button" class="dialog-x" id="close-bot-settings-x" aria-label="Close">
+        <span class="pixel-sprite sprite-close-x" aria-hidden="true"></span>
+      </button>
     </div>
     <p class="dialog-sub">
       Configure difficulty for <strong id="bot-settings-name">Bot</strong>:
@@ -862,28 +1006,28 @@
       <button type="button" class="bot-modal-diff-btn" data-diff="easy" role="radio" aria-checked="false">
         <div class="bot-modal-diff-header">
           <span class="bot-diff-tag diff-easy">EASY</span>
-          <span class="bot-modal-check">✓</span>
+          <span class="bot-modal-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
         </div>
         <div class="bot-modal-diff-desc">Relaxed opponents who make frequent mistakes.</div>
       </button>
       <button type="button" class="bot-modal-diff-btn active" data-diff="medium" role="radio" aria-checked="true">
         <div class="bot-modal-diff-header">
           <span class="bot-diff-tag diff-medium">MEDIUM</span>
-          <span class="bot-modal-check">✓</span>
+          <span class="bot-modal-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
         </div>
         <div class="bot-modal-diff-desc">Balanced opponents with a mix of correct and incorrect answers.</div>
       </button>
       <button type="button" class="bot-modal-diff-btn" data-diff="hard" role="radio" aria-checked="false">
         <div class="bot-modal-diff-header">
           <span class="bot-diff-tag diff-hard">HARD</span>
-          <span class="bot-modal-check">✓</span>
+          <span class="bot-modal-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
         </div>
         <div class="bot-modal-diff-desc">Skilled opponents who answer quickly and accurately.</div>
       </button>
       <button type="button" class="bot-modal-diff-btn" data-diff="champion" role="radio" aria-checked="false">
         <div class="bot-modal-diff-header">
           <span class="bot-diff-tag diff-champion">CHAMPION</span>
-          <span class="bot-modal-check">✓</span>
+          <span class="bot-modal-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
         </div>
         <div class="bot-modal-diff-desc">Expert opponents designed to challenge experienced trivia players.</div>
       </button>
@@ -950,6 +1094,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=2.6.0"></script>
+  <script type="module" src="/js/app.js?v=3.0.0"></script>
 </body>
 </html>
