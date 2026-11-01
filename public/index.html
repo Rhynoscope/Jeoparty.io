@@ -7,8 +7,9 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=4.0.0" />
-  <link rel="stylesheet" href="/css/gameshow.css?v=4.0.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=4.1.0" />
+  <link rel="stylesheet" href="/css/gameshow.css?v=4.1.0" />
+  <link rel="stylesheet" href="/css/cinematic.css?v=4.1.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -251,6 +252,9 @@
           </button>
         </div>
 
+        <!-- 2.5D CINEMATIC STAGE CAMERA (intro + broadcast close-ups) -->
+        <div id="cinematic-layer" class="cinematic-layer" hidden aria-live="off"></div>
+
         <!-- 1. SIMPLIFIED LOBBY (Grouped into ROOM, GAME SETTINGS, ACTIONS) -->
         <div id="stage-lobby" class="stage-panel lobby-panel">
           <div class="lobby-scroll-area">
@@ -297,6 +301,34 @@
                     <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
                     <span class="mode-name">Halloween Mayhem</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Cinematic Camera presentation setting -->
+              <div class="camera-setting-container" role="group" aria-labelledby="camera-setting-heading">
+                <div class="pace-header-row">
+                  <span id="camera-setting-heading" class="match-pace-title">
+                    <span class="pixel-sprite sprite-gear" aria-hidden="true"></span>
+                    <span>Cinematic Camera:</span>
+                  </span>
+                  <span id="active-camera-indicator" class="mode-active-label">ENABLED</span>
+                </div>
+                <div class="camera-mode-buttons" role="radiogroup" aria-label="Cinematic Camera">
+                  <button type="button" class="camera-btn active" data-camera="on" role="radio" aria-checked="true" title="Full game-show intro and cinematic camera moves">
+                    <span class="camera-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="camera-btn-name">Enabled</span>
+                    <span class="camera-btn-desc">Intro + camera moves</span>
+                  </button>
+                  <button type="button" class="camera-btn" data-camera="reduced" role="radio" aria-checked="false" title="Shorter intro and gentler camera movement">
+                    <span class="camera-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="camera-btn-name">Reduced Motion</span>
+                    <span class="camera-btn-desc">Shorter, gentler shots</span>
+                  </button>
+                  <button type="button" class="camera-btn" data-camera="off" role="radio" aria-checked="false" title="Skip the cinematic intro and camera movement">
+                    <span class="camera-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="camera-btn-name">Disabled</span>
+                    <span class="camera-btn-desc">Straight to the board</span>
                   </button>
                 </div>
               </div>
@@ -1207,6 +1239,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=4.0.0"></script>
+  <script type="module" src="/js/app.js?v=4.1.0"></script>
 </body>
 </html>

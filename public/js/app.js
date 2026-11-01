@@ -12,6 +12,7 @@ import { sfx } from './audio.js';
 import { voiceChat } from './voice.js';
 import { gameShow } from './gameshow.js';
 import { hostPresenter } from './host.js';
+import { cinematic } from './cinematic.js';
 
 /* =========================================================================
    MODERN WEB GUIDANCE POLYFILLS / FALLBACKS
@@ -257,6 +258,7 @@ function savePreferredSettingsFromRoom(room) {
     botDifficulty: s.botDifficulty || 'medium',
     specialFrequency: s.specialFrequency || 'normal',
     answerMode: s.answerMode,
+    cinematicCamera: s.cinematicCamera || 'on',
     doubleJeopardy: s.doubleJeopardy,
     dailyDoubles: s.dailyDoubles,
     finalJeopardy: s.finalJeopardy,
@@ -400,6 +402,9 @@ const el = {
   contestantStage: document.getElementById('contestant-stage'),
   finalWheelBox: document.getElementById('final-wheel-box'),
   finalCategoryBanner: document.getElementById('final-category-banner'),
+  centerStage: document.querySelector('.center-stage'),
+  activeCameraIndicator: document.getElementById('active-camera-indicator'),
+  cameraBtns: document.querySelectorAll('.camera-btn'),
 
   // Mic Permission Dialog
   micHelpDialog: document.getElementById('mic-help-dialog'),
@@ -1237,6 +1242,7 @@ function handleServerMessage(msg) {
     case 'host_line': {
       // Scripted, server-authoritative announcements only.
       gameShow.onHostLine(msg);
+      cinematic.onHostLine(msg);
       break;
     }
 
@@ -1270,6 +1276,7 @@ function returnToHomeScreen({ clearInvite = true } = {}) {
   state.lastRenderedPhase = null;
   state.lastRenderedStage = null;
   gameShow.reset();
+  cinematic.reset();
   el.timerBadge.hidden = true;
   if (el.customCatDialog.open) el.customCatDialog.close();
 
@@ -1415,6 +1422,8 @@ function getStageGroup(phase) {
   switch (phase) {
     case 'lobby':
       return 'lobby';
+    case 'intro':
+      return 'intro';
     case 'board':
       return 'board';
     case 'daily_double_wager':
@@ -1459,6 +1468,9 @@ function renderRoomState() {
   } else if (room.phase === 'game_over') {
     el.topbarRoundBadge.textContent = 'Results';
     el.topbarStatusText.textContent = 'Final Standings';
+  } else if (room.phase === 'intro') {
+    el.topbarRoundBadge.textContent = 'On Air';
+    el.topbarStatusText.textContent = 'Introducing the contestants...';
   } else if (room.phase.startsWith('final_')) {
     el.topbarRoundBadge.textContent = 'Final Jeoparty';
     el.topbarStatusText.textContent =
@@ -1487,6 +1499,7 @@ function renderRoomState() {
   renderPlayersSidebar(room, amHost);
 
   // 3. Center Stage Panel Visibility
+  const showIntro = room.phase === 'intro';
   const showLobby = room.phase === 'lobby';
   const showBoard = room.phase === 'board';
   const showClue = [
@@ -1512,6 +1525,10 @@ function renderRoomState() {
   el.stageFinal.hidden = !showFinal;
   el.stageGameover.hidden = !showGameover;
 
+  if (el.centerStage) {
+    el.centerStage.classList.toggle('is-intro', showIntro);
+  }
+
   if (showLobby) renderLobbyStage(room, amHost);
   if (showBoard) renderBoardStage(room);
   if (showClue) renderClueStage(room, amHost, phaseChanged);
@@ -1519,10 +1536,19 @@ function renderRoomState() {
   if (showFinal) renderFinalStage(room, phaseChanged);
   if (showGameover) renderGameoverStage(room, amHost);
 
-  // Game-show presentation layer (host captions, podiums, money, typing, wheel)
+  // Cinematic camera first (it owns the current room/phase for awards), then
+  // the game-show layer (podiums/money/typing) which may trigger close-ups.
+  const isHalloween = isHalloweenMode(room);
+  cinematic.update(room, {
+    playerId: state.playerId,
+    isHost: amHost,
+    isHalloween,
+    clockOffset: state.clockOffsetMs,
+    reduceMotion: state.reduceMotion,
+  });
   gameShow.update(room, {
     playerId: state.playerId,
-    isHalloween: isHalloweenMode(room),
+    isHalloween,
     clockOffset: state.clockOffsetMs,
     reduceMotion: state.reduceMotion,
   });
@@ -1549,7 +1575,6 @@ function renderRoomState() {
   }
 
   // Synchronize Halloween Theme
-  const isHalloween = isHalloweenMode(room);
   document.body.dataset.gameMode = isHalloween ? 'halloween' : 'standard';
   document.body.classList.toggle('theme-halloween', isHalloween);
 
@@ -1984,6 +2009,28 @@ function renderLobbyStage(room, amHost) {
       : 'CLASSIC JEOPARTY';
   }
 
+  // Sync Cinematic Camera setting (intro + broadcast camera)
+  const cameraMode = ['on', 'reduced', 'off'].includes(s.cinematicCamera)
+    ? s.cinematicCamera
+    : 'on';
+  if (el.cameraBtns) {
+    el.cameraBtns.forEach((btn) => {
+      const mode = btn.getAttribute('data-camera') || 'on';
+      const isActive = mode === cameraMode;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      btn.disabled = !amHost;
+    });
+  }
+  if (el.activeCameraIndicator) {
+    el.activeCameraIndicator.textContent =
+      cameraMode === 'off'
+        ? 'DISABLED'
+        : cameraMode === 'reduced'
+        ? 'REDUCED'
+        : 'ENABLED';
+  }
+
   const controls = [
     el.setAnswerMode,
     el.setBoardCols,
@@ -1997,6 +2044,7 @@ function renderLobbyStage(room, amHost) {
     el.openCustomCatBtn,
     el.startGameBtn,
     ...document.querySelectorAll('.preset-chip[data-preset]'),
+    ...document.querySelectorAll('.camera-btn'),
   ].filter(Boolean);
   for (const ctrl of controls) {
     ctrl.disabled = !amHost;
@@ -2775,6 +2823,7 @@ function startTimerLoop() {
     if (
       !room.phaseEndsAt ||
       room.phase === 'lobby' ||
+      room.phase === 'intro' ||
       room.phase === 'game_over' ||
       room.phase === 'final_wheel'
     ) {
@@ -3500,6 +3549,35 @@ function bindEvents() {
     });
   }
 
+  // Cinematic Camera selector (host-controlled presentation setting)
+  if (el.cameraBtns) {
+    el.cameraBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!isMeHost(state.room)) {
+          showToast('Only the room host can change the camera setting!', 'error');
+          return;
+        }
+        if (state.room?.phase !== 'lobby') {
+          showToast('The camera setting can only be changed in the lobby.', 'error');
+          return;
+        }
+        const mode = btn.getAttribute('data-camera') || 'on';
+        sfx.play('click');
+        el.cameraBtns.forEach((b) => {
+          const isSelected = b === btn;
+          b.classList.toggle('active', isSelected);
+          b.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+        });
+        if (el.activeCameraIndicator) {
+          el.activeCameraIndicator.textContent =
+            mode === 'off' ? 'DISABLED' : mode === 'reduced' ? 'REDUCED' : 'ENABLED';
+        }
+        pushSettingsPatch({ cinematicCamera: mode });
+      });
+    });
+  }
+
   // Transfer Host Confirmation Dialog Handlers
   if (el.cancelTransferBtn) {
     el.cancelTransferBtn.addEventListener('click', () => {
@@ -3656,6 +3734,7 @@ function init() {
   renderHomeAvatarPreview();
   syncHalloweenAtmosphere();
   gameShow.init();
+  cinematic.init({ onSkipIntro: () => sendWs({ type: 'skip_intro' }) });
   checkUrlInviteParam();
   bindEvents();
   loadInitialServerMetadata();

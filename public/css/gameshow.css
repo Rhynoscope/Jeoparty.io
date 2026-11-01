@@ -1184,7 +1184,7 @@
 }
 
 .podium {
-  animation: podiumRise 0.3s steps(4) both;
+  animation: podiumRise 0.3s steps(4) backwards;
   animation-delay: calc(var(--podium-index, 0) * 35ms);
 }
 

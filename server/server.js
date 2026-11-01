@@ -41,6 +41,34 @@ const STREAK_BONUS_AMOUNT = 100;
 const STREAK_BONUS_THRESHOLD = 3;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
+/* =========================================================================
+   CINEMATIC INTRO (server-owned presentation timeline)
+   ========================================================================= */
+const INTRO_HOST_LINE =
+  "Hello, everyone! I'm your host, and welcome to Jeoparty!";
+const INTRO_OUTRO_LINE =
+  "Alright, contestants! Let's get this game started!";
+const INTRO_TIMINGS = Object.freeze({
+  on: {
+    leadMs: 550,
+    wideMs: 1400,
+    hostMs: 2800,
+    boardMs: 2100,
+    minPlayerMs: 800,
+    maxPlayerMs: 1600,
+    playerBudgetMs: 12000,
+  },
+  reduced: {
+    leadMs: 300,
+    wideMs: 700,
+    hostMs: 1500,
+    boardMs: 1100,
+    minPlayerMs: 550,
+    maxPlayerMs: 760,
+    playerBudgetMs: 6200,
+  },
+});
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -286,6 +314,7 @@ function createDefaultSettings(gameMode = 'standard') {
     specialFrequency: 'normal', // 'low' | 'normal' | 'high'
     botDifficulty: 'medium', // 'easy' | 'medium' | 'hard' | 'champion'
     answerMode: 'buzzer', // 'buzzer' | 'skribbl' | 'host'
+    cinematicCamera: 'on', // 'on' | 'reduced' | 'off' — game-show intro + camera moves
     boardCols: 4, // 3..8 (auto-updated for active roster when autoScaleMatch is true)
     cluesPerCat: 4, // 3..6 ($200..$1200)
     clueTimeSec: 15, // 12 | 15 | 18 | 20 | 25 | 30 | 45
@@ -364,6 +393,10 @@ function applySettingsPatch(room, patch) {
 
   if (['easy', 'medium', 'hard', 'champion'].includes(patch.botDifficulty)) {
     s.botDifficulty = patch.botDifficulty;
+  }
+
+  if (['on', 'reduced', 'off'].includes(patch.cinematicCamera)) {
+    s.cinematicCamera = patch.cinematicCamera;
   }
 
   if (['buzzer', 'skribbl', 'host'].includes(patch.answerMode)) {
@@ -542,6 +575,7 @@ function terminateRoom(room, reason, { excludePlayerId = null } = {}) {
   room.board = null;
   room.activeClue = null;
   room.finalState = null;
+  room.introState = null;
   room.lastFeedback = null;
   room.phaseEndsAt = 0;
   room.mainTimerRemainingMs = 0;
@@ -731,6 +765,7 @@ function serializeRoomForPlayer(room, viewerId) {
     board: boardView,
     activeClue: activeClueView,
     finalState: finalView,
+    intro: room.phase === 'intro' && room.introState ? room.introState : null,
     host: getPublicHostIdentity(room.settings.gameMode === 'halloween'),
     lastHostLine: room.lastHostLine || null,
     awards: Array.isArray(room.recentAwards) ? room.recentAwards.slice(-6) : [],
@@ -1448,16 +1483,25 @@ function startNewGame(room) {
   room.lastFeedback = null;
   room.phaseEndsAt = 0;
   room.mainTimerRemainingMs = 0;
+  room.introState = null;
 
   const totalClues = room.settings.boardCols * room.settings.cluesPerCat;
   sendChat(room, {
     color: 'success',
     text: `New match started! (${activePlayers.length} Players • ${room.settings.boardCols}x${room.settings.cluesPerCat} = ${totalClues} Clues) — Round 1!`,
   });
-  broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
-  hostSay(room, 'round_start');
-  maybeSpawnBotReaction(room, 'match_start');
-  enterBoardPhase(room);
+  // Cinematic Camera: on/reduced opens with the televised intro; off goes
+  // straight to the interactive board.
+  const cameraMode = room.settings.cinematicCamera || 'on';
+  if (cameraMode === 'off') {
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
+    hostSay(room, 'round_start');
+    maybeSpawnBotReaction(room, 'match_start');
+    enterBoardPhase(room);
+  } else {
+    // No bot reaction particles over the cinematic stage; the intro is the show.
+    enterIntroPhase(room);
+  }
 }
 
 function countRemainingTiles(room) {
@@ -1469,6 +1513,127 @@ function countRemainingTiles(room) {
     }
   }
   return count;
+}
+
+/* =========================================================================
+   CINEMATIC MATCH INTRO
+   The server owns the order and timing so every client watches the same show.
+   ========================================================================= */
+
+/**
+ * Builds the intro storyboard: wide stage shot -> host -> each contestant ->
+ * board reveal. All timings are relative to `startedAt` (server clock).
+ */
+function buildIntroState(room) {
+  const mode = room.settings.cinematicCamera === 'reduced' ? 'reduced' : 'on';
+  const cfg = INTRO_TIMINGS[mode] || INTRO_TIMINGS.on;
+  const hostName = getPublicHostIdentity(false).name;
+
+  const activePlayers = room.players.filter((p) => p.connected);
+  const playerCount = activePlayers.length;
+  const perPlayerMs = Math.max(
+    cfg.minPlayerMs,
+    Math.min(
+      cfg.maxPlayerMs,
+      Math.floor(cfg.playerBudgetMs / Math.max(1, playerCount))
+    )
+  );
+
+  const steps = [];
+  let cursor = cfg.leadMs;
+
+  steps.push({
+    kind: 'wide',
+    startMs: cursor,
+    durationMs: cfg.wideMs,
+    speaker: null,
+    line: null,
+    tone: 'dramatic',
+  });
+  cursor += cfg.wideMs;
+
+  steps.push({
+    kind: 'host',
+    startMs: cursor,
+    durationMs: cfg.hostMs,
+    speaker: hostName,
+    line: INTRO_HOST_LINE,
+    tone: 'excited',
+  });
+  cursor += cfg.hostMs;
+
+  activePlayers.forEach((p, idx) => {
+    const line = p.isBot
+      ? `I'm ${p.name}, and I'm ready to play!`
+      : `Hello, I'm ${p.name}!`;
+    steps.push({
+      kind: 'player',
+      startMs: cursor,
+      durationMs: perPlayerMs,
+      playerId: p.id,
+      name: p.name,
+      isBot: Boolean(p.isBot),
+      avatar: p.avatar,
+      speaker: p.name,
+      line,
+      tone: 'neutral',
+      index: idx + 1,
+      total: playerCount,
+    });
+    cursor += perPlayerMs;
+  });
+
+  steps.push({
+    kind: 'board',
+    startMs: cursor,
+    durationMs: cfg.boardMs,
+    speaker: hostName,
+    line: INTRO_OUTRO_LINE,
+    tone: 'excited',
+  });
+  cursor += cfg.boardMs;
+
+  return {
+    id: 'intro_' + randomId(4),
+    mode,
+    startedAt: Date.now(),
+    durationMs: cursor,
+    playerCount,
+    hostName,
+    steps,
+  };
+}
+
+function enterIntroPhase(room) {
+  if (!room || room.terminated) return;
+  clearRoomTimers(room);
+  room.activeClue = null;
+  room.phase = 'intro';
+  room.introState = buildIntroState(room);
+  const settleMs = room.introState.durationMs + 350;
+  room.phaseEndsAt = room.introState.startedAt + settleMs;
+
+  sendChat(room, {
+    color: 'info',
+    icon: 'celebrate',
+    text: 'Lights, camera... welcome to Jeoparty!',
+  });
+  broadcastRoomEvent(room, { type: 'sfx', sound: 'intro_start' });
+  broadcastRoomState(room);
+
+  scheduleRoomTimer(room, () => {
+    if (room.phase !== 'intro') return;
+    finishIntro(room);
+  }, settleMs);
+}
+
+function finishIntro(room) {
+  if (!room || room.terminated) return;
+  if (room.phase !== 'intro') return;
+  room.introState = null;
+  hostSay(room, 'intro_outro');
+  broadcastRoomEvent(room, { type: 'sfx', sound: 'board_reveal' });
+  enterBoardPhase(room);
 }
 
 function enterBoardPhase(room) {
@@ -3912,6 +4077,21 @@ attachWebSocketServer(server, (ws) => {
         break;
       }
 
+      case 'skip_intro': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        if (currentRoom.phase !== 'intro') return;
+        // Only the host can advance the whole room past the cinematic intro.
+        if (currentRoom.hostId !== currentPlayer.id) {
+          ws.send({
+            type: 'error',
+            message: 'Only the room host can skip the introduction.',
+          });
+          return;
+        }
+        finishIntro(currentRoom);
+        break;
+      }
+
       case 'back_to_lobby': {
         if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
         if (currentRoom.hostId !== currentPlayer.id) return;
@@ -3922,6 +4102,7 @@ attachWebSocketServer(server, (ws) => {
         currentRoom.board = null;
         currentRoom.activeClue = null;
         currentRoom.finalState = null;
+        currentRoom.introState = null;
         currentRoom.lastFeedback = null;
         currentRoom.phaseEndsAt = 0;
         currentRoom.recentAwards = [];

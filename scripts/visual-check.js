@@ -139,6 +139,39 @@ async function waitFor(fn, label, timeout = 20000, interval = 60) {
   throw new Error(`Timeout waiting for ${label}${lastErr ? ` (${lastErr.message})` : ''}`);
 }
 
+async function waitIntroElapsed(page, startedAt, ms, timeout = 40000) {
+  const target = Number(startedAt) + Number(ms);
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const now = await page.evaluate('Date.now() + (window.state.clockOffsetMs || 0)');
+    if (now >= target) return true;
+    await sleep(55);
+  }
+  return false;
+}
+
+async function waitIntroStep(page, expected, timeout = 30000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const state = await page.evaluate(`(() => {
+      const layer = document.getElementById('cinematic-layer');
+      return {
+        hidden: !layer || layer.hidden,
+        step: document.querySelector('.cine-step-label')?.textContent || '',
+        name: document.querySelector('.cine-lt-name')?.textContent || '',
+        line: document.querySelector('.cine-lt-line')?.textContent || '',
+        className: layer ? layer.className : '',
+      };
+    })()`);
+    if (state.hidden) return state;
+    if (typeof expected === 'function' ? expected(state) : state.step === expected) {
+      return state;
+    }
+    await sleep(70);
+  }
+  return null;
+}
+
 async function roomState(page) {
   return page.evaluate(`(() => {
     const s = window.state;
@@ -320,7 +353,8 @@ async function main() {
       window.state.ws.send(JSON.stringify({ type: 'update_settings', settings: {
         autoScaleMatch: false, matchPace: 'custom', boardCols: 3, cluesPerCat: 3,
         clueTimeSec: 18, dailyDoubles: true, finalJeopardy: true, doubleJeopardy: false,
-        wrongPenalty: true, specialFrequency: 'normal', answerMode: 'buzzer'
+        wrongPenalty: true, specialFrequency: 'normal', answerMode: 'buzzer',
+        cinematicCamera: 'on'
       }}));
       for (let i = 0; i < 4; i++) setTimeout(() => document.getElementById('add-bot-btn').click(), i * 90);
     })()`);
@@ -329,8 +363,71 @@ async function main() {
     await page.evaluate(`document.getElementById('start-game-btn').click()`);
     await waitFor(async () => {
       const st = await roomState(page);
+      return st && st.phase === 'intro';
+    }, 'cinematic intro', 20000);
+
+    console.log('  intro: capturing cinematic storyboard');
+    const intro = await page.evaluate('window.state.room.intro');
+    const playerSteps = intro.steps.filter((s) => s.kind === 'player');
+    await page.shot('02b-intro-wide');
+
+    const hostHud = await waitIntroStep(page, 'YOUR HOST', 20000);
+    if (hostHud) {
+      console.log('  host step HUD:', JSON.stringify(hostHud));
+      await sleep(1000);
+      await page.shot('02c-intro-host');
+    }
+
+    if (playerSteps[0]) {
+      const firstName = playerSteps[0].name;
+      const firstHud = await waitIntroStep(
+        page,
+        (s) => s.name === firstName && /CONTESTANT/i.test(s.step),
+        20000
+      );
+      if (firstHud) {
+        console.log('  first contestant HUD:', JSON.stringify(firstHud));
+        await sleep(450);
+        await page.shot('02d-intro-contestant');
+      }
+    }
+    if (playerSteps.length > 1) {
+      const lastName = playerSteps[playerSteps.length - 1].name;
+      const lastHud = await waitIntroStep(
+        page,
+        (s) => s.name === lastName && /CONTESTANT/i.test(s.step),
+        20000
+      );
+      if (lastHud) {
+        await sleep(250);
+        await page.send('Emulation.setDeviceMetricsOverride', {
+          width: 390,
+          height: 844,
+          deviceScaleFactor: 2,
+          mobile: true,
+        });
+        await sleep(300);
+        await page.shot('02e-intro-mobile');
+        await page.send('Emulation.setDeviceMetricsOverride', {
+          width: 1440,
+          height: 940,
+          deviceScaleFactor: 1,
+          mobile: false,
+        });
+        await sleep(250);
+      }
+    }
+    const boardHud = await waitIntroStep(page, 'THE BOARD', 20000);
+    if (boardHud) {
+      console.log('  board step HUD:', JSON.stringify(boardHud));
+      await sleep(1300);
+      await page.shot('02f-intro-board');
+    }
+    await page.evaluate(`window.state.ws.send(JSON.stringify({ type: 'skip_intro' }))`);
+    await waitFor(async () => {
+      const st = await roomState(page);
       return st && st.phase === 'board';
-    }, 'board');
+    }, 'board after intro', 15000);
     await sleep(700);
     await page.shot('03-board-desktop');
     const boardDom = await page.evaluate(`(() => {
@@ -430,11 +527,21 @@ async function main() {
     const answersUsed = new Set();
     let capturedAward = false;
     let capturedStreak = false;
-    const deadline = Date.now() + 150000;
+    let capturedCutaway = false;
+    const deadline = Date.now() + 160000;
     let gameover = false;
     while (Date.now() < deadline) {
       const st = await roomState(page);
       if (!st) break;
+      if (!capturedCutaway) {
+        const cutaway = await page.evaluate(
+          `!!document.querySelector('.cinematic-layer.is-cutaway')`
+        );
+        if (cutaway) {
+          capturedCutaway = true;
+          await page.shot('08a-cinematic-focus');
+        }
+      }
       if (!capturedAward || !capturedStreak) {
         const fx = await page.evaluate(`(() => ({
           gain: !!document.querySelector('.podium-float'),
@@ -583,12 +690,28 @@ async function main() {
       window.state.ws.send(JSON.stringify({ type: 'update_settings', settings: {
         gameMode: 'halloween', autoScaleMatch: false, matchPace: 'custom',
         boardCols: 4, cluesPerCat: 4, clueTimeSec: 18, dailyDoubles: true,
-        finalJeopardy: true, wrongPenalty: true, specialFrequency: 'normal', answerMode: 'buzzer'
+        finalJeopardy: true, wrongPenalty: true, specialFrequency: 'normal',
+        answerMode: 'buzzer', cinematicCamera: 'on'
       }}));
       for (let i = 0; i < 3; i++) setTimeout(() => document.getElementById('add-bot-btn').click(), i * 100);
     })()`);
     await sleep(1200);
     await page.evaluate(`document.getElementById('start-game-btn').click()`);
+    await waitFor(async () => {
+      const st = await roomState(page);
+      return st && (st.phase === 'intro' || st.phase === 'board');
+    }, 'halloween intro');
+    const halloweenIntro = await page.evaluate('window.state.room.intro');
+    if (halloweenIntro) {
+      const hHostHud = await waitIntroStep(page, 'YOUR HOST', 20000);
+      if (hHostHud) {
+        console.log('  halloween host step HUD:', JSON.stringify(hHostHud));
+        await page.shot('16b-halloween-intro');
+      }
+      await page.evaluate(
+        `window.state.ws.send(JSON.stringify({ type: 'skip_intro' }))`
+      );
+    }
     await waitFor(async () => {
       const st = await roomState(page);
       return st && st.phase === 'board';

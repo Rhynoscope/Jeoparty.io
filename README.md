@@ -36,11 +36,21 @@ Jeoparty now presents every match like a televised game show while keeping the h
 ### Verification
 
 ```bash
-node scripts/verify-gameshow.js    # headless multiplayer + bot + rule checks (87 assertions)
+node scripts/verify-gameshow.js    # headless multiplayer + bot + rule checks (117 assertions)
 node scripts/visual-check.js       # real Chrome screenshots of every stage (desktop + mobile)
 ```
 
 Both scripts run the real server (no mocks) and write their output under `scripts/artifacts/`.
+
+## Cinematic 2.5D Update (v4.1)
+
+- **Televised match intro** — the server runs a wide stage shot → host welcome → individual contestant introductions → board reveal, with exact subtitles and automatic completion. The host can skip it.
+- **2.5D camera** — layered curtains, marquee, lighting rig, perspective floor, host stage, board and podiums moved by an eased pan/zoom/tilt camera with parallax depth.
+- **Broadcast money close-ups** — correct answers, streaks, Daily Double and the champion cut to the scoring contestant's podium; live questions use an in-strip camera nudge so the buzzer is never blocked.
+- **Cinematic Camera setting** — Enabled / Reduced Motion / Disabled in the lobby.
+- **Halloween-ready** — the host, stage, board, podiums and lower third use the Halloween palette while the existing Halloween background/cosmetics stay intact.
+
+See [DEPLOY_CINEMATIC.md](DEPLOY_CINEMATIC.md) for the release and deployment notes.
 
 ## Quick Start (Zero External Dependencies)
 

@@ -10,6 +10,7 @@
 import { buildAvatarHTML } from './avatar.js';
 import { sfx } from './audio.js';
 import { hostPresenter } from './host.js';
+import { cinematic } from './cinematic.js';
 
 const CLUE_PHASES = new Set([
   'clue_open',
@@ -208,7 +209,7 @@ class GameShow {
   updateHostStage(room) {
     const stage = this.elements.hostStage;
     if (!stage) return;
-    const visible = room.phase !== 'lobby' && room.phase !== 'terminated';
+    const visible = room.phase !== 'lobby' && room.phase !== 'terminated' && room.phase !== 'intro';
     stage.hidden = !visible;
     if (!visible) return;
     stage.dataset.mode = this.ctx.isHalloween ? 'halloween' : 'classic';
@@ -461,6 +462,7 @@ class GameShow {
       if (award.id <= this.lastAwardSeq) continue;
       this.lastAwardSeq = award.id;
       this.spawnAward(award);
+      cinematic.onAward(award);
     }
   }
 

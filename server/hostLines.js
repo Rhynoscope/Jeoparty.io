@@ -57,6 +57,10 @@ const HOST_LINES = {
       "Let's get this show on the road!",
     ],
   },
+  intro_outro: {
+    tone: 'excited',
+    lines: ["Alright, contestants! Let's get this game started!"],
+  },
   pick_tile: {
     tone: 'neutral',
     lines: [

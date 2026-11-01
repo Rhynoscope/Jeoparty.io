@@ -192,6 +192,7 @@ async function configureRoom(host, overrides = {}) {
       wrongPenalty: true,
       specialFrequency: 'low',
       answerMode: 'buzzer',
+      cinematicCamera: 'off',
       ...overrides,
     },
   });
@@ -694,17 +695,245 @@ async function runCapacityAndPublicRooms() {
 }
 
 // ---------------------------------------------------------------------------
+// Cinematic intro (server storyboard, sync, skip, setting modes, 10 players)
+// ---------------------------------------------------------------------------
+const INTRO_HOST_LINE = "Hello, everyone! I'm your host, and welcome to Jeoparty!";
+const INTRO_OUTRO_LINE = "Alright, contestants! Let's get this game started!";
+
+async function runCinematicIntroTests() {
+  console.log('\n=== CINEMATIC INTRO + CAMERA SETTING ===');
+  const host = new Client('IntroHost', { color: 1, eyes: 2, mouth: 3, hat: 4 });
+  let guest = new Client('IntroGuest', { color: 8, eyes: 6, mouth: 2, hat: 9 });
+  await host.connect();
+  await guest.connect();
+
+  host.send({ type: 'create_private', ...host.profile(), gameMode: 'standard' });
+  await host.waitPhase('lobby');
+  const roomCode = host.room.code;
+  await configureRoom(host, { cinematicCamera: 'on' });
+  host.send({ type: 'add_bot' });
+  await sleep(180);
+  host.send({ type: 'add_bot' });
+  await sleep(250);
+  guest.send({ type: 'join_room', code: roomCode, ...guest.profile() });
+  await guest.waitFor((c) => c.room && c.room.code === roomCode, 'guest joined');
+  await host.waitFor((c) => c.room && c.room.players.length === 4, '4 players');
+
+  check('cinematic camera setting persists (on)', host.room.settings.cinematicCamera === 'on');
+  host.send({ type: 'start_game' });
+  await host.waitPhase('intro', 15000);
+  await guest.waitPhase('intro', 15000);
+
+  const intro = host.room.intro;
+  check('match opens with a cinematic intro phase', Boolean(intro && intro.steps?.length >= 5));
+  check(
+    'intro storyboard is wide -> host -> players -> board',
+    intro.steps[0].kind === 'wide' &&
+      intro.steps[1].kind === 'host' &&
+      intro.steps[intro.steps.length - 1].kind === 'board' &&
+      intro.steps.slice(2, -1).every((s) => s.kind === 'player')
+  );
+  check(
+    'host welcome line is exact',
+    intro.steps[1].line === INTRO_HOST_LINE,
+    intro.steps[1].line
+  );
+  check(
+    'host board-reveal line is exact',
+    intro.steps[intro.steps.length - 1].line === INTRO_OUTRO_LINE,
+    intro.steps[intro.steps.length - 1].line
+  );
+
+  const playerSteps = intro.steps.filter((s) => s.kind === 'player');
+  const connected = host.room.players.filter((p) => p.connected);
+  check(
+    'every connected player is introduced exactly once',
+    playerSteps.length === connected.length &&
+      playerSteps.every((s, idx) => s.playerId === connected[idx].id)
+  );
+  check(
+    'introductions use real usernames and avatars (no invented identities)',
+    playerSteps.every((s) => {
+      const p = connected.find((x) => x.id === s.playerId);
+      return (
+        p &&
+        s.name === p.name &&
+        JSON.stringify(s.avatar) === JSON.stringify(p.avatar)
+      );
+    }),
+    playerSteps.map((s) => s.name).join(', ')
+  );
+  check(
+    'human contestants speak their real username',
+    playerSteps
+      .filter((s) => !s.isBot)
+      .every((s) => s.line === `Hello, I'm ${s.name}!`)
+  );
+  check(
+    'bots use a short scripted intro line (no AI personality)',
+    playerSteps
+      .filter((s) => s.isBot)
+      .every((s) => s.line === `I'm ${s.name}, and I'm ready to play!`)
+  );
+  check(
+    'all clients share the same intro order and timing',
+    guest.room.intro &&
+      guest.room.intro.startedAt === intro.startedAt &&
+      guest.room.intro.durationMs === intro.durationMs &&
+      JSON.stringify(guest.room.intro.steps) === JSON.stringify(intro.steps)
+  );
+  check(
+    'intro duration is reasonable for the roster',
+    intro.durationMs >= 4000 && intro.durationMs <= 20000,
+    `${intro.durationMs}ms for ${playerSteps.length} players`
+  );
+
+  // A brand-new joiner must not break the live broadcast.
+  const late = new Client('LateJoin', { color: 3, eyes: 3, mouth: 3, hat: 3 });
+  await late.connect();
+  late.send({ type: 'join_room', code: roomCode, ...late.profile() });
+  await sleep(500);
+  check(
+    'late joiners cannot disrupt the live intro',
+    late.errors.some((e) => /already started/i.test(e)) &&
+      host.room.phase === 'intro' &&
+      host.room.players.length === 4,
+    late.errors.join(' | ')
+  );
+  try {
+    late.ws.close();
+  } catch {
+    // ignore
+  }
+
+  // Reconnecting with the saved token must return to the live intro state.
+  const guestToken = guest.token;
+  const guestAvatar = guest.avatar;
+  guest.ws.close();
+  await sleep(300);
+  const guest2 = new Client('IntroGuest', guestAvatar);
+  await guest2.connect();
+  guest2.send({
+    type: 'join_room',
+    code: roomCode,
+    ...guest2.profile(),
+    token: guestToken,
+  });
+  await guest2.waitFor(
+    (c) => c.room && c.room.phase === 'intro',
+    'reconnected into live intro',
+    12000
+  );
+  check(
+    'reconnecting player returns to the same intro position',
+    Boolean(guest2.room.intro) &&
+      guest2.room.intro.startedAt === intro.startedAt &&
+      guest2.room.intro.durationMs === intro.durationMs
+  );
+  guest = guest2;
+
+  // Only the host may advance the room past the intro.
+  guest.send({ type: 'skip_intro' });
+  await sleep(350);
+  check('non-host cannot skip the intro for everyone', host.room.phase === 'intro');
+  check(
+    'non-host skip request is rejected',
+    guest.errors.some((e) => /only the room host/i.test(e)),
+    guest.errors.join(' | ')
+  );
+
+  host.send({ type: 'skip_intro' });
+  await host.waitPhase('board', 12000);
+  await guest.waitPhase('board', 12000);
+  check('host skip advances every client to the interactive board', host.room.phase === 'board');
+  check(
+    'host announces the exact board-reveal line after the intro',
+    host.hostLines.some(
+      (h) => h.event === 'intro_outro' && h.line === INTRO_OUTRO_LINE
+    )
+  );
+
+  // Reduced motion mode: shorter storyboard, same order.
+  await host.send({ type: 'back_to_lobby' });
+  await host.waitPhase('lobby');
+  await guest.waitPhase('lobby');
+  await configureRoom(host, { cinematicCamera: 'reduced' });
+  host.send({ type: 'start_game' });
+  await host.waitPhase('intro', 15000);
+  const reducedIntro = host.room.intro;
+  check('reduced motion still presents the contestant storyboard',
+    reducedIntro.steps.filter((s) => s.kind === 'player').length === 4);
+  check(
+    'reduced motion shortens the intro compared with enabled',
+    reducedIntro.durationMs < intro.durationMs,
+    `${reducedIntro.durationMs}ms < ${intro.durationMs}ms`
+  );
+  host.send({ type: 'skip_intro' });
+  await host.waitPhase('board', 12000);
+
+  // Disabled mode: no intro at all.
+  await host.send({ type: 'back_to_lobby' });
+  await host.waitPhase('lobby');
+  await guest.waitPhase('lobby');
+  await configureRoom(host, { cinematicCamera: 'off' });
+  host.states = [];
+  host.send({ type: 'start_game' });
+  await host.waitPhase('board', 12000);
+  check(
+    'disabled camera skips the intro and starts on the board',
+    host.room.phase === 'board' && host.room.intro === null
+  );
+  check(
+    'disabled camera never sends an intro phase',
+    !host.states.some((s) => s.phase === 'intro')
+  );
+
+  // 10-player introduction.
+  await host.send({ type: 'back_to_lobby' });
+  await host.waitPhase('lobby');
+  await guest.waitPhase('lobby');
+  await configureRoom(host, { cinematicCamera: 'on' });
+  const currentBots = host.room.players.filter((p) => p.isBot).length;
+  for (let i = currentBots; i < 8; i++) {
+    host.send({ type: 'add_bot' });
+    await sleep(70);
+  }
+  await host.waitFor((c) => c.room && c.room.players.length === 10, '10 players');
+  host.send({ type: 'start_game' });
+  await host.waitPhase('intro', 15000);
+  const bigIntro = host.room.intro;
+  const bigPlayers = bigIntro.steps.filter((s) => s.kind === 'player');
+  check('10-contestant intro includes every podium', bigPlayers.length === 10);
+  check(
+    '10-contestant intro stays under 21 seconds',
+    bigIntro.durationMs <= 21000,
+    `${bigIntro.durationMs}ms`
+  );
+  check(
+    'all 10 introduced names match the lobby roster',
+    bigPlayers.every((s, idx) => s.name === host.room.players[idx].name)
+  );
+  host.send({ type: 'skip_intro' });
+  await host.waitPhase('board', 12000);
+  check('10-player match begins after the intro', host.room.phase === 'board');
+
+  await leaveAll([host, guest]);
+}
+
+// ---------------------------------------------------------------------------
 // Static asset check
 // ---------------------------------------------------------------------------
 async function runStaticChecks() {
   console.log('\n=== STATIC ASSETS ===');
   for (const file of [
     '/',
-    '/css/styles.css?v=4.0.0',
-    '/css/gameshow.css?v=4.0.0',
-    '/js/app.js?v=4.0.0',
+    '/css/styles.css?v=4.1.0',
+    '/css/gameshow.css?v=4.1.0',
+    '/css/cinematic.css?v=4.1.0',
+    '/js/app.js?v=4.1.0',
     '/js/gameshow.js',
     '/js/host.js',
+    '/js/cinematic.js',
   ]) {
     const res = await fetch(`${BASE}${file}`);
     const body = await res.text();
@@ -714,6 +943,14 @@ async function runStaticChecks() {
   check('index includes host stage', html.includes('id="host-stage"'));
   check('index includes contestant podiums', html.includes('id="contestant-stage"'));
   check('index includes final wheel', html.includes('id="final-wheel"'));
+  check('index includes cinematic layer', html.includes('id="cinematic-layer"'));
+  check('index includes cinematic stylesheet', html.includes('/css/cinematic.css'));
+  check(
+    'index includes the Cinematic Camera setting',
+    html.includes('data-camera="on"') &&
+      html.includes('data-camera="reduced"') &&
+      html.includes('data-camera="off"')
+  );
   check('index includes gameshow stylesheet', html.includes('/css/gameshow.css'));
 }
 
@@ -737,6 +974,7 @@ async function main() {
     await waitServerReady();
     await runStaticChecks();
     await runMainMatch();
+    await runCinematicIntroTests();
     await runHalloweenMatch();
     await runCapacityAndPublicRooms();
   } catch (err) {

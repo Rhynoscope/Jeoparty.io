@@ -275,6 +275,24 @@ class SoundEngine {
         this._tone(392, 0, 0.09, 'sawtooth', 0.1, 262);
         this._tone(261.63, 0.09, 0.16, 'triangle', 0.11, 174);
         break;
+      case 'intro_start':
+        // Big pixel fanfare for the cinematic stage intro.
+        [392, 523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          this._tone(f, i * 0.11, i === 4 ? 0.45 : 0.2, 'triangle', 0.15);
+        });
+        this._tone(196, 0, 0.7, 'sawtooth', 0.06);
+        break;
+      case 'board_reveal':
+        // Camera whoosh into the board plus a bright reveal chime.
+        this._tone(180, 0, 0.32, 'triangle', 0.08, 620);
+        this._tone(880, 0.22, 0.12, 'triangle', 0.13);
+        this._tone(1174.66, 0.3, 0.22, 'triangle', 0.14);
+        break;
+      case 'cine_shot':
+        // Short mechanical camera tick used for each cinematic cut.
+        this._tone(1500, 0, 0.025, 'square', 0.035, 700);
+        this._tone(700, 0.02, 0.06, 'triangle', 0.045, 320);
+        break;
       case 'wheel_spin':
         // Rising airy whoosh while the category wheel spins up
         this._tone(180, 0, 0.5, 'triangle', 0.07, 520);
