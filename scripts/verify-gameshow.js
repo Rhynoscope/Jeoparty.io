@@ -20,8 +20,12 @@ const {
 } = require('../server/categoriesData.js');
 
 const PORT = Number(process.argv[2]) || 3399;
-const BASE = `http://127.0.0.1:${PORT}`;
-const WS_URL = `ws://127.0.0.1:${PORT}`;
+const TARGET_URL = (process.env.JEOPARTY_URL || '').trim().replace(/\/+$/, '');
+const IS_REMOTE = Boolean(TARGET_URL);
+const BASE = IS_REMOTE ? TARGET_URL : `http://127.0.0.1:${PORT}`;
+const WS_URL = IS_REMOTE
+  ? BASE.replace(/^http/i, 'ws')
+  : `ws://127.0.0.1:${PORT}`;
 
 const results = [];
 function check(name, ok, detail = '') {
@@ -130,7 +134,8 @@ class Client {
 }
 
 async function waitServerReady() {
-  for (let i = 0; i < 150; i++) {
+  const attempts = IS_REMOTE ? 600 : 150;
+  for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(`${BASE}/api/server-info`);
       if (res.ok) return true;
@@ -279,7 +284,7 @@ async function runMainMatch() {
   let finalClueText = null;
   const playedClueTexts = new Set();
 
-  const deadline = Date.now() + 200000;
+  const deadline = Date.now() + (IS_REMOTE ? 240000 : 200000);
   while (Date.now() < deadline) {
     const room = alice.room;
     if (!room) {
@@ -717,12 +722,17 @@ async function main() {
   const artifactDir = path.join(__dirname, 'artifacts');
   fs.mkdirSync(artifactDir, { recursive: true });
   const logPath = path.join(artifactDir, 'verify-server.log');
-  const out = fs.openSync(logPath, 'w');
-  const child = spawn(process.execPath, [serverPath], {
-    env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
-    stdio: ['ignore', out, out],
-  });
+  const out = IS_REMOTE ? null : fs.openSync(logPath, 'w');
+  const child = IS_REMOTE
+    ? null
+    : spawn(process.execPath, [serverPath], {
+        env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
+        stdio: ['ignore', out, out],
+      });
   let exitCode = 0;
+  console.log(
+    IS_REMOTE ? `\nTarget: DEPLOYED ${BASE}` : `\nTarget: LOCAL ${BASE}`
+  );
   try {
     await waitServerReady();
     await runStaticChecks();
@@ -733,12 +743,14 @@ async function main() {
     console.error('\nFATAL:', err && err.stack ? err.stack : err);
     exitCode = 1;
   } finally {
-    try {
-      child.kill('SIGTERM');
-    } catch {
-      // ignore
+    if (child) {
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        // ignore
+      }
     }
-    fs.closeSync(out);
+    if (out) fs.closeSync(out);
   }
 
   const failed = results.filter((r) => !r.ok);
@@ -748,10 +760,12 @@ async function main() {
     for (const f of failed) console.log(` - ${f.name}${f.detail ? ` (${f.detail})` : ''}`);
     exitCode = 1;
   }
-  const log = fs.readFileSync(logPath, 'utf8');
-  if (/Error|Unhandled|TypeError|ReferenceError/.test(log)) {
-    console.log('\n--- SERVER LOG (errors detected) ---\n' + log.slice(-5000));
-    exitCode = 1;
+  if (!IS_REMOTE) {
+    const log = fs.readFileSync(logPath, 'utf8');
+    if (/Error|Unhandled|TypeError|ReferenceError/.test(log)) {
+      console.log('\n--- SERVER LOG (errors detected) ---\n' + log.slice(-5000));
+      exitCode = 1;
+    }
   }
   process.exit(exitCode);
 }

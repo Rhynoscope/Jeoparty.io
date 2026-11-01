@@ -4,6 +4,36 @@ This release upgrades the **gameplay presentation and mechanics** of Jeoparty in
 
 ---
 
+## Live deployment status — verified
+
+**v4.0.0 is live at https://jeoparty-io.onrender.com/**, deployed from commit
+`677abcf` (`feat: Jeoparty v4.0 game-show presentation update ...`) on `main`.
+
+Verified against the running public service:
+
+- Every deployed asset (`/`, `index.html`, `gameshow.css`, `gameshow.js`, `host.js`,
+  `app.js`, `audio.js`, `styles.css`) is **byte-identical** (SHA-256) to the tested
+  local build.
+- The complete multiplayer harness was run against the public WSS endpoint:
+  **87/87 checks passed**, including a full 2-human + bot match, typing
+  freeze/resume sync, 3-answer streak bonus, Final Jeopardy wheel, private/locked
+  wagers, Halloween mode, public-room discovery and the 10-player cap.
+- A real headless Chrome session played a full match on the public site at desktop
+  and mobile widths with **no page errors**; production screenshots are in
+  `scripts/artifacts/live-*.png` (git-ignored).
+
+Re-run the live verification at any time with:
+
+```bash
+JEOPARTY_URL=https://jeoparty-io.onrender.com node scripts/verify-gameshow.js
+JEOPARTY_URL=https://jeoparty-io.onrender.com node scripts/visual-check.js
+```
+
+To ship a future update, commit and push to `main`; Render (`autoDeploy: true`)
+redeploys automatically. See the deployment steps below.
+
+---
+
 ## What changed
 
 ### 1. Permanent host — "Jeoparty Host"
@@ -124,4 +154,4 @@ In Render: **New + → Blueprint → select the repo** (or the existing service'
 ### Rollback
 Revert the commit and push (Render auto-deploys the previous version), or use the Render dashboard's **Rollback** action on the service.
 
-> **Note:** this workspace has no Git executable, no GitHub credentials, and no Render API key, so the changes have **not** been pushed or deployed from here. The live site remains on the previous build until someone with repo access pushes the commit above.
+> **Deployment note:** v4.0.0 is live and verified (see **Live deployment status** at the top of this document). This section is kept as the deployment runbook for future releases.

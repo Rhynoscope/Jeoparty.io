@@ -22,9 +22,12 @@ const PORT = Number(process.argv[2]) || 3400;
 const CHROME =
   process.argv[3] ||
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const BASE = `http://127.0.0.1:${PORT}`;
+const TARGET_URL = (process.env.JEOPARTY_URL || '').trim().replace(/\/+$/, '');
+const IS_REMOTE = Boolean(TARGET_URL);
+const BASE = IS_REMOTE ? TARGET_URL : `http://127.0.0.1:${PORT}`;
 const ARTIFACT_DIR = path.join(__dirname, 'artifacts');
 const DEBUG_PORT = 9333;
+const SHOT_PREFIX = IS_REMOTE ? 'live-' : '';
 
 fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 
@@ -115,9 +118,9 @@ class CDP {
       format: 'png',
       captureBeyondViewport: false,
     });
-    const file = path.join(ARTIFACT_DIR, `${name}.png`);
+    const file = path.join(ARTIFACT_DIR, `${SHOT_PREFIX}${name}.png`);
     fs.writeFileSync(file, Buffer.from(data, 'base64'));
-    console.log(`  [shot] ${name}.png`);
+    console.log(`  [shot] ${SHOT_PREFIX}${name}.png`);
     return file;
   }
 }
@@ -210,11 +213,16 @@ async function lockFinalWager(page, amount) {
 
 async function main() {
   const serverPath = path.join(__dirname, '..', 'server', 'server.js');
-  const log = fs.openSync(path.join(ARTIFACT_DIR, 'visual-server.log'), 'w');
-  const server = spawn(process.execPath, [serverPath], {
-    env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
-    stdio: ['ignore', log, log],
-  });
+  const log = IS_REMOTE
+    ? null
+    : fs.openSync(path.join(ARTIFACT_DIR, 'visual-server.log'), 'w');
+  const server = IS_REMOTE
+    ? null
+    : spawn(process.execPath, [serverPath], {
+        env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
+        stdio: ['ignore', log, log],
+      });
+  console.log(IS_REMOTE ? `\nTarget: DEPLOYED ${BASE}` : `\nTarget: LOCAL ${BASE}`);
 
   const userDataDir = path.join(os.tmpdir(), `jeoparty-chrome-${Date.now()}`);
   const chrome = spawn(
@@ -247,7 +255,7 @@ async function main() {
         }
       },
       'server',
-      20000
+      IS_REMOTE ? 90000 : 20000
     );
 
     let target = null;
@@ -292,7 +300,7 @@ async function main() {
           `document.readyState === 'complete' && !!window.state && !!window.state.ws && window.state.ws.readyState === 1`
         ),
       'app boot',
-      20000
+      IS_REMOTE ? 45000 : 20000
     );
 
     console.log('\n[1] Home + private room');
@@ -610,12 +618,14 @@ async function main() {
     } catch {
       // ignore
     }
-    try {
-      server.kill('SIGTERM');
-    } catch {
-      // ignore
+    if (server) {
+      try {
+        server.kill('SIGTERM');
+      } catch {
+        // ignore
+      }
     }
-    fs.closeSync(log);
+    if (log) fs.closeSync(log);
   }
 }
 
