@@ -410,7 +410,9 @@ class CinematicCamera {
         avatar: buildHostSVG(),
         tag: 'THE BOARD',
       });
-      this.speakHost(step);
+      // The server announces this exact line when the intro hands over to the
+      // board, so the host voice speaks it once (not again from the overlay).
+      this.ttsStepKey = `${this.introId}:${step.startMs}`;
     }
 
     this.els.lt.classList.remove('is-swap');
