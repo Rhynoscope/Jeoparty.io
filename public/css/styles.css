@@ -1602,8 +1602,10 @@ summary:focus-visible {
   font-size: clamp(0.95rem, 0.68rem + 1.25vw, 1.85rem);
   text-shadow: 2px 3px 0 #000;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   cursor: pointer;
   overflow: hidden; /* Never allow badges to spill over tile boundaries! */
   transition: transform 0.08s ease, background-color 0.12s ease;
@@ -1611,10 +1613,13 @@ summary:focus-visible {
 }
 
 .j-tile-value {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   z-index: 1;
   pointer-events: none;
+  order: 1;
 }
 
 /* Modifier Tile Subtle Pixel Accents & Gradients */
@@ -2403,49 +2408,60 @@ dialog::backdrop {
   }
 
   .j-tile-btn {
-    min-height: 38px;
-    padding: 2px;
+    min-height: 40px;
+    padding: 2px 1px;
     border-width: 2px;
     border-radius: 4px;
+    gap: 1px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   .j-tile-value {
-    font-size: clamp(0.68rem, 2.7vw, 0.98rem);
+    font-size: clamp(0.68rem, 2.7vw, 0.95rem);
     letter-spacing: -0.4px;
+    padding: 0;
+    margin: 0;
   }
 
   .j-tile-btn.tile-with-modifier {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-right: 15px; /* Reserves space for the top-right corner badge */
+    padding: 2px 1px;
   }
 
   .j-tile-btn.tile-with-modifier .j-tile-value {
-    margin-top: 2px;
-    font-size: clamp(0.65rem, 2.5vw, 0.92rem);
+    padding: 0;
+    margin: 0;
+    font-size: clamp(0.68rem, 2.7vw, 0.95rem);
   }
 
-  /* Mini Icon Chip on Mobile - 100% unobstructed dollar amounts! */
+  /* Compact non-overlapping mini icon chip on Mobile */
   .tile-modifier-tag {
-    top: 2px;
-    right: 2px;
-    width: 14px;
-    height: 14px;
-    padding: 0;
-    justify-content: center;
-    border-radius: 2px;
-    border-width: 1px;
-    box-shadow: 1px 1px 0 #000;
+    order: -1 !important;
+    position: static !important;
+    width: 16px !important;
+    height: 12px !important;
+    min-width: 16px !important;
+    max-height: 12px !important;
+    padding: 0 !important;
+    margin: 0 0 1px 0 !important;
+    justify-content: center !important;
+    border-radius: 2px !important;
+    border: 1px solid #000000 !important;
+    box-shadow: 1px 1px 0 #000000 !important;
+    flex-shrink: 0 !important;
   }
 
   .tile-modifier-tag .tile-mod-text {
     display: none !important; /* Hide text on mobile so only icon badge shows */
   }
 
-  .tile-modifier-tag .tile-mod-icon {
-    font-size: 8px;
-    line-height: 1;
+  .tile-modifier-tag .tile-mod-icon,
+  .tile-modifier-tag .pixel-sprite {
+    width: 9px !important;
+    height: 9px !important;
+    font-size: 8px !important;
+    margin: 0 !important;
   }
 
   .player-self-tag {
@@ -2821,35 +2837,41 @@ dialog::backdrop {
   border-color: #000000;
 }
 
-/* Board Tile Modifier Pill (Mini tag on the board tile) */
+/* Board Tile Modifier Pill (Centered above dollar value) */
 .tile-modifier-tag {
-  position: absolute;
-  top: 2px;
-  right: 2px;
+  order: -1;
+  position: static;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
+  gap: 4px;
   height: 14px;
-  padding: 0;
-  border-radius: 2px;
-  border: 1px solid #000000;
+  width: auto;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1.5px solid #000000;
   box-shadow: 1px 1px 0 #000000;
   letter-spacing: 0;
   text-transform: uppercase;
   z-index: 2;
   pointer-events: none;
-  overflow: hidden;
+  flex-shrink: 0;
+  margin: 0 0 2px 0;
 }
 
-.tile-modifier-tag .tile-mod-icon {
-  font-size: 8px;
-  line-height: 1;
+.tile-modifier-tag .pixel-sprite {
+  width: 10px;
+  height: 10px;
   display: block;
 }
 
 .tile-modifier-tag .tile-mod-text {
-  display: none !important;
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .tile-with-modifier {
@@ -3694,50 +3716,60 @@ dialog::backdrop {
    ========================================================================= */
 
 @media (max-width: 768px) {
-  /* Fix Mobile Tile Modifier Badges: 100% Unobstructed Dollar Amounts */
+  /* Fix Mobile Tile Modifier Badges: 100% Unobstructed Dollar Amounts via Clean Vertical In-Flow Layout */
   .j-tile-btn {
     position: relative !important;
     min-height: 40px !important;
-    padding: 2px !important;
+    padding: 2px 1px !important;
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: 1px !important;
   }
 
   .j-tile-value {
-    font-size: clamp(0.68rem, 2.75vw, 0.96rem) !important;
+    position: static !important;
+    order: 1 !important;
+    font-size: clamp(0.70rem, 2.8vw, 0.96rem) !important;
     letter-spacing: -0.4px !important;
     margin: 0 !important;
     padding: 0 !important;
-    display: inline-block !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    height: auto !important;
   }
 
   .j-tile-btn:has(.tile-modifier-tag) .j-tile-value,
   .j-tile-btn.tile-with-modifier .j-tile-value {
-    padding-top: 6px !important;
-    padding-right: 10px !important;
-  }
-
-  /* Compact 12px square icon badge in top-right corner */
-  .tile-modifier-tag {
-    position: absolute !important;
-    top: 2px !important;
-    right: 2px !important;
-    width: 12px !important;
-    height: 12px !important;
-    min-width: 12px !important;
-    max-width: 12px !important;
-    min-height: 12px !important;
-    max-height: 12px !important;
     padding: 0 !important;
     margin: 0 !important;
+  }
+
+  /* Compact 16x12px square icon badge centered at top of tile */
+  .tile-modifier-tag {
+    position: static !important;
+    order: -1 !important;
+    top: auto !important;
+    right: auto !important;
+    left: auto !important;
+    transform: none !important;
+    width: 16px !important;
+    height: 12px !important;
+    min-width: 16px !important;
+    max-height: 12px !important;
+    padding: 0 !important;
+    margin: 0 0 1px 0 !important;
     border-radius: 2px !important;
     border: 1px solid #000000 !important;
     box-shadow: 1px 1px 0 #000000 !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     overflow: hidden !important;
+    flex-shrink: 0 !important;
   }
 
   /* Hide the text label completely on mobile */
@@ -3745,10 +3777,14 @@ dialog::backdrop {
     display: none !important;
   }
 
-  .tile-modifier-tag .tile-mod-icon {
+  .tile-modifier-tag .tile-mod-icon,
+  .tile-modifier-tag .pixel-sprite {
+    width: 9px !important;
+    height: 9px !important;
     font-size: 8px !important;
     line-height: 1 !important;
     display: block !important;
+    margin: 0 !important;
   }
 
   /* Board Perk Legend below the board */
@@ -4461,58 +4497,35 @@ button:hover .sprite-plus {
   vertical-align: -3px;
 }
 
-/* Board Tile Corner Modifier Sprite Sizing (Clean & Never Covers Money!) */
-.tile-modifier-tag {
-  width: 15px;
-  height: 15px;
-}
-
-.tile-modifier-tag .pixel-sprite {
-  width: 11px;
-  height: 11px;
-}
-
-/* Crisp MS Paint Paper Card Contrast Inside Modals */
-.audio-settings-box {
-  background: #f5f7ff;
-  border: 2.5px solid #000000;
-  border-radius: 6px;
-  padding: 10px 14px;
-  box-shadow: 2px 2px 0 #000000;
-}
-
-.transfer-dialog-detail {
-  background: #f5f7ff;
-  color: #161626;
-  border: 2px solid #000000;
-  border-radius: 6px;
-  padding: 10px 12px;
-  box-shadow: 2px 2px 0 #000000;
-}
-
 /* Mobile Responsive Refinements for 11-Reaction Bar & Corner Modifier Sprites */
 @media (max-width: 768px) {
-  .tile-modifier-tag .pixel-sprite {
-    width: 10px !important;
-    height: 10px !important;
+  .floating-reaction-bar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    gap: 4px !important;
+    padding: 4px 6px !important;
+    max-width: 98% !important;
+    justify-content: flex-start !important;
   }
 
-  .floating-reaction-bar {
-    gap: 4px !important;
-    padding: 5px 8px !important;
-    max-width: 98% !important;
+  .floating-reaction-bar::-webkit-scrollbar {
+    display: none !important;
   }
 
   .reaction-trigger-btn {
-    width: 29px !important;
-    height: 29px !important;
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0 !important;
     border-radius: 6px !important;
     box-shadow: 0 2px 0 #000000 !important;
   }
 
   .reaction-trigger-btn .reaction-sprite {
-    width: 20px !important;
-    height: 20px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 }
 
@@ -4685,11 +4698,12 @@ button:hover .sprite-plus {
 
 .jeopardy-board-grid[data-cols="7"] .tile-modifier-tag,
 .jeopardy-board-grid[data-cols="8"] .tile-modifier-tag {
-  top: 2px;
-  right: 2px;
-  width: 13px;
-  height: 13px;
+  position: static;
+  order: -1;
+  width: 14px;
+  height: 11px;
   padding: 0;
+  margin: 0 0 1px 0;
   justify-content: center;
 }
 
@@ -4700,7 +4714,8 @@ button:hover .sprite-plus {
 
 .jeopardy-board-grid[data-cols="7"] .j-tile-btn.tile-with-modifier .j-tile-value,
 .jeopardy-board-grid[data-cols="8"] .j-tile-btn.tile-with-modifier .j-tile-value {
-  margin-top: 4px;
+  margin-top: 0;
+  padding: 0;
 }
 
 /* Mobile Touch-Friendly Horizontal Scroll for Wide 7-8 Column Large-Party Boards */
@@ -5434,82 +5449,91 @@ body.theme-halloween .skribbl-dialog {
   color: #f4f0ff;
 }
 
-/* Halloween Modifier Variants */
-.mod-pumpkin,
-.mod-tile-pumpkin {
+/* Halloween Modifier Badges */
+.mod-pumpkin {
   background: #ff7b00 !important;
   color: #000000 !important;
   border-color: #000000 !important;
 }
 
-.mod-ghost,
-.mod-tile-ghost {
-  background: #e0f7fa !important;
-  color: #004d40 !important;
+.mod-ghost {
+  background: #00e5ff !important;
+  color: #00363a !important;
   border-color: #000000 !important;
 }
 
-.mod-cauldron,
-.mod-tile-cauldron {
-  background: #53e237 !important;
+.mod-cauldron {
+  background: #39ff14 !important;
   color: #000000 !important;
   border-color: #000000 !important;
 }
 
-.mod-bat,
-.mod-tile-bat {
+.mod-bat {
   background: #9c27b0 !important;
   color: #ffffff !important;
   border-color: #000000 !important;
 }
 
+/* Halloween Tile Buttons: Keep deep purple background with signature colored top border accent */
 body.theme-halloween .j-tile-btn.mod-tile-pumpkin,
 body.theme-halloween .j-tile-btn.mod-tile-ghost,
 body.theme-halloween .j-tile-btn.mod-tile-cauldron,
 body.theme-halloween .j-tile-btn.mod-tile-bat {
   background: #1d0833 !important;
-  color: #ffaa00 !important;
-  border-color: #ff7b00 !important;
+  color: #ffd54f !important;
 }
 
 body.theme-halloween .j-tile-btn.mod-tile-pumpkin {
   border-top: 4px solid #ff7b00 !important;
+  background: linear-gradient(180deg, rgba(255, 123, 0, 0.22) 0%, #1d0833 45%) !important;
 }
 
 body.theme-halloween .j-tile-btn.mod-tile-ghost {
-  border-top: 4px solid #e0f7fa !important;
+  border-top: 4px solid #00e5ff !important;
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.22) 0%, #1d0833 45%) !important;
 }
 
 body.theme-halloween .j-tile-btn.mod-tile-cauldron {
-  border-top: 4px solid #53e237 !important;
+  border-top: 4px solid #39ff14 !important;
+  background: linear-gradient(180deg, rgba(57, 255, 20, 0.22) 0%, #1d0833 45%) !important;
 }
 
 body.theme-halloween .j-tile-btn.mod-tile-bat {
   border-top: 4px solid #d05ce3 !important;
+  background: linear-gradient(180deg, rgba(208, 92, 227, 0.22) 0%, #1d0833 45%) !important;
 }
 
-/* Absolute Corner Chip Rule: NEVER Obscure Value or Money on Any Screen! */
+/* Master Authoritative Modifier Tile Layout: NEVER Obscure Value or Money on Any Screen! */
 .tile-modifier-tag {
-  position: absolute !important;
-  top: 2px !important;
-  right: 2px !important;
-  width: 14px !important;
+  order: -1 !important;
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  transform: none !important;
+  width: auto !important;
   height: 14px !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  padding: 2px 6px !important;
+  margin: 0 0 2px 0 !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 2px !important;
-  border: 1px solid #000000 !important;
+  border-radius: 3px !important;
+  border: 1.5px solid #000000 !important;
   box-shadow: 1px 1px 0 #000000 !important;
   z-index: 2 !important;
   pointer-events: none !important;
-  overflow: hidden !important;
+  flex-shrink: 0 !important;
 }
 
 .tile-modifier-tag .tile-mod-text {
-  display: none !important;
+  display: inline-block !important;
+  font-family: var(--font-pixel) !important;
+  font-size: 7px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  text-transform: uppercase !important;
 }
 
 .tile-modifier-tag .tile-mod-icon,
@@ -5519,22 +5543,29 @@ body.theme-halloween .j-tile-btn.mod-tile-bat {
   height: 10px !important;
   line-height: 1 !important;
   margin: 0 !important;
+  flex-shrink: 0 !important;
 }
 
 .j-tile-btn.tile-with-modifier {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
   position: relative !important;
 }
 
+.j-tile-btn .j-tile-value,
 .j-tile-btn.tile-with-modifier .j-tile-value {
-  position: relative !important;
+  order: 1 !important;
+  position: static !important;
   z-index: 1 !important;
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: auto !important;
+  height: auto !important;
   margin: 0 !important;
-  padding: 0 4px !important;
+  padding: 0 !important;
 }
 
 /* Floating Candy Burst Particle */
@@ -5570,22 +5601,128 @@ body.theme-halloween .j-tile-btn.mod-tile-bat {
     grid-template-columns: 1fr;
   }
 
-  /* Guarantee dollar and candy amounts are 100% centered and legible */
+  /* Guarantee dollar and candy amounts are 100% centered, unobstructed, and legible */
   .j-tile-btn {
-    font-size: clamp(0.72rem, 3.2vw, 0.96rem) !important;
+    min-height: 40px !important;
+    padding: 2px 1px !important;
+    gap: 1px !important;
+  }
+
+  .j-tile-btn .j-tile-value,
+  .j-tile-btn.tile-with-modifier .j-tile-value {
+    font-size: clamp(0.70rem, 2.8vw, 0.96rem) !important;
+    letter-spacing: -0.4px !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .tile-modifier-tag {
-    top: 2px !important;
-    right: 2px !important;
-    width: 12px !important;
+    order: -1 !important;
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    left: auto !important;
+    transform: none !important;
+    width: 16px !important;
     height: 12px !important;
+    min-width: 16px !important;
+    max-height: 12px !important;
+    padding: 0 !important;
+    margin: 0 0 1px 0 !important;
+    border: 1px solid #000000 !important;
+    border-radius: 2px !important;
+    box-shadow: 1px 1px 0 #000000 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .tile-modifier-tag .tile-mod-text {
+    display: none !important;
   }
 
   .tile-modifier-tag .tile-mod-icon,
   .tile-modifier-tag .pixel-sprite {
-    width: 8px !important;
-    height: 8px !important;
-    font-size: 7px !important;
+    width: 9px !important;
+    height: 9px !important;
+    font-size: 8px !important;
+    margin: 0 !important;
+  }
+
+  /* Compact header spacing so the game board fits gracefully on phone viewports */
+  .arena-topbar {
+    padding: 4px 8px !important;
+    min-height: 36px !important;
+  }
+
+  .top-tools-cluster {
+    gap: 4px !important;
+  }
+
+  .btn-top-tool {
+    padding: 3px 6px !important;
+    font-size: 0.62rem !important;
+    min-height: 28px !important;
+  }
+
+  .status-banner {
+    padding: 4px 8px !important;
+    font-size: 0.68rem !important;
+    margin-bottom: 3px !important;
+  }
+
+  .board-action-banner {
+    padding: 4px 8px !important;
+    font-size: 0.70rem !important;
+    margin-bottom: 3px !important;
+  }
+
+  .board-perk-legend {
+    margin: 2px 0 4px 0 !important;
+    gap: 4px !important;
+  }
+
+  .legend-chip {
+    padding: 1px 5px !important;
+    font-size: 0.52rem !important;
+  }
+
+  .voice-chat-dock {
+    padding: 3px 6px !important;
+    min-height: 26px !important;
+    margin-bottom: 3px !important;
+  }
+
+  .btn-voice {
+    min-height: 24px !important;
+    padding: 2px 6px !important;
+    font-size: 0.62rem !important;
+  }
+
+  /* Clean single-row reaction bar with touch scrolling */
+  .floating-reaction-bar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    gap: 4px !important;
+    padding: 4px 6px !important;
+    max-width: 98% !important;
+    justify-content: flex-start !important;
+  }
+
+  .floating-reaction-bar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .reaction-trigger-btn {
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0 !important;
+    border-radius: 6px !important;
+  }
+
+  .reaction-trigger-btn .reaction-sprite {
+    width: 18px !important;
+    height: 18px !important;
   }
 }

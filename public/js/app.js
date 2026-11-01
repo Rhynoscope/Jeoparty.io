@@ -2114,7 +2114,6 @@ function renderBoardStage(room) {
         } else {
           valSpan.textContent = `$${tile.value}`;
         }
-        btn.appendChild(valSpan);
 
         if (tile.modifier) {
           const MOD_INFO = {
@@ -2170,6 +2169,7 @@ function renderBoardStage(room) {
 
           btn.appendChild(modTag);
         }
+        btn.appendChild(valSpan);
         btn.addEventListener('click', () => {
           if (state.room?.pickerId !== state.playerId) {
             const curPicker = findPlayer(state.room, state.room?.pickerId);
