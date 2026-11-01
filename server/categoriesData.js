@@ -19,6 +19,7 @@ const historyGeography = require('./categories/historyGeography');
 const funnyAbsurd = require('./categories/funnyAbsurd');
 const everydayLife = require('./categories/everydayLife');
 const finalJeopardy = require('./categories/finalJeopardy');
+const { HALLOWEEN_CATEGORIES, HALLOWEEN_FINAL_POOL } = require('./categories/halloween');
 
 const BUILTIN_CATEGORIES = [
   ...popCulture,
@@ -32,7 +33,14 @@ const BUILTIN_CATEGORIES = [
   icon: cat.id,
 }));
 
+const HALLOWEEN_CATEGORIES_MAPPED = HALLOWEEN_CATEGORIES.map((cat) => ({
+  ...cat,
+  icon: cat.id,
+}));
+
 module.exports = {
   BUILTIN_CATEGORIES,
   FINAL_JEOPARDY_POOL: finalJeopardy,
+  HALLOWEEN_CATEGORIES: HALLOWEEN_CATEGORIES_MAPPED,
+  HALLOWEEN_FINAL_POOL,
 };

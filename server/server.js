@@ -7,16 +7,13 @@ const os = require('node:os');
 const crypto = require('node:crypto');
 
 const { attachWebSocketServer } = require('./ws');
-const { BUILTIN_CATEGORIES, FINAL_JEOPARDY_POOL } = require('./categoriesData');
-const { evaluateAnswer } = require('./answerMatcher');
 const {
-  BOT_PERSONALITIES,
-  getPersonalityForBot,
-  clearBotPendingTimers,
-  handleHumanChatForBots,
-  notifyBotGameEvent,
-  getBotAiServiceDescriptor,
-} = require('./botBrain');
+  BUILTIN_CATEGORIES,
+  FINAL_JEOPARDY_POOL,
+  HALLOWEEN_CATEGORIES,
+  HALLOWEEN_FINAL_POOL,
+} = require('./categoriesData');
+const { evaluateAnswer } = require('./answerMatcher');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST_RECONNECT_GRACE_MS = Math.max(
@@ -45,13 +42,25 @@ const MIME_TYPES = {
   '.ogg': 'audio/ogg',
 };
 
-const BOT_PROFILES = BOT_PERSONALITIES.map((p) => ({
-  id: p.id,
-  name: p.name,
-  shortTitle: p.shortTitle,
-  archetype: p.archetype,
-  avatar: { ...p.avatar },
-}));
+const BOT_PROFILES = [
+  { id: 'doodle_dan', name: 'DoodleDan', avatar: { color: 3, eyes: 2, mouth: 1, hat: 1 } },
+  { id: 'brain_cell', name: 'BrainCell', avatar: { color: 11, eyes: 11, mouth: 3, hat: 5 } },
+  { id: 'chill_bean', name: 'ChillBean', avatar: { color: 7, eyes: 1, mouth: 0, hat: 9 } },
+  { id: 'rage_potato', name: 'RagePotato', avatar: { color: 0, eyes: 3, mouth: 6, hat: 3 } },
+  { id: 'shy_sprout', name: 'ShySprout', avatar: { color: 9, eyes: 5, mouth: 9, hat: 2 } },
+  { id: 'quizzy_lizzy', name: 'QuizzyLizzy', avatar: { color: 4, eyes: 8, mouth: 2, hat: 4 } },
+  { id: 'pixel_pete', name: 'PixelPete', avatar: { color: 1, eyes: 7, mouth: 5, hat: 6 } },
+  { id: 'snooze_bot', name: 'SnoozeBot', avatar: { color: 6, eyes: 0, mouth: 0, hat: 8 } },
+  { id: 'glitch_gremlin', name: 'GlitchGremlin', avatar: { color: 8, eyes: 10, mouth: 7, hat: 7 } },
+];
+
+function formatCurrency(amount, room) {
+  const num = Number(amount) || 0;
+  if (room && room.settings && room.settings.gameMode === 'halloween') {
+    return `${num.toLocaleString()} Candy`;
+  }
+  return `$${num.toLocaleString()}`;
+}
 
 const FUNNY_WRONG_ANSWERS = [
   'Shrek 2?',
@@ -233,8 +242,11 @@ function syncAutoScaledSettingsForLobby(room) {
   }
 }
 
-function createDefaultSettings() {
+function createDefaultSettings(gameMode = 'standard') {
+  const isHalloween = gameMode === 'halloween';
+  const pool = isHalloween ? HALLOWEEN_CATEGORIES : BUILTIN_CATEGORIES;
   return {
+    gameMode: isHalloween ? 'halloween' : 'standard', // 'standard' | 'halloween'
     autoScaleMatch: true, // Automatically scales board & timers based on active player count!
     matchPace: 'auto', // 'auto' | 'shorter' | 'standard' | 'extended' | 'custom'
     specialFrequency: 'normal', // 'low' | 'normal' | 'high'
@@ -247,7 +259,7 @@ function createDefaultSettings() {
     dailyDoubles: true,
     finalJeopardy: true,
     wrongPenalty: false, // Friendly party default
-    includedCategoryIds: BUILTIN_CATEGORIES.map((c) => c.id),
+    includedCategoryIds: pool.map((c) => c.id),
     customCategories: [],
   };
 }
@@ -255,6 +267,16 @@ function createDefaultSettings() {
 function applySettingsPatch(room, patch) {
   if (!patch || typeof patch !== 'object') return;
   const s = room.settings;
+
+  if (patch.gameMode === 'standard' || patch.gameMode === 'halloween') {
+    const changedMode = s.gameMode !== patch.gameMode;
+    s.gameMode = patch.gameMode;
+    room.gameMode = patch.gameMode;
+    if (changedMode && !Array.isArray(patch.includedCategoryIds)) {
+      const defaultPool = s.gameMode === 'halloween' ? HALLOWEEN_CATEGORIES : BUILTIN_CATEGORIES;
+      s.includedCategoryIds = defaultPool.map((c) => c.id);
+    }
+  }
 
   if (typeof patch.autoScaleMatch === 'boolean') {
     s.autoScaleMatch = patch.autoScaleMatch;
@@ -362,8 +384,11 @@ function applySettingsPatch(room, patch) {
   }
 }
 
-function createRoom({ isPrivate, preferredSettings = null }) {
+function createRoom({ isPrivate, gameMode = 'standard', preferredSettings = null }) {
   const code = generateRoomCode();
+  const actualMode = (gameMode === 'halloween' || preferredSettings?.gameMode === 'halloween')
+    ? 'halloween'
+    : 'standard';
   const room = {
     roomId: 'room_' + randomId(6),
     code,
@@ -373,7 +398,8 @@ function createRoom({ isPrivate, preferredSettings = null }) {
     createdAt: Date.now(),
     hostId: null,
     players: [],
-    settings: createDefaultSettings(),
+    gameMode: actualMode,
+    settings: createDefaultSettings(actualMode),
     phase: 'lobby', // 'lobby' | 'board' | 'daily_double_wager' | 'daily_double_answer' | 'clue_open' | 'clue_buzzed' | 'clue_skribbl' | 'clue_result' | 'final_wager' | 'final_clue' | 'game_over' | 'terminated'
     round: 1,
     pickerId: null,
@@ -403,10 +429,12 @@ function createRoom({ isPrivate, preferredSettings = null }) {
     }
     applySettingsPatch(room, {
       ...sanitizedPref,
+      gameMode: actualMode,
       allowEmptyCategories: false,
     });
     if (room.settings.includedCategoryIds.length < room.settings.boardCols) {
-      room.settings.includedCategoryIds = BUILTIN_CATEGORIES.map((c) => c.id);
+      const defaultPool = room.gameMode === 'halloween' ? HALLOWEEN_CATEGORIES : BUILTIN_CATEGORIES;
+      room.settings.includedCategoryIds = defaultPool.map((c) => c.id);
     }
   }
 
@@ -466,7 +494,6 @@ function terminateRoom(room, reason, { excludePlayerId = null } = {}) {
   room.terminated = true;
   room.phase = 'terminated';
   clearRoomTimers(room);
-  clearBotPendingTimers(room);
   clearHostDisconnectTimer(room);
 
   const closedGameId = room.gameId;
@@ -514,7 +541,8 @@ function terminateRoom(room, reason, { excludePlayerId = null } = {}) {
 }
 
 function getAllCategoriesForRoom(room) {
-  return [...BUILTIN_CATEGORIES, ...room.settings.customCategories];
+  const base = room && room.settings && room.settings.gameMode === 'halloween' ? HALLOWEEN_CATEGORIES : BUILTIN_CATEGORIES;
+  return [...base, ...(room && room.settings && room.settings.customCategories ? room.settings.customCategories : [])];
 }
 
 function serializeRoomForPlayer(room, viewerId) {
@@ -619,6 +647,8 @@ function serializeRoomForPlayer(room, viewerId) {
     serverNow: Date.now(),
     activePlayerCount: getActivePlayerCount(room),
     scaledMatchPreview: computeScaledMatchConfig(Math.max(2, getActivePlayerCount(room))),
+    gameMode: room.settings.gameMode || 'standard',
+    currency: room.settings.gameMode === 'halloween' ? 'candy' : 'dollar',
     settings: {
       ...room.settings,
       customCategoriesMeta: room.settings.customCategories.map((c) => ({
@@ -633,7 +663,6 @@ function serializeRoomForPlayer(room, viewerId) {
       room.settings.includedCategoryIds.includes(c.id)
     ).length,
     players: room.players.map((p) => {
-      const persona = p.isBot ? getPersonalityForBot(p) : null;
       return {
         id: p.id,
         name: p.name,
@@ -642,9 +671,6 @@ function serializeRoomForPlayer(room, viewerId) {
         connected: p.connected,
         isBot: p.isBot,
         botDifficulty: p.isBot ? (p.botDifficulty || room.settings.botDifficulty || 'medium') : undefined,
-        personalityId: persona ? persona.id : undefined,
-        personalityTitle: persona ? persona.shortTitle : undefined,
-        personalityArchetype: persona ? persona.archetype : undefined,
         streak: p.stats?.currentStreak || 0,
         onFire: Boolean(p.stats?.currentStreak >= 2),
         inVoice: room.voiceMembers ? room.voiceMembers.has(p.id) : false,
@@ -690,7 +716,6 @@ function sendChat(
     icon = null,
     isBot = false,
     botId = null,
-    botPersonalityTitle = null,
   }
 ) {
   if (!room || room.terminated) return;
@@ -704,48 +729,61 @@ function sendChat(
       icon,
       isBot: Boolean(isBot),
       botId,
-      botPersonalityTitle,
       text,
       ts: Date.now(),
     },
   });
 }
 
-const botHooks = {
-  broadcastEvent: (room, payload) => broadcastRoomEvent(room, payload),
-  sendBotChat: (room, bot, text, persona) => {
-    sendChat(room, {
-      kind: 'chat',
-      color: 'bot',
-      author: bot.name,
-      icon: 'bot',
-      isBot: true,
-      botId: bot.id,
-      botPersonalityTitle: persona?.shortTitle || 'AI Bot',
-      text,
-    });
-  },
-  spawnBotReaction: (room, bot, reactionId) => {
-    if (!room || room.terminated || !bot) return;
-    bot.stats = bot.stats || {
-      correctCount: 0,
-      wrongCount: 0,
-      maxStreak: 0,
-      currentStreak: 0,
-      fastestBuzzMs: 99999,
-      reactionsSent: 0,
-    };
-    bot.stats.reactionsSent++;
-    broadcastRoomEvent(room, {
-      type: 'reaction_spawn',
-      playerId: bot.id,
-      playerName: bot.name,
-      reaction: reactionId,
-      emoji: reactionId,
-      avatarConfig: bot.avatar,
-    });
-  },
-};
+function spawnBotReaction(room, bot, reactionId) {
+  if (!room || room.terminated || !bot) return;
+  bot.stats = bot.stats || {
+    correctCount: 0,
+    wrongCount: 0,
+    maxStreak: 0,
+    currentStreak: 0,
+    fastestBuzzMs: 99999,
+    reactionsSent: 0,
+  };
+  bot.stats.reactionsSent++;
+  broadcastRoomEvent(room, {
+    type: 'reaction_spawn',
+    playerId: bot.id,
+    playerName: bot.name,
+    reaction: reactionId,
+    emoji: reactionId,
+    avatarConfig: bot.avatar,
+  });
+}
+
+function maybeSpawnBotReaction(room, eventType, data = {}) {
+  if (!room || room.terminated) return;
+  const bots = (room.players || []).filter((p) => p.isBot && p.connected);
+  if (bots.length === 0) return;
+
+  if (eventType === 'correct_answer' && data.player?.isBot) {
+    if (Math.random() < 0.45) {
+      spawnBotReaction(room, data.player, Math.random() < 0.5 ? 'celebrate' : 'happy');
+    }
+  } else if (eventType === 'wrong_answer' && data.player?.isBot) {
+    if (Math.random() < 0.35) {
+      spawnBotReaction(room, data.player, Math.random() < 0.5 ? 'shocked' : 'sad');
+    }
+  } else if (eventType === 'streak' && data.player?.isBot) {
+    spawnBotReaction(room, data.player, 'fire');
+  } else if (eventType === 'match_start') {
+    const randomBot = bots[Math.floor(Math.random() * bots.length)];
+    spawnBotReaction(room, randomBot, 'celebrate');
+  } else if (eventType === 'game_over') {
+    const winner = data.winner;
+    if (winner?.isBot) {
+      spawnBotReaction(room, winner, 'celebrate');
+    } else {
+      const randomBot = bots[Math.floor(Math.random() * bots.length)];
+      spawnBotReaction(room, randomBot, 'happy');
+    }
+  }
+}
 
 
 /* ---------------- Real-Time WebRTC Voice Signaling ---------------- */
@@ -915,10 +953,8 @@ function addBotToRoom(room) {
   const profile =
     BOT_PROFILES.find((b) => !usedNames.has(b.name)) ||
     {
-      id: BOT_PERSONALITIES[room.players.length % BOT_PERSONALITIES.length].id,
+      id: `bot_${Math.floor(10 + Math.random() * 89)}`,
       name: `Bot_${Math.floor(10 + Math.random() * 89)}`,
-      shortTitle: 'Wildcard',
-      archetype: 'The Wildcard Opponent',
       avatar: {
         color: Math.floor(Math.random() * 20),
         eyes: Math.floor(Math.random() * 16),
@@ -931,9 +967,6 @@ function addBotToRoom(room) {
     id: 'bot_' + randomId(5),
     token: randomId(8),
     name: profile.name,
-    personalityId: profile.id,
-    personalityTitle: profile.shortTitle,
-    personalityArchetype: profile.archetype,
     avatar: { ...profile.avatar },
     score: 0,
     connected: true,
@@ -948,7 +981,7 @@ function addBotToRoom(room) {
   sendChat(room, {
     color: 'join',
     icon: 'bot',
-    text: `${bot.name} [BOT - ${bot.personalityTitle}] joined the room.`,
+    text: `${bot.name} [BOT] joined the room.`,
   });
   broadcastRoomState(room);
   return bot;
@@ -1291,7 +1324,7 @@ function startNewGame(room) {
     text: `New match started! (${activePlayers.length} Players • ${room.settings.boardCols}x${room.settings.cluesPerCat} = ${totalClues} Clues) — Round 1!`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
-  notifyBotGameEvent(room, 'match_start', {}, botHooks);
+  maybeSpawnBotReaction(room, 'match_start');
   enterBoardPhase(room);
 }
 
@@ -1327,7 +1360,6 @@ function enterBoardPhase(room) {
   const pickDurationMs = 35000;
   room.phaseEndsAt = Date.now() + pickDurationMs;
   broadcastRoomState(room);
-  notifyBotGameEvent(room, 'board_ready', {}, botHooks);
 
   if (picker && picker.isBot) {
     scheduleRoomTimer(
@@ -1421,7 +1453,6 @@ function enterIntermissionPhase(room, nextPhaseCallback, nextTitle) {
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'hint' });
   broadcastRoomState(room);
-  notifyBotGameEvent(room, 'intermission', { nextTitle }, botHooks);
 
   scheduleRoomTimer(room, () => {
     if (room.phase !== 'round_intermission') return;
@@ -1479,48 +1510,50 @@ function handleSelectTile(room, player, col, row) {
   }
 
   const clueDurationMs = computeDynamicClueDurationMs(room, room.activeClue);
+  const isHalloween = room.settings?.gameMode === 'halloween';
 
   // Handle Party Wildcard Modifiers
   if (modifier === 'speed_blitz') {
     room.activeClue.value = Math.round(tile.value * 1.5);
+    const label = isHalloween ? 'PUMPKIN BLITZ' : 'SPEED BLITZ';
+    const bonusUnit = isHalloween ? 'bonus candy' : 'bonus points';
     sendChat(room, {
       color: 'gold',
-      icon: 'blitz',
-      text: `SPEED BLITZ! 9s rapid buzzer with +50% bonus points ($${room.activeClue.value})!`,
+      icon: isHalloween ? 'pumpkin' : 'blitz',
+      text: `${label}! 9s rapid buzzer with +50% ${bonusUnit} (${formatCurrency(room.activeClue.value, room)})!`,
     });
-    broadcastRoomEvent(room, { type: 'sfx', sound: 'blitz' });
-    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
+    broadcastRoomEvent(room, { type: 'sfx', sound: isHalloween ? 'blitz' : 'blitz' });
     enterBuzzerClueOpenPhase(room, 9000, true);
     return;
   }
 
   if (modifier === 'steal') {
+    const label = isHalloween ? 'GHOST STEAL' : 'STEAL TILE';
     sendChat(room, {
       color: 'gold',
-      icon: 'steal',
-      text: `STEAL TILE! Correct buzz earns $${room.activeClue.value} AND steals $200 from the leader!`,
+      icon: isHalloween ? 'ghost' : 'steal',
+      text: `${label}! Correct buzz earns ${formatCurrency(room.activeClue.value, room)} AND steals ${formatCurrency(200, room)} from the leader!`,
     });
-    broadcastRoomEvent(room, { type: 'sfx', sound: 'steal' });
-    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
+    broadcastRoomEvent(room, { type: 'sfx', sound: isHalloween ? 'steal' : 'steal' });
     enterBuzzerClueOpenPhase(room, clueDurationMs, true);
     return;
   }
 
   if (modifier === 'double_trouble') {
     room.activeClue.value = tile.value * 2;
+    const label = isHalloween ? 'CURSED CANDY' : 'DOUBLE TROUBLE';
+    const penaltyUnit = isHalloween ? 'candy' : 'points';
     sendChat(room, {
       color: 'gold',
-      icon: 'double',
-      text: `DOUBLE TROUBLE! 2X points ($${room.activeClue.value}), but 2X penalty for incorrect guesses!`,
+      icon: isHalloween ? 'candy' : 'double',
+      text: `${label}! 2X ${penaltyUnit} (${formatCurrency(room.activeClue.value, room)}), but 2X penalty for incorrect guesses!`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
-    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
     enterBuzzerClueOpenPhase(room, clueDurationMs, true);
     return;
   }
 
   if (modifier === 'chaos_all_play') {
-    notifyBotGameEvent(room, 'special_tile', { modifier, player, categoryName: cat.name }, botHooks);
     enterChaosAllPlayPhase(room);
     return;
   }
@@ -1541,18 +1574,15 @@ function enterDailyDoubleWagerPhase(room, picker) {
   const durationMs = 18000;
   room.phaseEndsAt = Date.now() + durationMs;
 
+  const isHalloween = room.settings?.gameMode === 'halloween';
+  const ddTitle = isHalloween ? 'JACK-O\'-LANTERN TREASURE' : 'DAILY DOUBLE';
   sendChat(room, {
     color: 'gold',
-    text: `DAILY DOUBLE! ${picker.name} can wager up to $${room.activeClue.maxWager.toLocaleString()}!`,
+    icon: isHalloween ? 'pumpkin' : 'daily_double',
+    text: `${ddTitle}! ${picker.name} can wager up to ${formatCurrency(room.activeClue.maxWager, room)}!`,
   });
-  broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
+  broadcastRoomEvent(room, { type: 'sfx', sound: isHalloween ? 'halloween_daily_double' : 'daily_double' });
   broadcastRoomState(room);
-  notifyBotGameEvent(
-    room,
-    'daily_double',
-    { player: picker, categoryName: room.activeClue.categoryName },
-    botHooks
-  );
 
   if (picker.isBot) {
     scheduleRoomTimer(room, () => {
@@ -1613,18 +1643,13 @@ function handleSubmitDailyDoubleWager(room, player, rawWager) {
       if (room.phase !== 'daily_double_answer') return;
       player.score -= ac.wager;
       recordWrongAnswer(player);
-      ac.lastWrongText = `${player.name} ran out of time (-$${ac.wager.toLocaleString()})`;
+      ac.lastWrongText = `${player.name} ran out of time (-${formatCurrency(ac.wager, room)})`;
       sendChat(room, {
         color: 'danger',
-        text: `Time's up for ${player.name}! (-$${ac.wager.toLocaleString()})`,
+        text: `Time's up for ${player.name}! (-${formatCurrency(ac.wager, room)})`,
       });
       broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
-      notifyBotGameEvent(
-        room,
-        'wrong_answer',
-        { player, categoryName: ac.categoryName },
-        botHooks
-      );
+      maybeSpawnBotReaction(room, 'wrong_answer', { player });
       enterClueResultPhase(room);
     }, answerMs);
   }
@@ -1652,37 +1677,23 @@ function handleSubmitDailyDoubleAnswer(room, player, text) {
     ac.winnerName = player.name;
     ac.winnerDelta = ac.wager;
     recordCorrectAnswer(room, player, ac.wager);
+    const ddName = room.settings?.gameMode === 'halloween' ? 'Jack-o\'-Lantern Treasure' : 'Daily Double';
     sendChat(room, {
       color: 'success',
-      text: `${player.name} nailed the Daily Double! (+$${ac.wager.toLocaleString()})`,
+      text: `${player.name} nailed the ${ddName}! (+${formatCurrency(ac.wager, room)})`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
-    notifyBotGameEvent(
-      room,
-      player.stats?.currentStreak >= 3 ? 'streak' : 'correct_answer',
-      {
-        player,
-        points: ac.wager,
-        streak: player.stats?.currentStreak || 1,
-        categoryName: ac.categoryName,
-      },
-      botHooks
-    );
+    maybeSpawnBotReaction(room, (player.stats?.currentStreak >= 3) ? 'streak' : 'correct_answer', { player });
   } else {
     player.score -= ac.wager;
     recordWrongAnswer(player);
-    ac.lastWrongText = `${player.name}: "${text}" (-$${ac.wager.toLocaleString()})`;
+    ac.lastWrongText = `${player.name}: "${text}" (-${formatCurrency(ac.wager, room)})`;
     sendChat(room, {
       color: 'danger',
-      text: `"${text}" — Incorrect! ${player.name} loses $${ac.wager.toLocaleString()}.`,
+      text: `"${text}" — Incorrect! ${player.name} loses ${formatCurrency(ac.wager, room)}.`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
-    notifyBotGameEvent(
-      room,
-      'wrong_answer',
-      { player, categoryName: ac.categoryName },
-      botHooks
-    );
+    maybeSpawnBotReaction(room, 'wrong_answer', { player });
   }
   enterClueResultPhase(room);
 }
@@ -1850,53 +1861,21 @@ function applyCorrectBuzz(room, player) {
       leader.score -= stolen;
       player.score += stolen;
       stolenVictim = leader;
+      const isHalloween = room.settings?.gameMode === 'halloween';
       sendChat(room, {
         color: 'gold',
-        icon: 'steal',
-        text: `STEAL! ${player.name} stole $${stolen.toLocaleString()} from ${leader.name}!`,
+        icon: isHalloween ? 'ghost' : 'steal',
+        text: `STEAL! ${player.name} stole ${formatCurrency(stolen, room)} from ${leader.name}!`,
       });
     }
   }
 
   recordCorrectAnswer(room, player, totalPoints);
-  if (stolenVictim) {
-    notifyBotGameEvent(
-      room,
-      'steal_executed',
-      { player, victim: stolenVictim, points: totalPoints, categoryName: ac.categoryName },
-      botHooks
-    );
-  } else if ((player.stats?.currentStreak || 0) >= 3) {
-    notifyBotGameEvent(
-      room,
-      'streak',
-      {
-        player,
-        streak: player.stats.currentStreak,
-        points: totalPoints,
-        categoryName: ac.categoryName,
-      },
-      botHooks
-    );
-  } else if (underdogBonus > 0 && Math.random() < 0.55) {
-    notifyBotGameEvent(
-      room,
-      'comeback',
-      { player, points: totalPoints, categoryName: ac.categoryName },
-      botHooks
-    );
-  } else {
-    notifyBotGameEvent(
-      room,
-      'correct_answer',
-      { player, points: totalPoints, categoryName: ac.categoryName },
-      botHooks
-    );
-  }
+  maybeSpawnBotReaction(room, (player.stats?.currentStreak || 0) >= 3 ? 'streak' : 'correct_answer', { player });
 
   sendChat(room, {
     color: 'success',
-    text: `${player.name} got it right! (+$${totalPoints.toLocaleString()})${underdogBonus > 0 ? ' [Underdog Boost!]' : ''}`,
+    text: `${player.name} got it right! (+${formatCurrency(totalPoints, room)})${underdogBonus > 0 ? ' [Underdog Boost!]' : ''}`,
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
   enterClueResultPhase(room);
@@ -1911,17 +1890,12 @@ function applyWrongBuzz(room, player, displayGuess) {
   player.score -= penalty;
 
   recordWrongAnswer(player);
-  notifyBotGameEvent(
-    room,
-    'wrong_answer',
-    { player, categoryName: ac.categoryName },
-    botHooks
-  );
+  maybeSpawnBotReaction(room, 'wrong_answer', { player });
 
   // Progressive letter hint: reveal another letter!
   revealOneLetterHint(ac);
 
-  const penaltyText = penalty > 0 ? ` (-$${penalty.toLocaleString()})` : '';
+  const penaltyText = penalty > 0 ? ` (-${formatCurrency(penalty, room)})` : '';
   ac.lastWrongText = `${player.name}: "${displayGuess}"${penaltyText}`;
   sendChat(room, {
     color: 'danger',
@@ -2134,8 +2108,9 @@ function computeSuperlatives(room) {
   const superlatives = [];
   const players = room.players || [];
   if (players.length === 0) return superlatives;
+  const isHalloween = room.settings?.gameMode === 'halloween';
 
-  // 1. Speed Demon (fastest buzz)
+  // 1. Fastest buzz
   const speedDemons = players
     .filter((p) => p.stats?.fastestBuzzMs && p.stats.fastestBuzzMs < 10000)
     .sort((a, b) => a.stats.fastestBuzzMs - b.stats.fastestBuzzMs);
@@ -2143,30 +2118,30 @@ function computeSuperlatives(room) {
     const p = speedDemons[0];
     const sec = (p.stats.fastestBuzzMs / 1000).toFixed(2);
     superlatives.push({
-      badge: 'blitz',
-      title: 'Speed Demon',
+      badge: isHalloween ? 'ghost' : 'blitz',
+      title: isHalloween ? 'Ghost Hunter' : 'Speed Demon',
       playerName: p.name,
       avatarConfig: p.avatar,
       detail: `Fastest buzz in ${sec}s!`,
     });
   }
 
-  // 2. Hot Streak (highest streak)
+  // 2. Highest streak
   const streakKings = players
     .filter((p) => p.stats?.maxStreak && p.stats.maxStreak >= 2)
     .sort((a, b) => b.stats.maxStreak - a.stats.maxStreak);
   if (streakKings.length > 0) {
     const p = streakKings[0];
     superlatives.push({
-      badge: 'fire',
-      title: 'Streak King',
+      badge: isHalloween ? 'pumpkin' : 'fire',
+      title: isHalloween ? 'Spooky Speedster' : 'Streak King',
       playerName: p.name,
       avatarConfig: p.avatar,
       detail: `${p.stats.maxStreak} correct in a row!`,
     });
   }
 
-  // 3. Sharpshooter (highest accuracy)
+  // 3. Accuracy / Brains
   const shooters = players
     .filter((p) => (p.stats?.correctCount || 0) + (p.stats?.wrongCount || 0) >= 2)
     .map((p) => {
@@ -2178,27 +2153,41 @@ function computeSuperlatives(room) {
   if (shooters.length > 0 && shooters[0].acc >= 50) {
     const s = shooters[0];
     superlatives.push({
-      badge: 'target',
-      title: 'Sharpshooter',
+      badge: isHalloween ? 'cauldron' : 'target',
+      title: isHalloween ? 'Monster Brain' : 'Sharpshooter',
       playerName: s.p.name,
       avatarConfig: s.p.avatar,
       detail: `${s.acc}% accuracy (${s.p.stats.correctCount}/${s.total})`,
     });
   }
 
-  // 4. Party Animal (most reactions)
+  // 4. Reactions / Spooky Spirit
   const partiers = players
     .filter((p) => p.stats?.reactionsSent && p.stats.reactionsSent >= 3)
     .sort((a, b) => b.stats.reactionsSent - a.stats.reactionsSent);
   if (partiers.length > 0) {
     const p = partiers[0];
     superlatives.push({
-      badge: 'celebrate',
-      title: 'Party Animal',
+      badge: isHalloween ? 'bat' : 'celebrate',
+      title: isHalloween ? 'Spooky Spirit' : 'Party Animal',
       playerName: p.name,
       avatarConfig: p.avatar,
       detail: `${p.stats.reactionsSent} reactions sent!`,
     });
+  }
+
+  // 5. Candy Collector (Halloween exclusive)
+  if (isHalloween) {
+    const topScorer = [...players].sort((a, b) => b.score - a.score)[0];
+    if (topScorer && topScorer.score > 0) {
+      superlatives.push({
+        badge: 'candy',
+        title: 'Candy Collector',
+        playerName: topScorer.name,
+        avatarConfig: topScorer.avatar,
+        detail: `Hoarded ${topScorer.score.toLocaleString()} candy!`,
+      });
+    }
   }
 
   return superlatives;
@@ -2296,29 +2285,19 @@ function handleChaosAnswer(room, player, text) {
     }
     recordCorrectAnswer(room, player, points);
     if (order === 0) {
-      notifyBotGameEvent(
-        room,
-        (player.stats?.currentStreak || 0) >= 3 ? 'streak' : 'correct_answer',
-        {
-          player,
-          points,
-          streak: player.stats?.currentStreak || 1,
-          categoryName: ac.categoryName,
-        },
-        botHooks
-      );
+      maybeSpawnBotReaction(room, (player.stats?.currentStreak || 0) >= 3 ? 'streak' : 'correct_answer', { player });
     }
 
     const rankSuffix = order === 0 ? '1st' : order === 1 ? '2nd' : `${order + 1}th`;
     sendPrivateChat(player, {
       color: 'success',
       icon: 'correct',
-      text: `Correct! Locked in "${answerText}" (+$${points.toLocaleString()})!`,
+      text: `Correct! Locked in "${answerText}" (+${formatCurrency(points, room)})!`,
     });
     sendChat(room, {
       color: 'success',
-      icon: 'chaos',
-      text: `${player.name} solved it! [${rankSuffix}] (+$${points.toLocaleString()})${bonus > 0 ? ' (Underdog Boost!)' : ''}`,
+      icon: room.settings?.gameMode === 'halloween' ? 'cauldron' : 'chaos',
+      text: `${player.name} solved it! [${rankSuffix}] (+${formatCurrency(points, room)})${bonus > 0 ? ' (Underdog Boost!)' : ''}`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
   } else {
@@ -2443,22 +2422,12 @@ function handleSkribblGuessOrChat(room, player, text) {
       ac.winnerName = player.name;
       ac.winnerDelta = points;
       recordCorrectAnswer(room, player, points);
-      notifyBotGameEvent(
-        room,
-        (player.stats?.currentStreak || 0) >= 3 ? 'streak' : 'correct_answer',
-        {
-          player,
-          points,
-          streak: player.stats?.currentStreak || 1,
-          categoryName: ac.categoryName,
-        },
-        botHooks
-      );
+      maybeSpawnBotReaction(room, (player.stats?.currentStreak || 0) >= 3 ? 'streak' : 'correct_answer', { player });
     }
 
     sendChat(room, {
       color: 'success',
-      text: `${player.name} guessed the answer! (+$${points.toLocaleString()})`,
+      text: `${player.name} guessed the answer! (+${formatCurrency(points, room)})`,
     });
     broadcastRoomEvent(room, { type: 'sfx', sound: 'correct' });
     broadcastRoomState(room);
@@ -2509,12 +2478,13 @@ function enterFinalWagerPhase(room) {
   if (!room || room.terminated) return;
   clearRoomTimers(room);
   room.recentFinalKeys = room.recentFinalKeys || new Set();
-  let availableFinal = FINAL_JEOPARDY_POOL.filter(
+  const pool = room.settings?.gameMode === 'halloween' ? HALLOWEEN_FINAL_POOL : FINAL_JEOPARDY_POOL;
+  let availableFinal = pool.filter(
     (f) => !room.recentFinalKeys.has(f.clue)
   );
   if (availableFinal.length === 0) {
     room.recentFinalKeys.clear();
-    availableFinal = FINAL_JEOPARDY_POOL;
+    availableFinal = pool;
   }
   const finalClue =
     availableFinal[Math.floor(Math.random() * availableFinal.length)];
@@ -2531,11 +2501,15 @@ function enterFinalWagerPhase(room) {
   const wagerMs = 22000;
   room.phaseEndsAt = Date.now() + wagerMs;
 
+  const isHalloween = room.settings?.gameMode === 'halloween';
+  const finalTitle = isHalloween ? 'FINAL HALLOWEEN MAYHEM' : 'FINAL JEOPARTY';
+  const wagerUnit = isHalloween ? 'candy wagers' : 'wagers';
   sendChat(room, {
     color: 'gold',
-    text: `FINAL JEOPARTY! Category: "${finalClue.category}" — Lock in your secret wagers!`,
+    icon: isHalloween ? 'pumpkin' : 'daily_double',
+    text: `${finalTitle}! Category: "${finalClue.category}" — Lock in your secret ${wagerUnit}!`,
   });
-  broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
+  broadcastRoomEvent(room, { type: 'sfx', sound: isHalloween ? 'halloween_final' : 'daily_double' });
   broadcastRoomState(room);
 
   for (const bot of room.players.filter((p) => p.isBot)) {
@@ -2659,16 +2633,18 @@ function enterGameOverPhase(room) {
   room.superlatives = computeSuperlatives(room);
 
   const sorted = [...room.players].sort((a, b) => b.score - a.score);
+  const isHalloween = room.settings?.gameMode === 'halloween';
   const winner = sorted[0];
   if (winner) {
     sendChat(room, {
       color: 'gold',
-      text: `GAME OVER! ${winner.name} wins with $${winner.score.toLocaleString()}!`,
+      icon: isHalloween ? 'pumpkin' : 'celebrate',
+      text: `GAME OVER! ${winner.name} wins with ${formatCurrency(winner.score, room)}!`,
     });
   }
-  broadcastRoomEvent(room, { type: 'sfx', sound: 'victory' });
+  broadcastRoomEvent(room, { type: 'sfx', sound: isHalloween ? 'halloween_victory' : 'victory' });
   broadcastRoomState(room);
-  notifyBotGameEvent(room, 'game_over', { winner }, botHooks);
+  maybeSpawnBotReaction(room, 'game_over', { winner });
 }
 
 function getAvailablePublicRooms() {
@@ -2686,6 +2662,7 @@ function getAvailablePublicRooms() {
       humanCount: r.players.filter((p) => !p.isBot && p.connected).length,
       maxPlayers: MAX_ROOM_PLAYERS,
       phase: r.phase,
+      gameMode: r.settings.gameMode || 'standard',
       status: 'Waiting in Lobby',
       categoryCount: r.settings.includedCategoryIds ? r.settings.includedCategoryIds.length : 5,
       createdAt: r.createdAt || Date.now(),
@@ -2732,9 +2709,17 @@ const server = http.createServer((req, res) => {
       blurb: c.blurb,
       sampleClue: c.clues[0]?.clue || '',
     }));
+    const halloweenMeta = HALLOWEEN_CATEGORIES.map((c) => ({
+      id: c.id,
+      name: c.name,
+      icon: c.id,
+      group: c.group,
+      blurb: c.blurb,
+      sampleClue: c.clues[0]?.clue || '',
+    }));
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ categories: meta }));
+    res.end(JSON.stringify({ categories: meta, halloweenCategories: halloweenMeta }));
     return;
   }
 
@@ -2760,7 +2745,6 @@ const server = http.createServer((req, res) => {
         activeRooms: rooms.size,
         terminatedRooms: terminatedRooms.size,
         hostReconnectGraceMs: HOST_RECONNECT_GRACE_MS,
-        botAi: getBotAiServiceDescriptor(),
       })
     );
     return;
@@ -3150,6 +3134,11 @@ attachWebSocketServer(server, (ws) => {
         terminateAbandonedHostRoomIfOwned(msg.abandonedRoomCode, msg.abandonedToken);
         if (currentRoom) leaveCurrentRoomIntentionally();
 
+        const requestedGameMode =
+          msg.gameMode === 'halloween' || msg.preferredSettings?.gameMode === 'halloween'
+            ? 'halloween'
+            : 'standard';
+
         let targetRoom = null;
         if (msg.matchExisting === true) {
           targetRoom = Array.from(rooms.values()).find(
@@ -3157,6 +3146,7 @@ attachWebSocketServer(server, (ws) => {
               !r.isPrivate &&
               !r.terminated &&
               r.phase === 'lobby' &&
+              r.gameMode === requestedGameMode &&
               r.players.filter((p) => p.connected).length < MAX_ROOM_PLAYERS
           );
         }
@@ -3170,6 +3160,7 @@ attachWebSocketServer(server, (ws) => {
           // Always create a brand-new room & session (never rejoin a stale or mid-game room)
           const room = createRoom({
             isPrivate: false,
+            gameMode: requestedGameMode,
             preferredSettings: msg.preferredSettings || null,
           });
           joinRoomInstance(room, msg, {
@@ -3183,8 +3174,13 @@ attachWebSocketServer(server, (ws) => {
       case 'create_public': {
         terminateAbandonedHostRoomIfOwned(msg.abandonedRoomCode, msg.abandonedToken);
         if (currentRoom) leaveCurrentRoomIntentionally();
+        const requestedGameMode =
+          msg.gameMode === 'halloween' || msg.preferredSettings?.gameMode === 'halloween'
+            ? 'halloween'
+            : 'standard';
         const room = createRoom({
           isPrivate: false,
+          gameMode: requestedGameMode,
           preferredSettings: msg.preferredSettings || null,
         });
         joinRoomInstance(room, msg, {
@@ -3197,8 +3193,13 @@ attachWebSocketServer(server, (ws) => {
       case 'create_private': {
         terminateAbandonedHostRoomIfOwned(msg.abandonedRoomCode, msg.abandonedToken);
         if (currentRoom) leaveCurrentRoomIntentionally();
+        const requestedGameMode =
+          msg.gameMode === 'halloween' || msg.preferredSettings?.gameMode === 'halloween'
+            ? 'halloween'
+            : 'standard';
         const room = createRoom({
           isPrivate: true,
+          gameMode: requestedGameMode,
           preferredSettings: msg.preferredSettings || null,
         });
         joinRoomInstance(room, msg, {
@@ -3550,7 +3551,6 @@ attachWebSocketServer(server, (ws) => {
                 author: currentPlayer.name,
                 text: chatText,
               });
-              handleHumanChatForBots(currentRoom, currentPlayer, chatText, botHooks);
             }
           }
         }
@@ -3722,7 +3722,6 @@ attachWebSocketServer(server, (ws) => {
           author: currentPlayer.name,
           text,
         });
-        handleHumanChatForBots(currentRoom, currentPlayer, text, botHooks);
         break;
       }
 

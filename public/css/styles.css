@@ -4731,3 +4731,613 @@ button:hover .sprite-plus {
     margin: 10px 0 0 0 !important;
   }
 }
+
+
+/* =========================================================================
+   HALLOWEEN MAYHEM EVENT THEME & STYLING 🎃
+   ========================================================================= */
+
+body.theme-halloween,
+body[data-game-mode="halloween"] {
+  --bg-primary: #120422;
+  --bg-panel: #1e0736;
+  --bg-card: #280a48;
+  --border-color: #ff7b00;
+  --text-primary: #ffffff;
+  --text-secondary: #d1b8f0;
+  --text-gold: #ffaa00;
+  --accent-orange: #ff7b00;
+  --accent-green: #39ff14;
+  --accent-purple: #9c27b0;
+  --jeopardy-blue: #23083c;
+  --board-bg: #140326;
+  --tile-bg: #22083d;
+  --tile-hover: #3b0f64;
+  --tile-border: #ff7b00;
+  --tile-gold: #ffd54f;
+  background-color: #120422;
+}
+
+/* Atmospheric Halloween Background */
+body.theme-halloween {
+  background-image: 
+    radial-gradient(ellipse at 50% 0%, rgba(255, 123, 0, 0.12) 0%, transparent 65%),
+    radial-gradient(circle at 10% 90%, rgba(57, 255, 20, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 85%, rgba(156, 39, 176, 0.12) 0%, transparent 45%);
+}
+
+/* Halloween Header Bar */
+body.theme-halloween .game-header,
+body.theme-halloween .skribbl-top-nav {
+  background: #1b0632 !important;
+  border-bottom: 2px solid #ff7b00 !important;
+  box-shadow: 0 4px 12px rgba(255, 123, 0, 0.25) !important;
+}
+
+/* Halloween Home Panels & Stage Panels */
+body.theme-halloween .screen-panel,
+body.theme-halloween .skribbl-card,
+body.theme-halloween .stage-panel,
+body.theme-halloween .sidebar-panel,
+body.theme-halloween .lobby-panel,
+body.theme-halloween .board-panel,
+body.theme-halloween .clue-card-wrap,
+body.theme-halloween .chat-panel {
+  background: #1f0738 !important;
+  border-color: #ff7b00 !important;
+  color: #ffffff !important;
+}
+
+body.theme-halloween .panel-title,
+body.theme-halloween .lobby-header h2,
+body.theme-halloween .board-title {
+  color: #ffaa00 !important;
+  text-shadow: 2px 2px 0 #000000, 0 0 8px rgba(255, 170, 0, 0.4) !important;
+}
+
+/* Halloween Board Category Headers & Tiles */
+body.theme-halloween .j-category-header {
+  background: #ff7b00 !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+  text-shadow: none !important;
+}
+
+body.theme-halloween .j-tile-btn {
+  background: #250942 !important;
+  border-color: #ff7b00 !important;
+  color: #ffd54f !important;
+  text-shadow: 1px 1px 0 #000000 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+body.theme-halloween .j-tile-btn:not(.tile-played):hover {
+  background: #3c1266 !important;
+  border-color: #ffaa00 !important;
+  box-shadow: 0 0 8px rgba(255, 170, 0, 0.5), 2px 2px 0 #000000 !important;
+}
+
+body.theme-halloween .j-tile-btn.tile-played {
+  background: #110321 !important;
+  border-color: #290847 !important;
+  color: #3d1466 !important;
+  box-shadow: none !important;
+}
+
+/* Halloween Active Clue Card */
+body.theme-halloween .clue-card {
+  background: #260a45 !important;
+  border: 3px solid #ff7b00 !important;
+  box-shadow: 6px 6px 0 #000000, 0 0 20px rgba(255, 123, 0, 0.3) !important;
+  color: #ffffff !important;
+}
+
+body.theme-halloween .clue-category-pill {
+  background: #ff7b00 !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+body.theme-halloween .clue-value-pill {
+  background: #39ff14 !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+/* Halloween Modifier Variants */
+.mod-pumpkin,
+.mod-tile-pumpkin {
+  background: #ff7b00 !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+.mod-ghost,
+.mod-tile-ghost {
+  background: #e0f7fa !important;
+  color: #006064 !important;
+  border-color: #000000 !important;
+}
+
+.mod-cauldron,
+.mod-tile-cauldron {
+  background: #39ff14 !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+.mod-bat,
+.mod-tile-bat {
+  background: #9c27b0 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+/* Halloween Clue Modifier Banner */
+.clue-modifier-badge.mod-pumpkin {
+  background: #ff7b00 !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+.clue-modifier-badge.mod-ghost {
+  background: #e0f7fa !important;
+  color: #004d40 !important;
+  border-color: #000000 !important;
+}
+
+.clue-modifier-badge.mod-cauldron {
+  background: #39ff14 !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+.clue-modifier-badge.mod-bat {
+  background: #9c27b0 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+/* Absolute Corner Chip Rule: NEVER Obscure Value or Money on Any Screen! */
+.tile-modifier-tag {
+  position: absolute !important;
+  top: 2px !important;
+  right: 2px !important;
+  width: 14px !important;
+  height: 14px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 2px !important;
+  border: 1px solid #000000 !important;
+  box-shadow: 1px 1px 0 #000000 !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+.tile-modifier-tag .tile-mod-text {
+  display: none !important;
+}
+
+.tile-modifier-tag .tile-mod-icon,
+.tile-modifier-tag .pixel-sprite {
+  font-size: 8px !important;
+  width: 10px !important;
+  height: 10px !important;
+  line-height: 1 !important;
+  margin: 0 !important;
+}
+
+.j-tile-btn.tile-with-modifier {
+  position: relative !important;
+}
+
+.j-tile-btn.tile-with-modifier .j-tile-value {
+  position: relative !important;
+  z-index: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 4px !important;
+}
+
+/* Floating Candy Burst Particle */
+.candy-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  animation: candyBurstFloat 1.25s cubic-bezier(0.2, 0.8, 0.35, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes candyBurstFloat {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.5);
+    opacity: 0.9;
+  }
+  30% {
+    transform: translate(calc(var(--dx) * 0.7), calc(var(--dy) * 0.7)) rotate(var(--rot)) scale(1.35);
+    opacity: 1;
+  }
+  75% {
+    transform: translate(var(--dx), var(--dy)) rotate(calc(var(--rot) * 1.3)) scale(0.95);
+  }
+  100% {
+    transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) - 50px)) rotate(calc(var(--rot) * 1.6)) scale(0.7);
+    opacity: 0;
+  }
+}
+
+/* Ambient Halloween Pixel Decorations */
+.halloween-decorations {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+}
+
+.halloween-decorations[hidden] {
+  display: none !important;
+}
+
+.spooky-item {
+  position: absolute;
+  pointer-events: none;
+}
+
+.ghost-1 {
+  top: 14%;
+  left: 3%;
+  animation: floatGhost 6s ease-in-out infinite alternate;
+  opacity: 0.8;
+}
+
+.ghost-2 {
+  top: 65%;
+  right: 4%;
+  animation: floatGhost 7.5s ease-in-out infinite alternate-reverse;
+  opacity: 0.8;
+}
+
+.bat-1 {
+  top: 9%;
+  right: 14%;
+  animation: flutterBat 4s ease-in-out infinite alternate;
+  opacity: 0.9;
+}
+
+.bat-2 {
+  top: 26%;
+  left: 6%;
+  animation: flutterBat 5.2s ease-in-out infinite alternate-reverse;
+  opacity: 0.9;
+}
+
+.spiderweb-tl {
+  top: 2px;
+  left: 2px;
+  opacity: 0.65;
+}
+
+.spiderweb-tr {
+  top: 2px;
+  right: 2px;
+  transform: scaleX(-1);
+  opacity: 0.65;
+}
+
+.jack-bl {
+  bottom: 8px;
+  left: 12px;
+  animation: pumpkinFlicker 3s infinite steps(2);
+}
+
+.jack-br {
+  bottom: 8px;
+  right: 12px;
+  animation: pumpkinFlicker 3.8s infinite steps(2);
+}
+
+@keyframes floatGhost {
+  0% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-16px) translateX(10px); }
+  100% { transform: translateY(6px) translateX(-6px); }
+}
+
+@keyframes flutterBat {
+  0% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-14px) rotate(8deg); }
+  100% { transform: translateY(8px) rotate(-4deg); }
+}
+
+@keyframes pumpkinFlicker {
+  0%, 100% { filter: drop-shadow(0 0 3px #ff7b00); }
+  50% { filter: drop-shadow(0 0 10px #ffb300); }
+}
+
+/* Home Screen Mode Selector & Wardrobe Button */
+.home-wardrobe-row {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 12px 0;
+}
+
+.btn-wardrobe-pill {
+  background: #ff7b00 !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  box-shadow: 3px 3px 0 #000000 !important;
+  font-family: var(--font-pixel) !important;
+  font-weight: 800 !important;
+  font-size: 0.85rem !important;
+  padding: 8px 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  cursor: pointer;
+  border-radius: 8px !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.btn-wardrobe-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0 #000000 !important;
+  background: #ff9400 !important;
+}
+
+.home-mode-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.home-mode-btn {
+  background: #d8d8d8;
+  color: #1a1a1a;
+  border: 2px solid #000000;
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 #000000;
+  padding: 8px 10px;
+  font-family: var(--font-pixel);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-transform: uppercase;
+  transition: all 0.1s ease;
+}
+
+.home-mode-btn:hover {
+  transform: translateY(-1px);
+}
+
+.home-mode-btn .mode-check {
+  display: none;
+}
+
+.home-mode-btn.active .mode-check {
+  display: inline-flex;
+}
+
+.home-mode-btn[data-mode="standard"].active {
+  background: #0056b3;
+  color: #ffffff;
+  border-color: #000000;
+  box-shadow: 3px 3px 0 #000000;
+}
+
+.home-mode-btn[data-mode="halloween"].active {
+  background: #ff7b00;
+  color: #000000;
+  border-color: #000000;
+  box-shadow: 3px 3px 0 #000000;
+}
+
+/* Spooky Halloween Wardrobe Dialog */
+.halloween-wardrobe-dialog {
+  max-width: 680px;
+  width: 95%;
+  background: #1c0833 !important;
+  border: 3px solid #ff7b00 !important;
+  box-shadow: 6px 6px 0 #000000, 0 0 24px rgba(255, 123, 0, 0.3) !important;
+  color: #ffffff !important;
+  padding: 18px !important;
+}
+
+.halloween-wardrobe-dialog .dialog-header-row h2 {
+  color: #ffaa00 !important;
+  font-family: var(--font-pixel);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wardrobe-body-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 16px;
+  margin: 14px 0;
+}
+
+@media (max-width: 620px) {
+  .wardrobe-body-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wardrobe-preview-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #110321;
+  border: 2px solid #ff7b00;
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 #000000;
+  padding: 14px;
+  text-align: center;
+  gap: 10px;
+}
+
+.wardrobe-avatar-preview {
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wardrobe-preview-label {
+  font-family: var(--font-pixel);
+  font-size: 0.72rem;
+  color: #ffaa00;
+  line-height: 1.2;
+}
+
+.wardrobe-catalog-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wardrobe-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 2px solid #ff7b00;
+  padding-bottom: 6px;
+  overflow-x: auto;
+}
+
+.wardrobe-tab {
+  background: #2b0b4a;
+  color: #ffffff;
+  border: 2px solid #000000;
+  box-shadow: 2px 2px 0 #000000;
+  border-radius: 4px;
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: transform 0.08s ease;
+}
+
+.wardrobe-tab.active {
+  background: #ff7b00;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.wardrobe-tab:hover {
+  transform: translateY(-1px);
+}
+
+.wardrobe-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.wardrobe-item-card {
+  background: #250942;
+  border: 2px solid #3c1269;
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 #000000;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.wardrobe-item-card:hover {
+  border-color: #ff7b00;
+  background: #340f5a;
+  transform: translateY(-2px);
+}
+
+.wardrobe-item-card.is-equipped {
+  border-color: #39ff14 !important;
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.4), 2px 2px 0 #000000 !important;
+  background: #172b1b !important;
+}
+
+.wardrobe-item-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wardrobe-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.wardrobe-item-title {
+  font-family: var(--font-pixel);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.wardrobe-item-blurb {
+  font-size: 0.62rem;
+  color: #c9b3e6;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+/* Responsive Overrides for Mobile Phones */
+@media (max-width: 768px) {
+  .home-mode-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .wardrobe-items-grid {
+    grid-template-columns: 1fr;
+    max-height: 240px;
+  }
+
+  /* Guarantee dollar and candy amounts are 100% centered and legible */
+  .j-tile-btn {
+    font-size: clamp(0.72rem, 3.2vw, 0.96rem) !important;
+  }
+
+  .tile-modifier-tag {
+    top: 2px !important;
+    right: 2px !important;
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .tile-modifier-tag .tile-mod-icon,
+  .tile-modifier-tag .pixel-sprite {
+    width: 8px !important;
+    height: 8px !important;
+    font-size: 7px !important;
+  }
+}

@@ -23,11 +23,60 @@ export const AVATAR_COLORS = [
   { name: 'Lime Stripe', fill: '#42cc14', shade: '#298f08', stripe: '#7aff4d' },
   { name: 'Cyber Cyan Stripe', fill: '#00c8ff', shade: '#008eb8', stripe: '#75ebff' },
   { name: 'Grape Stripe', fill: '#a633ff', shade: '#7319bd', stripe: '#ce85ff' },
+  // 🎃 Halloween / Spooky Event Monster Skins
+  { name: 'Ghostly Pale', fill: '#e6ecf5', shade: '#b8c3d9', stripe: null },
+  { name: 'Zombie Green', fill: '#4ea84e', shade: '#2f752f', stripe: null },
+  { name: 'Pumpkin Orange', fill: '#ff7518', shade: '#c95100', stripe: null },
+  { name: 'Vampire Alabaster', fill: '#f5eef7', shade: '#c4b5cc', stripe: null },
+  { name: 'Midnight Shadow', fill: '#281a38', shade: '#140c1e', stripe: null },
+  { name: 'Rotten Gray', fill: '#707775', shade: '#4d5452', stripe: null },
+  { name: 'Candy Corn Stripe', fill: '#ffaa00', shade: '#cc7700', stripe: '#ffffff' },
+  { name: 'Slime Stripe', fill: '#39ff14', shade: '#1a9e00', stripe: '#9d1aff' },
 ];
 
-export const EYE_COUNT = 16;
-export const MOUTH_COUNT = 16;
-export const HAT_COUNT = 11;
+export const EYE_COUNT = 22;
+export const MOUTH_COUNT = 22;
+export const HAT_COUNT = 21;
+
+export const HALLOWEEN_COSMETICS = [
+  // Hats
+  { id: 'witch_hat', category: 'hat', name: 'Witch Hat', index: 11, blurb: 'Pointy crooked witch hat with orange band' },
+  { id: 'pumpkin_cap', category: 'hat', name: 'Pumpkin Head', index: 12, blurb: 'Carved Jack-o\'-lantern cap' },
+  { id: 'ghost_hood', category: 'hat', name: 'Ghost Hood', index: 13, blurb: 'Ethereal floating sheet drape' },
+  { id: 'skullcap', category: 'hat', name: 'Skeleton Skullcap', index: 14, blurb: 'Exposed ivory skull cranium' },
+  { id: 'bat_wings', category: 'hat', name: 'Bat Wings', index: 15, blurb: 'Flapping black leathery bat wings' },
+  { id: 'spider_hat', category: 'hat', name: 'Spider Hat', index: 16, blurb: 'Creepy arachnid with silk strand' },
+  { id: 'cat_ears', category: 'hat', name: 'Black Cat Ears', index: 17, blurb: 'Midnight cat ears with purple fluff' },
+  { id: 'vampire_hair', category: 'hat', name: 'Vampire Cape', index: 18, blurb: 'Dracula hair with crimson-lined collar' },
+  { id: 'slasher_mask', category: 'hat', name: 'Slasher Mask', index: 19, blurb: 'Iconic hockey horror mask' },
+  { id: 'reaper_cowl', category: 'hat', name: 'Reaper Cowl', index: 20, blurb: 'Grim hooded cowl of shadow' },
+
+  // Eyes
+  { id: 'eyes_vampire', category: 'eyes', name: 'Vampire Red', index: 16, blurb: 'Crimson glowing predator eyes' },
+  { id: 'eyes_ghost', category: 'eyes', name: 'Hollow Ghost', index: 17, blurb: 'Dark void sockets with spectral pinpricks' },
+  { id: 'eyes_cat', category: 'eyes', name: 'Monster Slits', index: 18, blurb: 'Sulfur yellow cat slit pupils' },
+  { id: 'eyes_zombie', category: 'eyes', name: 'Zombie Mismatched', index: 19, blurb: 'Bloodshot capillary eye + dead eye' },
+  { id: 'eyes_demon', category: 'eyes', name: 'Demon Glow', index: 20, blurb: 'Blazing demon eyes with angled brows' },
+  { id: 'eyes_spider', category: 'eyes', name: 'Spider Cluster', index: 21, blurb: 'Cluster of 4 glossy spider eyes' },
+
+  // Mouths
+  { id: 'mouth_fangs', category: 'mouth', name: 'Vampire Fangs', index: 16, blurb: 'Sharp canine fangs dripping red' },
+  { id: 'mouth_stitched', category: 'mouth', name: 'Stitched Suture', index: 17, blurb: 'Dark Frankenstein sutures' },
+  { id: 'mouth_pumpkin', category: 'mouth', name: 'Jack Grin', index: 18, blurb: 'Carved triangle-toothed pumpkin grin' },
+  { id: 'mouth_zombie', category: 'mouth', name: 'Zombie Snarl', index: 19, blurb: 'Crooked snarl showing decayed teeth' },
+  { id: 'mouth_skull', category: 'mouth', name: 'Skeleton Teeth', index: 20, blurb: 'Exposed bone dental arcade' },
+  { id: 'mouth_wail', category: 'mouth', name: 'Ghost Wail', index: 21, blurb: 'Howling scream like Munch\'s Scream' },
+
+  // Monster Skins
+  { id: 'skin_ghost', category: 'skin', name: 'Ghostly Pale', index: 20, blurb: 'Translucent spectral skin' },
+  { id: 'skin_zombie', category: 'skin', name: 'Zombie Green', index: 21, blurb: 'Toxic undead green skin' },
+  { id: 'skin_pumpkin', category: 'skin', name: 'Pumpkin Orange', index: 22, blurb: 'Vibrant autumn pumpkin orange' },
+  { id: 'skin_vampire', category: 'skin', name: 'Vampire Alabaster', index: 23, blurb: 'Aristocratic pale vampire skin' },
+  { id: 'skin_shadow', category: 'skin', name: 'Midnight Shadow', index: 24, blurb: 'Deep supernatural void purple' },
+  { id: 'skin_rotten', category: 'skin', name: 'Rotten Gray', index: 25, blurb: 'Desaturated tombstone gray' },
+  { id: 'skin_candycorn', category: 'skin', name: 'Candy Corn Stripe', index: 26, blurb: 'Festive yellow, orange & white stripes' },
+  { id: 'skin_slime', category: 'skin', name: 'Slime Stripe', index: 27, blurb: 'Neon radioactive slime stripes' },
+];
 
 const FRAME_W = 52;
 const FRAME_H = 52;
@@ -378,9 +427,59 @@ function drawEyes(g, eyesIdx, bobY, isBlinkFrame, frameIdx) {
       g.line(34, ey, 29, ey + 2, 1.2, BLACK);
       break;
     case 15: // Suspicious flat squint `-  -`
-    default:
       g.rect(16, ey - 1, 7, 3, BLACK);
       g.rect(29, ey - 1, 7, 3, BLACK);
+      break;
+    case 16: // 🎃 Vampire Red Glow
+      for (const cx of [20, 32]) {
+        g.oval(cx, ey, 4.2, 4.2, 1.1, BLACK);
+        g.floodFill(cx, ey, RED);
+        g.line(cx, ey - 3, cx, ey + 3, 0.9, BLACK);
+        g.px(cx - 1, ey - 1, WHITE);
+      }
+      break;
+    case 17: // 🎃 Hollow Ghost Sockets
+      for (const cx of [20, 32]) {
+        g.oval(cx, ey, 4.5, 5, 1.3, BLACK);
+        g.floodFill(cx, ey, hexToRgba('#160a22'));
+        const gy = isBlinkFrame ? ey + 1 : ey;
+        g.px(cx, gy, hexToRgba('#e0f8ff'));
+      }
+      break;
+    case 18: // 🎃 Monster Cat Slits
+      for (const cx of [20, 32]) {
+        g.oval(cx, ey, 4.2, 4.2, 1.1, BLACK);
+        g.floodFill(cx, ey, GOLD);
+        g.line(cx, ey - 3, cx, ey + 3, 1.0, BLACK);
+        g.px(cx - 1, ey - 1, WHITE);
+      }
+      break;
+    case 19: // 🎃 Zombie Mismatched Eyes
+      g.oval(19, ey, 5.0, 5.0, 1.2, BLACK);
+      g.floodFill(19, ey, WHITE);
+      g.line(16, ey - 2, 18, ey, 0.7, RED);
+      g.brush(20, ey, 1.6, BLACK);
+      g.oval(33, ey + 1, 3.2, 3.2, 1.1, BLACK);
+      g.floodFill(33, ey + 1, hexToRgba('#8a929e'));
+      g.px(33, ey + 1, BLACK);
+      break;
+    case 20: // 🎃 Demon Yellow Glow
+      g.line(15, ey - 4, 23, ey - 2, 1.4, BLACK);
+      g.line(37, ey - 4, 29, ey - 2, 1.4, BLACK);
+      for (const cx of [20, 32]) {
+        g.poly([[cx - 3, ey - 1], [cx + 3, ey - 2], [cx + 1, ey + 3], [cx - 2, ey + 2]], 1.1, BLACK, true);
+        g.floodFill(cx, ey, GOLD);
+        g.px(cx, ey, RED);
+      }
+      break;
+    case 21: // 🎃 Spider Eyes (4 Clustered Eyes)
+    default:
+      g.brush(19, ey - 1, 1.8, BLACK);
+      g.brush(23, ey + 1, 1.4, BLACK);
+      g.brush(29, ey + 1, 1.4, BLACK);
+      g.brush(33, ey - 1, 1.8, BLACK);
+      g.px(18, ey - 2, WHITE);
+      g.px(32, ey - 2, WHITE);
       break;
   }
 }
@@ -456,8 +555,51 @@ function drawMouth(g, mouthIdx, bobY, frameIdx) {
       }
       break;
     case 15: // Simple happy U-smile
-    default:
       g.poly([[19, my - 1], [23, my + 3 + chatter], [29, my + 3 + chatter], [33, my - 1]], 1.3, BLACK);
+      break;
+    case 16: // 🎃 Vampire Fangs
+      g.poly([[18, my - 1], [26, my + 3 + chatter], [34, my - 1]], 1.3, BLACK);
+      g.poly([[20, my - 1], [21, my + 4 + chatter], [23, my - 1]], 1.0, BLACK, true);
+      g.floodFill(21, my + 1, WHITE);
+      g.poly([[29, my - 1], [31, my + 4 + chatter], [32, my - 1]], 1.0, BLACK, true);
+      g.floodFill(30, my + 1, WHITE);
+      g.px(21, my + 4 + chatter, RED);
+      g.px(31, my + 4 + chatter, RED);
+      break;
+    case 17: // 🎃 Stitched Scarecrow Sutures
+      g.line(16, my + 1, 36, my + 1, 1.3, BLACK);
+      for (const sx of [18, 22, 26, 30, 34]) {
+        g.line(sx, my - 2, sx, my + 4 + chatter, 1.1, BLACK);
+      }
+      break;
+    case 18: // 🎃 Jack-o'-Lantern Grin
+      {
+        const pts = [
+          [17, my], [21, my - 2], [23, my + 1], [26, my - 2], [29, my + 1], [31, my - 2], [35, my],
+          [33, my + 5 + chatter], [30, my + 2], [28, my + 5 + chatter], [26, my + 2], [24, my + 5 + chatter], [22, my + 2], [19, my + 5 + chatter]
+        ];
+        g.poly(pts, 1.2, BLACK, true);
+        g.floodFill(26, my + 1, GOLD);
+        g.poly(pts, 1.1, BLACK, true);
+      }
+      break;
+    case 19: // 🎃 Zombie Snarl
+      g.rect(18, my - 2, 16, 6 + chatter, BLACK);
+      g.rect(20, my - 1, 3, 3, hexToRgba('#a38e52'));
+      g.rect(28, my + 1, 3, 3, hexToRgba('#d6c79a'));
+      g.line(16, my - 3, 21, my - 1, 1.1, BLACK);
+      break;
+    case 20: // 🎃 Skeleton Smile
+      g.rect(17, my - 1, 18, 5 + chatter, BLACK);
+      for (let i = 0; i < 6; i++) {
+        g.rect(19 + i * 2.5, my, 2, 3 + chatter, WHITE);
+      }
+      break;
+    case 21: // 🎃 Screaming Ghost Wail
+    default:
+      g.oval(26, my + 2, 5, 8 + chatter * 1.5, 1.3, BLACK);
+      g.floodFill(26, my + 2, BLACK);
+      g.brush(26, my + 2, 1.5, hexToRgba('#400510'));
       break;
   }
 }
@@ -558,10 +700,105 @@ function drawHatOrCrown(g, hatIdx, showCrown, bobY, frameIdx) {
       g.floodFill(30, hy + 3, LIME);
       break;
     case 10: // Rainbow Headband
-    default:
       g.oval(26, hy + 9, 10, 5, 2.2, BLACK);
       g.oval(26, hy + 9, 10, 5, 1.1, RED);
       g.oval(26, hy + 10, 9, 4, 0.9, GOLD);
+      break;
+    case 11: // 🎃 Witch Hat
+      {
+        g.oval(26, hy + 10, 17, 4.5, 1.4, BLACK);
+        g.floodFill(26, hy + 10, hexToRgba('#1c1328'));
+        const witchPts = [[18, hy + 9], [24, hy - 4], [29, hy - 7], [31, hy - 6], [28, hy + 1], [34, hy + 9]];
+        g.poly(witchPts, 1.3, BLACK, true);
+        g.floodFill(26, hy + 4, hexToRgba('#221633'));
+        g.poly(witchPts, 1.2, BLACK, true);
+        g.rect(20, hy + 7, 12, 3, hexToRgba('#ff7700'));
+        g.rect(24, hy + 7, 4, 3, GOLD);
+      }
+      break;
+    case 12: // 🎃 Pumpkin Head Cap
+      {
+        g.oval(26, hy + 5, 13, 8.5, 1.4, BLACK);
+        g.floodFill(26, hy + 5, hexToRgba('#ff7300'));
+        g.line(22, hy - 2, 22, hy + 12, 1.0, hexToRgba('#cc5200'));
+        g.line(30, hy - 2, 30, hy + 12, 1.0, hexToRgba('#cc5200'));
+        g.poly([[25, hy - 3], [27, hy - 3], [28, hy - 7], [25, hy - 6]], 1.1, BLACK, true);
+        g.floodFill(26, hy - 5, LIME);
+      }
+      break;
+    case 13: // 🎃 Ghost Sheet Hood
+      {
+        const ghostPts = [
+          [12, hy + 12], [14, hy + 4], [20, hy - 1], [26, hy - 3], [32, hy - 1], [38, hy + 4], [40, hy + 12],
+          [37, hy + 10], [33, hy + 12], [29, hy + 10], [25, hy + 12], [21, hy + 10], [17, hy + 12], [14, hy + 10]
+        ];
+        g.poly(ghostPts, 1.3, BLACK, true);
+        g.floodFill(26, hy + 4, hexToRgba('#eaf2fc'));
+        g.poly(ghostPts, 1.2, BLACK, true);
+      }
+      break;
+    case 14: // 🎃 Skeleton Skullcap
+      g.oval(26, hy + 4, 11, 7.5, 1.4, BLACK);
+      g.floodFill(26, hy + 4, hexToRgba('#f2efe9'));
+      g.line(26, hy - 3, 26, hy + 4, 0.9, hexToRgba('#8a857e'));
+      g.line(22, hy + 1, 30, hy + 1, 0.9, hexToRgba('#8a857e'));
+      break;
+    case 15: // 🎃 Bat Wings
+      g.poly([[16, hy + 8], [8, hy - 2], [12, hy + 3], [7, hy + 6], [16, hy + 11]], 1.2, BLACK, true);
+      g.floodFill(11, hy + 3, hexToRgba('#1c1328'));
+      g.poly([[36, hy + 8], [44, hy - 2], [40, hy + 3], [45, hy + 6], [36, hy + 11]], 1.2, BLACK, true);
+      g.floodFill(41, hy + 3, hexToRgba('#1c1328'));
+      break;
+    case 16: // 🎃 Spider Headband
+      g.oval(26, hy + 9, 10, 4, 1.2, BLACK);
+      g.brush(26, hy + 4, 3.5, BLACK);
+      g.brush(26, hy + 1, 2.2, BLACK);
+      g.line(23, hy + 4, 17, hy + 1, 1.0, BLACK);
+      g.line(23, hy + 5, 16, hy + 6, 1.0, BLACK);
+      g.line(29, hy + 4, 35, hy + 1, 1.0, BLACK);
+      g.line(29, hy + 5, 36, hy + 6, 1.0, BLACK);
+      g.px(26, hy + 4, RED);
+      break;
+    case 17: // 🎃 Black Cat Ears
+      g.poly([[14, hy + 11], [15, hy + 1], [22, hy + 7]], 1.3, BLACK, true);
+      g.floodFill(17, hy + 6, hexToRgba('#16101f'));
+      g.poly([[16, hy + 8], [17, hy + 3], [20, hy + 6]], 0.9, BLACK, true);
+      g.floodFill(17, hy + 5, hexToRgba('#9d1aff'));
+      g.poly([[38, hy + 11], [37, hy + 1], [30, hy + 7]], 1.3, BLACK, true);
+      g.floodFill(35, hy + 6, hexToRgba('#16101f'));
+      g.poly([[36, hy + 8], [35, hy + 3], [32, hy + 6]], 0.9, BLACK, true);
+      g.floodFill(35, hy + 5, hexToRgba('#9d1aff'));
+      break;
+    case 18: // 🎃 Vampire Hair & Cape Collar
+      g.poly([[12, hy + 11], [9, hy - 2], [16, hy + 6]], 1.3, BLACK, true);
+      g.floodFill(12, hy + 3, RED);
+      g.poly([[40, hy + 11], [43, hy - 2], [36, hy + 6]], 1.3, BLACK, true);
+      g.floodFill(40, hy + 3, RED);
+      g.poly([[15, hy + 7], [20, hy + 2], [26, hy + 5], [32, hy + 2], [37, hy + 7], [35, hy - 1], [17, hy - 1]], 1.2, BLACK, true);
+      g.floodFill(26, hy + 1, BLACK);
+      break;
+    case 19: // 🎃 Slasher Hockey Mask
+      g.oval(26, hy + 8, 9, 10, 1.4, BLACK);
+      g.floodFill(26, hy + 8, hexToRgba('#e8e5db'));
+      g.line(26, hy + 1, 24, hy + 4, 1.0, RED);
+      g.line(26, hy + 1, 28, hy + 4, 1.0, RED);
+      g.oval(21, hy + 7, 2.2, 2.2, 0.9, BLACK);
+      g.oval(31, hy + 7, 2.2, 2.2, 0.9, BLACK);
+      g.px(24, hy + 11, BLACK);
+      g.px(26, hy + 11, BLACK);
+      g.px(28, hy + 11, BLACK);
+      break;
+    case 20: // 🎃 Grim Reaper Cowl
+    default:
+      {
+        const cowlPts = [
+          [13, hy + 12], [15, hy + 2], [22, hy - 4], [26, hy - 5], [30, hy - 4], [37, hy + 2], [39, hy + 12],
+          [33, hy + 7], [26, hy + 4], [19, hy + 7]
+        ];
+        g.poly(cowlPts, 1.4, BLACK, true);
+        g.floodFill(26, hy - 1, hexToRgba('#120a1c'));
+        g.poly(cowlPts, 1.2, BLACK, true);
+      }
       break;
   }
 }

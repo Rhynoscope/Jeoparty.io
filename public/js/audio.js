@@ -123,6 +123,7 @@ class SoundEngine {
     }
     if (this.muted) {
       this.stopWaitingMusic();
+      this.stopHalloweenMusic();
     }
     return this.muted;
   }
@@ -278,7 +279,152 @@ class SoundEngine {
       case 'tick':
         this._tone(800, 0, 0.035, 'sine', 0.05);
         break;
+      case 'candy_collect':
+      case 'candy':
+        // Sweet magical candy pickup chime
+        [1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
+          this._tone(f, i * 0.05, 0.12, 'sine', 0.14);
+        });
+        break;
+      case 'ghost_boo':
+      case 'ghost':
+        // Eerie spectral whoosh
+        this._tone(587, 0, 0.28, 'sine', 0.12, 196);
+        this._tone(293, 0.08, 0.35, 'triangle', 0.08, 98);
+        break;
+      case 'witch_cackle':
+      case 'cauldron':
+        // Bubbling potion / witch cackle
+        [220, 260, 310, 370, 310, 260].forEach((f, i) => {
+          this._tone(f, i * 0.04, 0.06, 'sawtooth', 0.09, f * 1.3);
+        });
+        break;
+      case 'spooky_wrong':
+        // Dissonant minor gothic chime
+        [155.6, 164.8, 220].forEach((f) => {
+          this._tone(f, 0, 0.35, 'sawtooth', 0.11, f * 0.95);
+        });
+        break;
+      case 'halloween_daily_double':
+        // Dramatic gothic organ flourish
+        [220, 277.2, 329.6, 440, 554.4, 659.3, 880].forEach((f, i) => {
+          this._tone(f, i * 0.07, 0.22, 'sawtooth', 0.12);
+        });
+        break;
+      case 'pumpkin_blitz':
+        // Rapid spooky chromatic fanfare
+        [440, 466.2, 493.9, 523.3, 554.4, 587.3, 622.3, 659.3].forEach((f, i) => {
+          this._tone(f, i * 0.04, 0.08, 'sawtooth', 0.1);
+        });
+        break;
+      case 'halloween_victory':
+        // Joyful macabre waltz fanfare
+        [392, 493.88, 587.33, 783.99, 659.25, 783.99, 987.77].forEach((f, i) => {
+          this._tone(f, i * 0.09, 0.25, 'triangle', 0.15);
+        });
+        break;
     }
+  }
+
+  // Multi-state Procedural Halloween Music Synthesizer
+  startHalloweenMusic(trackKey = 'lobby') {
+    if (this.muted) return;
+    if (this.halloweenMusicPlaying && this.currentHalloweenTrack === trackKey) return;
+    this.stopHalloweenMusic();
+    this.stopWaitingMusic();
+
+    const ctx = this._ensureCtx();
+    if (!ctx) return;
+
+    this.halloweenMusicPlaying = true;
+    this.currentHalloweenTrack = trackKey;
+
+    const TRACK_PATTERNS = {
+      lobby: {
+        tempoMs: 240,
+        notes: [
+          293.66, 349.23, 440.0, 587.33, 554.37, 440.0, 349.23, 392.0,
+          466.16, 587.33, 440.0, 349.23, 329.63, 277.18, 293.66, 0
+        ],
+        type: 'triangle',
+        decay: 0.22,
+        gain: 0.12,
+      },
+      board: {
+        tempoMs: 280,
+        notes: [
+          146.83, 220.0, 293.66, 349.23, 329.63, 277.18, 293.66, 233.08,
+          146.83, 220.0, 293.66, 370.0, 349.23, 293.66, 277.18, 0
+        ],
+        type: 'sine',
+        decay: 0.25,
+        gain: 0.11,
+      },
+      clue: {
+        tempoMs: 210,
+        notes: [
+          220.0, 293.66, 349.23, 415.3, 440.0, 392.0, 349.23, 329.63,
+          293.66, 277.18, 246.94, 220.0, 277.18, 329.63, 440.0, 0
+        ],
+        type: 'sawtooth',
+        decay: 0.18,
+        gain: 0.09,
+      },
+      daily_double: {
+        tempoMs: 260,
+        notes: [
+          220.0, 277.18, 329.63, 440.0, 554.37, 659.25, 880.0, 659.25,
+          554.37, 440.0, 329.63, 277.18, 220.0, 164.81, 220.0, 0
+        ],
+        type: 'sawtooth',
+        decay: 0.3,
+        gain: 0.12,
+      },
+      final: {
+        tempoMs: 195,
+        notes: [
+          440.0, 392.0, 440.0, 293.66, 329.63, 349.23, 392.0, 349.23,
+          329.63, 293.66, 277.18, 293.66, 220.0, 293.66, 440.0, 0
+        ],
+        type: 'sawtooth',
+        decay: 0.28,
+        gain: 0.12,
+      },
+      victory: {
+        tempoMs: 200,
+        notes: [
+          392.0, 493.88, 587.33, 783.99, 659.25, 783.99, 987.77, 783.99,
+          587.33, 659.25, 783.99, 587.33, 493.88, 392.0, 587.33, 0
+        ],
+        type: 'triangle',
+        decay: 0.22,
+        gain: 0.13,
+      },
+    };
+
+    const pat = TRACK_PATTERNS[trackKey] || TRACK_PATTERNS.lobby;
+    let step = 0;
+
+    const playStep = () => {
+      if (!this.halloweenMusicPlaying || this.muted) return;
+      const freq = pat.notes[step % pat.notes.length];
+      if (freq > 0) {
+        this._tone(freq, 0, pat.decay, pat.type, pat.gain);
+      }
+      step++;
+    };
+
+    playStep();
+    this.halloweenMusicTimer = setInterval(playStep, pat.tempoMs);
+  }
+
+  stopHalloweenMusic() {
+    if (this.halloweenMusicTimer) {
+      clearInterval(this.halloweenMusicTimer);
+      this.halloweenMusicTimer = null;
+    }
+    this.halloweenMusicPlaying = false;
+    this.currentHalloweenTrack = null;
   }
 
   // 3. Authentic Supplied Jeopardy Waiting / Think Music (Continuous Loop)
@@ -324,6 +470,7 @@ class SoundEngine {
   }
 
   stopWaitingMusic() {
+    this.stopHalloweenMusic();
     if (this.waitingMusicSource) {
       try {
         this.waitingMusicSource.stop();

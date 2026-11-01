@@ -3,6 +3,7 @@ import {
   EYE_COUNT,
   MOUTH_COUNT,
   HAT_COUNT,
+  HALLOWEEN_COSMETICS,
   buildAvatarHTML,
   randomAvatar,
 } from './avatar.js';
@@ -281,8 +282,11 @@ const state = {
 
   reduceMotion: localStorage.getItem('jeoparty_reduce_motion') === '1',
 
+  homeGameMode: localStorage.getItem('jeoparty_gamemode') || 'standard',
   preferredSettings: loadPreferredSettings(),
   builtinCategories: [],
+  halloweenCategories: [],
+  wardrobeActiveTab: 'hat',
   lanUrls: [],
   publicUrl: null,
   room: null,
@@ -481,10 +485,26 @@ const el = {
 
   // Chat
   chatMessages: document.getElementById('chat-messages'),
-  botTypingIndicator: document.getElementById('bot-typing-indicator'),
-  botTypingText: document.getElementById('bot-typing-text'),
   chatForm: document.getElementById('chat-form'),
   chatInput: document.getElementById('chat-input'),
+
+  // Game Mode & Event
+  homeModeBtns: document.querySelectorAll('.home-mode-btn'),
+  lobbyModeBtns: document.querySelectorAll('.mode-btn'),
+  activeGameModeIndicator: document.getElementById('active-game-mode-indicator'),
+  halloweenDecorations: document.getElementById('halloween-decorations'),
+
+  // Spooky Halloween Wardrobe Dialog
+  openSpookyWardrobeBtn: document.getElementById('open-spooky-wardrobe-btn'),
+  lobbyWardrobeBtn: document.getElementById('lobby-wardrobe-btn'),
+  halloweenWardrobeDialog: document.getElementById('halloween-wardrobe-dialog'),
+  closeWardrobeBtn: document.getElementById('close-wardrobe-btn'),
+  closeWardrobeX: document.getElementById('close-wardrobe-x'),
+  wardrobeAvatarPreview: document.getElementById('wardrobe-avatar-preview'),
+  wardrobeActiveItemHint: document.getElementById('wardrobe-active-item-hint'),
+  wardrobeUnequipBtn: document.getElementById('wardrobe-unequip-btn'),
+  wardrobeItemsGrid: document.getElementById('wardrobe-items-grid'),
+  wardrobeTabs: document.querySelectorAll('.wardrobe-tab'),
 
   // Native Dialogs
   joinCodeDialog: document.getElementById('join-code-dialog'),
@@ -514,7 +534,6 @@ const el = {
   // Individual Bot Settings Dialog
   botSettingsDialog: document.getElementById('bot-settings-dialog'),
   botSettingsName: document.getElementById('bot-settings-name'),
-  botSettingsPersonalityText: document.getElementById('bot-settings-personality-text'),
   closeBotSettingsX: document.getElementById('close-bot-settings-x'),
   cancelBotSettingsBtn: document.getElementById('cancel-bot-settings-btn'),
   applyBotSettingsBtn: document.getElementById('apply-bot-settings-btn'),
@@ -550,8 +569,19 @@ function showRoomEndedModal(message) {
   }
 }
 
-function formatCash(amount) {
+function isHalloweenMode(room = state.room) {
+  if (room) {
+    return room.gameMode === 'halloween' || room.settings?.gameMode === 'halloween';
+  }
+  return state.homeGameMode === 'halloween';
+}
+
+function formatCash(amount, room = state.room) {
   const n = Number(amount) || 0;
+  if (isHalloweenMode(room)) {
+    if (n < 0) return `-${Math.abs(n).toLocaleString()} Candy`;
+    return `${n.toLocaleString()} Candy`;
+  }
   if (n < 0) return `-$${Math.abs(n).toLocaleString()}`;
   return `$${n.toLocaleString()}`;
 }
@@ -706,6 +736,254 @@ function renderHomeAvatarPreview(hintText = '') {
   }
 }
 
+/* =========================================================================
+   HALLOWEEN MAYHEM THEME, WARDROBE & CANDY PARTICLES
+   ========================================================================= */
+
+function syncHalloweenAtmosphere(room = state.room) {
+  const isHalloween = isHalloweenMode(room);
+  document.body.dataset.gameMode = isHalloween ? 'halloween' : 'standard';
+  document.body.classList.toggle('theme-halloween', isHalloween);
+
+  if (el.halloweenDecorations) {
+    el.halloweenDecorations.hidden = !isHalloween;
+  }
+
+  if (el.homeModeBtns) {
+    el.homeModeBtns.forEach((btn) => {
+      const mode = btn.getAttribute('data-mode');
+      const isSelected = mode === (isHalloween ? 'halloween' : 'standard');
+      btn.classList.toggle('active', isSelected);
+      btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+    });
+  }
+
+  if (el.lobbyModeBtns) {
+    el.lobbyModeBtns.forEach((btn) => {
+      const mode = btn.getAttribute('data-mode');
+      const isSelected = mode === (isHalloween ? 'halloween' : 'standard');
+      btn.classList.toggle('active', isSelected);
+      btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+    });
+  }
+
+  if (el.activeGameModeIndicator) {
+    el.activeGameModeIndicator.textContent = isHalloween
+      ? 'HALLOWEEN MAYHEM'
+      : 'STANDARD JEOPARTY';
+  }
+
+  if (!room || room.phase === 'lobby') {
+    if (isHalloween) {
+      sfx.startHalloweenMusic('lobby');
+    } else {
+      sfx.stopHalloweenMusic();
+    }
+  }
+}
+
+function setHomeGameMode(mode) {
+  state.homeGameMode = mode;
+  localStorage.setItem('jeoparty_gamemode', mode);
+  sfx.play('click');
+  syncHalloweenAtmosphere();
+  renderHomeAvatarPreview();
+}
+
+function openSpookyWardrobeModal() {
+  if (!el.halloweenWardrobeDialog) return;
+  state.wardrobeActiveTab = state.wardrobeActiveTab || 'hat';
+  if (el.wardrobeTabs) {
+    el.wardrobeTabs.forEach((tab) => {
+      const isActive = tab.getAttribute('data-tab') === state.wardrobeActiveTab;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+  }
+  renderWardrobePreview();
+  renderWardrobeItemsGrid();
+  el.halloweenWardrobeDialog.showModal();
+}
+
+function closeSpookyWardrobeModal() {
+  if (el.halloweenWardrobeDialog && el.halloweenWardrobeDialog.open) {
+    el.halloweenWardrobeDialog.close();
+  }
+  saveProfile();
+  renderHomeAvatarPreview();
+  if (state.room && state.room.phase === 'lobby') {
+    sendWs({
+      type: 'update_profile',
+      name: state.name,
+      avatar: state.avatar,
+    });
+  }
+}
+
+function renderWardrobePreview() {
+  if (!el.wardrobeAvatarPreview) return;
+  el.wardrobeAvatarPreview.innerHTML = buildAvatarHTML(state.avatar, 'happy', 110);
+
+  const tab = state.wardrobeActiveTab;
+  let hint = 'Live Spooky Preview';
+  let unequipText = 'Remove Item';
+  let canUnequip = false;
+
+  if (tab === 'hat') {
+    const item = HALLOWEEN_COSMETICS.find(
+      (c) => c.category === 'hat' && c.index === state.avatar.hat
+    );
+    hint = item ? `Equipped: ${item.name}` : (state.avatar.hat > 0 ? `Equipped Hat #${state.avatar.hat}` : 'No Hat Equipped');
+    unequipText = 'Remove Hat';
+    canUnequip = state.avatar.hat > 0;
+  } else if (tab === 'eyes') {
+    const item = HALLOWEEN_COSMETICS.find(
+      (c) => c.category === 'eyes' && c.index === state.avatar.eyes
+    );
+    hint = item ? `Equipped: ${item.name}` : `Eyes Style #${state.avatar.eyes + 1}`;
+    unequipText = 'Default Eyes';
+    canUnequip = state.avatar.eyes > 0;
+  } else if (tab === 'mouth') {
+    const item = HALLOWEEN_COSMETICS.find(
+      (c) => c.category === 'mouth' && c.index === state.avatar.mouth
+    );
+    hint = item ? `Equipped: ${item.name}` : `Mouth Style #${state.avatar.mouth + 1}`;
+    unequipText = 'Default Mouth';
+    canUnequip = state.avatar.mouth > 0;
+  } else if (tab === 'skin') {
+    const item = HALLOWEEN_COSMETICS.find(
+      (c) => c.category === 'skin' && c.index === state.avatar.color
+    );
+    hint = item ? `Equipped Skin: ${item.name}` : (AVATAR_COLORS[state.avatar.color]?.name || 'Classic Skin');
+    unequipText = 'Classic Blue Skin';
+    canUnequip = state.avatar.color !== 0;
+  }
+
+  if (el.wardrobeActiveItemHint) {
+    el.wardrobeActiveItemHint.textContent = hint;
+  }
+  if (el.wardrobeUnequipBtn) {
+    el.wardrobeUnequipBtn.innerHTML = `<span>${unequipText}</span>`;
+    el.wardrobeUnequipBtn.disabled = !canUnequip;
+  }
+}
+
+function renderWardrobeItemsGrid() {
+  if (!el.wardrobeItemsGrid) return;
+  el.wardrobeItemsGrid.innerHTML = '';
+  const tab = state.wardrobeActiveTab;
+  const items = HALLOWEEN_COSMETICS.filter((c) => c.category === tab);
+
+  for (const item of items) {
+    const card = document.createElement('div');
+    card.className = 'wardrobe-item-card';
+
+    let isEquipped = false;
+    if (tab === 'hat') isEquipped = state.avatar.hat === item.index;
+    else if (tab === 'eyes') isEquipped = state.avatar.eyes === item.index;
+    else if (tab === 'mouth') isEquipped = state.avatar.mouth === item.index;
+    else if (tab === 'skin') isEquipped = state.avatar.color === item.index;
+
+    if (isEquipped) {
+      card.classList.add('is-equipped');
+    }
+
+    const previewAv = { ...state.avatar };
+    if (tab === 'hat') previewAv.hat = item.index;
+    else if (tab === 'eyes') previewAv.eyes = item.index;
+    else if (tab === 'mouth') previewAv.mouth = item.index;
+    else if (tab === 'skin') previewAv.color = item.index;
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'wardrobe-item-avatar';
+    iconWrap.innerHTML = buildAvatarHTML(previewAv, 'idle', 44);
+
+    const infoWrap = document.createElement('div');
+    infoWrap.className = 'wardrobe-item-info';
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'wardrobe-item-title';
+    titleEl.textContent = item.name;
+
+    const blurbEl = document.createElement('div');
+    blurbEl.className = 'wardrobe-item-blurb';
+    blurbEl.textContent = item.blurb;
+
+    infoWrap.append(titleEl, blurbEl);
+
+    const actionBtn = document.createElement('button');
+    actionBtn.type = 'button';
+    actionBtn.className = isEquipped
+      ? 'btn-skribbl btn-green btn-xs'
+      : 'btn-skribbl btn-orange btn-xs';
+    actionBtn.textContent = isEquipped ? 'Equipped' : 'Equip';
+
+    const equipHandler = () => {
+      if (tab === 'hat') state.avatar.hat = item.index;
+      else if (tab === 'eyes') state.avatar.eyes = item.index;
+      else if (tab === 'mouth') state.avatar.mouth = item.index;
+      else if (tab === 'skin') state.avatar.color = item.index;
+
+      sfx.play('pop');
+      saveProfile();
+      renderWardrobePreview();
+      renderWardrobeItemsGrid();
+      renderHomeAvatarPreview();
+    };
+
+    card.addEventListener('click', equipHandler);
+    actionBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      equipHandler();
+    });
+
+    card.append(iconWrap, infoWrap, actionBtn);
+    el.wardrobeItemsGrid.appendChild(card);
+  }
+}
+
+function unequipWardrobeItem() {
+  const tab = state.wardrobeActiveTab;
+  if (tab === 'hat') state.avatar.hat = 0;
+  else if (tab === 'eyes') state.avatar.eyes = 0;
+  else if (tab === 'mouth') state.avatar.mouth = 0;
+  else if (tab === 'skin') state.avatar.color = 0;
+
+  sfx.play('pop');
+  saveProfile();
+  renderWardrobePreview();
+  renderWardrobeItemsGrid();
+  renderHomeAvatarPreview();
+}
+
+function spawnCandyBurst() {
+  const count = 14;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'candy-particle';
+    const startX = 35 + Math.random() * 30;
+    const startY = 40 + Math.random() * 20;
+    const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.3 - 0.15);
+    const dist = 70 + Math.random() * 80;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist - 80;
+    const rot = Math.floor(Math.random() * 360);
+
+    p.style.left = `${startX}%`;
+    p.style.top = `${startY}%`;
+    p.style.setProperty('--dx', `${dx.toFixed(1)}px`);
+    p.style.setProperty('--dy', `${dy.toFixed(1)}px`);
+    p.style.setProperty('--rot', `${rot}deg`);
+
+    const icon = document.createElement('span');
+    icon.className = 'pixel-sprite sprite-candy-corn';
+    p.appendChild(icon);
+
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+}
+
 function checkUrlInviteParam() {
   const params = new URLSearchParams(window.location.search);
   let code = (params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -733,6 +1011,7 @@ async function loadInitialServerMetadata() {
     if (catRes.ok) {
       const data = await catRes.json();
       state.builtinCategories = data.categories || [];
+      state.halloweenCategories = data.halloweenCategories || [];
     }
     if (infoRes.ok) {
       const info = await infoRes.json();
@@ -949,6 +1228,7 @@ function startFreshRoomSession(actionType, extraPayload = {}) {
   sendActionWithProfile({
     type: actionType, // 'quick_play' | 'create_private'
     preferredSettings: state.preferredSettings || null,
+    gameMode: state.homeGameMode || 'standard',
     abandonedRoomCode: abandoned ? abandoned.roomCode : null,
     abandonedToken: abandoned ? abandoned.token : null,
     ...extraPayload,
@@ -1084,6 +1364,9 @@ function handleServerMessage(msg) {
 
     case 'sfx': {
       sfx.play(msg.sound);
+      if ((msg.sound === 'correct' || msg.sound === 'candy_collect') && isHalloweenMode()) {
+        spawnCandyBurst();
+      }
       break;
     }
 
@@ -1097,11 +1380,6 @@ function handleServerMessage(msg) {
 
     case 'chat': {
       appendChatMessage(msg.message);
-      break;
-    }
-
-    case 'bot_typing': {
-      handleBotTypingEvent(msg);
       break;
     }
 
@@ -1140,6 +1418,7 @@ function returnToHomeScreen({ clearInvite = true } = {}) {
     window.history.replaceState({}, '', cleanUrl);
   }
   checkUrlInviteParam();
+  syncHalloweenAtmosphere();
 }
 
 /* =========================================================================
@@ -1343,26 +1622,53 @@ function renderRoomState() {
     el.voiceChatDock.hidden = room.phase === 'terminated';
   }
 
-  // Synchronize Authentic Jeopardy Waiting / Think Music
-  const WAITING_MUSIC_PHASES = ['clue_reading', 'clue_open', 'clue_chaos', 'clue_skribbl', 'daily_double_answer', 'final_clue'];
-  if (WAITING_MUSIC_PHASES.includes(room.phase)) {
-    if (room.phase === 'clue_buzzed') {
-      sfx.stopWaitingMusic();
-    } else if (room.activeClue) {
-      const clueKey = `${room.phase}_${room.activeClue.col}_${room.activeClue.row}`;
-      sfx.startWaitingMusic(clueKey);
-    } else if (room.phase === 'final_clue') {
-      sfx.startWaitingMusic('final_clue');
-    }
-  } else {
-    sfx.stopWaitingMusic();
+  // Synchronize Halloween Theme & Decorations
+  const isHalloween = isHalloweenMode(room);
+  document.body.dataset.gameMode = isHalloween ? 'halloween' : 'standard';
+  document.body.classList.toggle('theme-halloween', isHalloween);
+  if (el.halloweenDecorations) {
+    el.halloweenDecorations.hidden = !isHalloween;
   }
 
+  // Synchronize Background Music
+  if (isHalloween) {
+    sfx.stopWaitingMusic();
+    if (room.phase === 'lobby') {
+      sfx.startHalloweenMusic('lobby');
+    } else if (room.phase === 'board') {
+      sfx.startHalloweenMusic('board');
+    } else if (['clue_open', 'clue_reading', 'clue_chaos', 'clue_skribbl'].includes(room.phase)) {
+      sfx.startHalloweenMusic('clue');
+    } else if (room.phase === 'daily_double_wager' || room.phase === 'daily_double_answer') {
+      sfx.startHalloweenMusic('daily_double');
+    } else if (room.phase === 'final_wager' || room.phase === 'final_clue') {
+      sfx.startHalloweenMusic('final');
+    } else if (room.phase === 'game_over') {
+      sfx.startHalloweenMusic('victory');
+    } else {
+      sfx.stopHalloweenMusic();
+    }
+  } else {
+    sfx.stopHalloweenMusic();
+    const WAITING_MUSIC_PHASES = ['clue_reading', 'clue_open', 'clue_chaos', 'clue_skribbl', 'daily_double_answer', 'final_clue'];
+    if (WAITING_MUSIC_PHASES.includes(room.phase)) {
+      if (room.phase === 'clue_buzzed') {
+        sfx.stopWaitingMusic();
+      } else if (room.activeClue) {
+        const clueKey = `${room.phase}_${room.activeClue.col}_${room.activeClue.row}`;
+        sfx.startWaitingMusic(clueKey);
+      } else if (room.phase === 'final_clue') {
+        sfx.startWaitingMusic('final_clue');
+      }
+    } else {
+      sfx.stopWaitingMusic();
+    }
+  }
 
-    el.chatInput.placeholder =
-      room.phase === 'clue_skribbl'
-        ? 'Type your answer guess here...'
-        : 'Chat with players & AI bots...';
+  el.chatInput.placeholder =
+    room.phase === 'clue_skribbl'
+      ? 'Type your answer guess here...'
+      : 'Chat with players in room...';
 }
 
 function renderPlayersSidebar(room, amHost) {
@@ -1512,16 +1818,10 @@ function renderPlayersSidebar(room, amHost) {
       statusEl.textContent = 'Buzzed!';
     } else if (isSolved) {
       statusEl.textContent = 'Correct!';
-    } else if (isTypingChat) {
-      statusEl.textContent = 'Typing...';
-      statusEl.classList.add('is-bot-typing');
     } else if (room.phase === 'board' && room.pickerId === p.id) {
       statusEl.textContent = 'Picking';
     } else if (p.isBot) {
-      statusEl.textContent = p.personalityTitle ? `AI • ${p.personalityTitle}` : 'AI Bot';
-      if (p.personalityArchetype) {
-        statusEl.title = `${p.name} — ${p.personalityArchetype}`;
-      }
+      statusEl.textContent = 'AI Bot';
     }
 
     const metaRow = document.createElement('div');
@@ -1632,11 +1932,6 @@ function openBotSettingsModal(bot) {
   if (el.botSettingsName) {
     el.botSettingsName.textContent = bot.name;
   }
-  if (el.botSettingsPersonalityText) {
-    el.botSettingsPersonalityText.textContent = bot.personalityArchetype
-      ? `${bot.personalityArchetype} — Social personality stays unique at every difficulty!`
-      : 'Distinct AI Personality (Independent of trivia difficulty)';
-  }
   if (el.botSettingsDialog) {
     if (typeof el.botSettingsDialog.showModal === 'function') {
       el.botSettingsDialog.showModal();
@@ -1652,7 +1947,8 @@ function openBotSettingsModal(bot) {
 
 function getAllKnownCategories(room) {
   const custom = room?.settings?.customCategoriesMeta || [];
-  return [...custom, ...state.builtinCategories];
+  const basePool = isHalloweenMode(room) ? state.halloweenCategories : state.builtinCategories;
+  return [...custom, ...basePool];
 }
 
 function renderLobbyStage(room, amHost) {
@@ -1737,6 +2033,24 @@ function renderLobbyStage(room, amHost) {
   });
   if (el.activeDifficultyIndicator) {
     el.activeDifficultyIndicator.textContent = curDiff.toUpperCase();
+  }
+
+  // Sync Game Mode Selector (Standard vs Halloween Mayhem)
+  const isHalloween = isHalloweenMode(room);
+  const curMode = isHalloween ? 'halloween' : 'standard';
+  if (el.lobbyModeBtns) {
+    el.lobbyModeBtns.forEach((btn) => {
+      const mode = btn.getAttribute('data-mode') || 'standard';
+      const isActive = mode === curMode;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      btn.disabled = !amHost;
+    });
+  }
+  if (el.activeGameModeIndicator) {
+    el.activeGameModeIndicator.textContent = isHalloween
+      ? 'HALLOWEEN MAYHEM'
+      : 'STANDARD JEOPARTY';
   }
 
   const controls = [
@@ -1902,40 +2216,47 @@ function renderBoardStage(room) {
         btn.type = 'button';
         btn.className = `j-tile-btn ${myTurn ? 'can-pick' : 'not-my-turn'}`;
 
+        const isHalloween = isHalloweenMode(room);
         const valSpan = document.createElement('span');
         valSpan.className = 'j-tile-value';
-        valSpan.textContent = `$${tile.value}`;
+        if (isHalloween) {
+          valSpan.textContent = `${tile.value}`;
+          const candyIcon = createPixelSprite('sprite-candy-corn', 'tile-val-candy-icon');
+          valSpan.prepend(candyIcon);
+        } else {
+          valSpan.textContent = `$${tile.value}`;
+        }
         btn.appendChild(valSpan);
 
         if (tile.modifier) {
           const MOD_INFO = {
             speed_blitz: {
-              sprite: 'sprite-mod-blitz',
+              sprite: isHalloween ? 'sprite-pumpkin' : 'sprite-mod-blitz',
               shortLabel: 'BLITZ',
-              title: 'Speed Blitz: +50% Bonus Points!',
-              cls: 'mod-blitz',
-              tileCls: 'mod-tile-blitz',
+              title: isHalloween ? 'Pumpkin Blitz: +50% Bonus Candy!' : 'Speed Blitz: +50% Bonus Points!',
+              cls: isHalloween ? 'mod-pumpkin' : 'mod-blitz',
+              tileCls: isHalloween ? 'mod-tile-pumpkin' : 'mod-tile-blitz',
             },
             steal: {
-              sprite: 'sprite-mod-steal',
+              sprite: isHalloween ? 'sprite-ghost' : 'sprite-mod-steal',
               shortLabel: 'STEAL',
-              title: 'Steal Tile: Docks $200 from leader on correct solve!',
-              cls: 'mod-steal',
-              tileCls: 'mod-tile-steal',
+              title: isHalloween ? 'Ghost Steal: Swipes 200 Candy from leader!' : 'Steal Tile: Docks $200 from leader on correct solve!',
+              cls: isHalloween ? 'mod-ghost' : 'mod-steal',
+              tileCls: isHalloween ? 'mod-tile-ghost' : 'mod-tile-steal',
             },
             chaos_all_play: {
-              sprite: 'sprite-mod-chaos',
+              sprite: isHalloween ? 'sprite-cauldron' : 'sprite-mod-chaos',
               shortLabel: 'CHAOS',
-              title: 'Chaos All-Play: Everyone answers simultaneously!',
-              cls: 'mod-chaos',
-              tileCls: 'mod-tile-chaos',
+              title: isHalloween ? 'Cauldron Chaos: Everyone answers simultaneously!' : 'Chaos All-Play: Everyone answers simultaneously!',
+              cls: isHalloween ? 'mod-cauldron' : 'mod-chaos',
+              tileCls: isHalloween ? 'mod-tile-cauldron' : 'mod-tile-chaos',
             },
             double_trouble: {
-              sprite: 'sprite-mod-double',
+              sprite: isHalloween ? 'sprite-bat' : 'sprite-mod-double',
               shortLabel: '2X',
-              title: 'Double Trouble: 2x points on correct solve!',
-              cls: 'mod-double',
-              tileCls: 'mod-tile-double',
+              title: isHalloween ? 'Cursed Candy: 2x candy on correct solve!' : 'Double Trouble: 2x points on correct solve!',
+              cls: isHalloween ? 'mod-bat' : 'mod-double',
+              tileCls: isHalloween ? 'mod-tile-bat' : 'mod-tile-double',
             },
           };
           const info = MOD_INFO[tile.modifier] || {
@@ -1947,7 +2268,7 @@ function renderBoardStage(room) {
           };
 
           btn.classList.add('tile-with-modifier', info.tileCls);
-          btn.title = `$${tile.value} • ${info.title}`;
+          btn.title = `${isHalloween ? `${tile.value} Candy` : `$${tile.value}`} • ${info.title}`;
 
           const modTag = document.createElement('span');
           modTag.className = `tile-modifier-tag ${info.cls}`;
@@ -2004,14 +2325,32 @@ function renderClueStage(room, amHost, phaseChanged) {
   const isSkribblMode = room.phase === 'clue_skribbl';
   const isResult = room.phase === 'clue_result';
 
+  const isHalloween = isHalloweenMode(room);
+
   // 0. Modifier Badge on Clue Card Top
   if (ac.modifier) {
     el.clueModifierBadge.hidden = false;
     const MOD_INFO = {
-      speed_blitz: { sprite: 'sprite-mod-blitz', label: 'SPEED BLITZ (+50% Pts)', cls: 'mod-blitz' },
-      steal: { sprite: 'sprite-mod-steal', label: 'STEAL TILE (-$200 Leader)', cls: 'mod-steal' },
-      chaos_all_play: { sprite: 'sprite-mod-chaos', label: 'CHAOS ALL-PLAY', cls: 'mod-chaos' },
-      double_trouble: { sprite: 'sprite-mod-double', label: 'DOUBLE TROUBLE (2X)', cls: 'mod-double' },
+      speed_blitz: {
+        sprite: isHalloween ? 'sprite-pumpkin' : 'sprite-mod-blitz',
+        label: isHalloween ? 'PUMPKIN BLITZ (+50% Candy)' : 'SPEED BLITZ (+50% Pts)',
+        cls: isHalloween ? 'mod-pumpkin' : 'mod-blitz',
+      },
+      steal: {
+        sprite: isHalloween ? 'sprite-ghost' : 'sprite-mod-steal',
+        label: isHalloween ? 'GHOST STEAL (-200 Candy Leader)' : 'STEAL TILE (-$200 Leader)',
+        cls: isHalloween ? 'mod-ghost' : 'mod-steal',
+      },
+      chaos_all_play: {
+        sprite: isHalloween ? 'sprite-cauldron' : 'sprite-mod-chaos',
+        label: isHalloween ? 'CAULDRON CHAOS' : 'CHAOS ALL-PLAY',
+        cls: isHalloween ? 'mod-cauldron' : 'mod-chaos',
+      },
+      double_trouble: {
+        sprite: isHalloween ? 'sprite-bat' : 'sprite-mod-double',
+        label: isHalloween ? 'CURSED CANDY (2X)' : 'DOUBLE TROUBLE (2X)',
+        cls: isHalloween ? 'mod-bat' : 'mod-double',
+      },
     };
     const m = MOD_INFO[ac.modifier] || { sprite: 'sprite-sparkle', label: 'PERK', cls: 'mod-blitz' };
     el.clueModifierBadge.className = `clue-modifier-badge ${m.cls}`;
@@ -2025,9 +2364,10 @@ function renderClueStage(room, amHost, phaseChanged) {
   if (isDDWager) {
     const picker = findPlayer(room, room.pickerId);
     const iAmPicker = room.pickerId === state.playerId;
+    const ddName = isHalloween ? 'Jack-o\'-Lantern Treasure' : 'Daily Double';
     el.ddStatusMsg.textContent = iAmPicker
       ? `Choose your wager (up to ${formatCash(ac.maxWager)}):`
-      : `${picker ? picker.name : 'Player'} is choosing a Daily Double wager...`;
+      : `${picker ? picker.name : 'Player'} is choosing a ${ddName} wager...`;
     el.ddControls.hidden = !iAmPicker;
     if (iAmPicker && phaseChanged) {
       el.ddWagerRange.min = '5';
@@ -2312,9 +2652,7 @@ function renderGameoverStage(room, amHost) {
       const right = document.createElement('strong');
       right.style.color = r.correct ? '#53e237' : '#ff6b6b';
       const deltaSpan = document.createElement('span');
-      deltaSpan.textContent = `${r.correct ? '+' : '-'}$${Math.abs(
-        r.wager
-      ).toLocaleString()} `;
+      deltaSpan.textContent = `${r.correct ? '+' : '-'}${formatCash(r.wager)} `;
       const arrowSprite = createPixelSprite('sprite-arrow-right', 'chat-inline-sprite');
       const finalSpan = document.createElement('span');
       finalSpan.textContent = formatCash(r.finalScore);
@@ -2333,6 +2671,11 @@ function renderGameoverStage(room, amHost) {
     fire: { type: 'pixel', cls: 'sprite-fire' },
     target: { type: 'pixel', cls: 'sprite-target' },
     celebrate: { type: 'reaction', cls: 'reaction-celebrate' },
+    candy: { type: 'pixel', cls: 'sprite-candy-corn' },
+    pumpkin: { type: 'pixel', cls: 'sprite-pumpkin' },
+    ghost: { type: 'pixel', cls: 'sprite-ghost' },
+    bat: { type: 'pixel', cls: 'sprite-bat' },
+    cauldron: { type: 'pixel', cls: 'sprite-cauldron' },
   };
 
   if (Array.isArray(room.superlatives) && room.superlatives.length > 0) {
@@ -2566,6 +2909,63 @@ function bindEvents() {
         el.publicRoomsDialog.close();
       }
       startFreshRoomSession('create_public');
+    });
+  }
+
+  // Home Game Mode Selector (Classic Jeoparty vs Halloween Mayhem)
+  if (el.homeModeBtns) {
+    el.homeModeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-mode') || 'standard';
+        setHomeGameMode(mode);
+      });
+    });
+  }
+
+  // Spooky Halloween Wardrobe Modal Launchers & Controls
+  if (el.openSpookyWardrobeBtn) {
+    el.openSpookyWardrobeBtn.addEventListener('click', () => {
+      sfx.play('click');
+      openSpookyWardrobeModal();
+    });
+  }
+  if (el.lobbyWardrobeBtn) {
+    el.lobbyWardrobeBtn.addEventListener('click', () => {
+      sfx.play('click');
+      openSpookyWardrobeModal();
+    });
+  }
+  if (el.closeWardrobeBtn) {
+    el.closeWardrobeBtn.addEventListener('click', () => {
+      sfx.play('click');
+      closeSpookyWardrobeModal();
+    });
+  }
+  if (el.closeWardrobeX) {
+    el.closeWardrobeX.addEventListener('click', () => {
+      sfx.play('click');
+      closeSpookyWardrobeModal();
+    });
+  }
+  if (el.wardrobeUnequipBtn) {
+    el.wardrobeUnequipBtn.addEventListener('click', () => {
+      unequipWardrobeItem();
+    });
+  }
+  if (el.wardrobeTabs) {
+    el.wardrobeTabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        sfx.play('click');
+        const tabKey = tab.getAttribute('data-tab') || 'hat';
+        state.wardrobeActiveTab = tabKey;
+        el.wardrobeTabs.forEach((t) => {
+          const isActive = t === tab;
+          t.classList.toggle('active', isActive);
+          t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        renderWardrobePreview();
+        renderWardrobeItemsGrid();
+      });
     });
   }
 
@@ -3082,6 +3482,36 @@ function bindEvents() {
     });
   });
 
+  // Lobby Game Mode Selector (Standard vs Halloween Mayhem)
+  if (el.lobbyModeBtns) {
+    el.lobbyModeBtns.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!isMeHost(state.room)) {
+          showToast('Only the room host can change game mode!', 'error');
+          return;
+        }
+        if (state.room?.phase !== 'lobby') {
+          showToast('Game mode cannot be changed while a match is in progress.', 'error');
+          return;
+        }
+        const mode = btn.getAttribute('data-mode') || 'standard';
+        sfx.play('click');
+        el.lobbyModeBtns.forEach((b) => {
+          const isSelected = b === btn;
+          b.classList.toggle('active', isSelected);
+          b.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+        });
+        if (el.activeGameModeIndicator) {
+          el.activeGameModeIndicator.textContent = mode === 'halloween'
+            ? 'HALLOWEEN MAYHEM'
+            : 'STANDARD JEOPARTY';
+        }
+        pushSettingsPatch({ gameMode: mode });
+      });
+    });
+  }
+
   // Transfer Host Confirmation Dialog Handlers
   if (el.cancelTransferBtn) {
     el.cancelTransferBtn.addEventListener('click', () => {
@@ -3236,6 +3666,7 @@ function init() {
   applyMotionPreference();
   renderHomeMascots();
   renderHomeAvatarPreview();
+  syncHalloweenAtmosphere();
   checkUrlInviteParam();
   bindEvents();
   loadInitialServerMetadata();
