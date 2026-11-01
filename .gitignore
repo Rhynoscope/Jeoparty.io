@@ -15,3 +15,8 @@ ehthumbs.db
 # Logs & temporary files
 *.log
 *.tmp
+
+# Local verification screenshots / harness artifacts
+scripts/artifacts/
+.verify-out*.txt
+.visual-out*.txt

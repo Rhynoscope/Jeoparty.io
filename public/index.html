@@ -7,7 +7,8 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=3.4.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=4.0.0" />
+  <link rel="stylesheet" href="/css/gameshow.css?v=4.0.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -231,6 +232,25 @@
 
       <!-- CENTER: Dynamic Stage (Lobby / Board / Question / Final / Results) -->
       <section class="center-stage" aria-label="Game Stage">
+        <!-- PERMANENT GAME-SHOW HOST (fixed character, scripted announcements) -->
+        <div id="host-stage" class="host-stage" data-tone="neutral" hidden>
+          <div id="host-figure" class="host-figure" aria-hidden="true"></div>
+          <div class="host-speech" role="status" aria-live="polite">
+            <div class="host-speech-head">
+              <span id="host-name-text" class="host-nameplate">Jeoparty Host</span>
+              <span class="host-live-badge">
+                <span class="host-live-dot" aria-hidden="true"></span>
+                <span>ON AIR</span>
+              </span>
+            </div>
+            <p id="host-speech-text">Welcome to Jeoparty!</p>
+          </div>
+          <button type="button" id="host-voice-btn" class="host-voice-btn" aria-pressed="false" title="Host voice: OFF (click to enable)">
+            <span class="pixel-sprite sprite-sound-on" aria-hidden="true"></span>
+            <span class="host-voice-label">Voice Off</span>
+          </button>
+        </div>
+
         <!-- 1. SIMPLIFIED LOBBY (Grouped into ROOM, GAME SETTINGS, ACTIONS) -->
         <div id="stage-lobby" class="stage-panel lobby-panel">
           <div class="lobby-scroll-area">
@@ -710,7 +730,21 @@
               <span class="pixel-sprite sprite-trophy" aria-hidden="true"></span>
               <div class="dd-banner">FINAL JEOPARTY!</div>
             </div>
-            <div class="final-category-banner">
+
+            <!-- Server-synced spinning category wheel built from this match's board categories -->
+            <div id="final-wheel-box" class="final-wheel-box" hidden>
+              <div class="wheel-frame">
+                <div id="final-wheel" class="final-wheel">
+                  <div id="final-wheel-sectors" class="final-wheel-sectors"></div>
+                </div>
+                <div class="wheel-hub" aria-hidden="true">J!</div>
+                <div class="wheel-pointer" aria-hidden="true"></div>
+              </div>
+              <div id="final-wheel-result" class="wheel-result" aria-live="polite">SPINNING...</div>
+              <div id="final-wheel-legend" class="final-wheel-legend" aria-hidden="true"></div>
+            </div>
+
+            <div id="final-category-banner" class="final-category-banner">
               Category: <strong id="final-category-name"></strong>
             </div>
 
@@ -797,6 +831,9 @@
             </div>
           </div>
         </div>
+
+        <!-- CONTESTANT PODIUMS: customized avatars standing behind their own podiums -->
+        <div id="contestant-stage" class="contestant-stage" aria-label="Contestant podiums" hidden></div>
 
         <!-- Live Floating Animated MS Paint Pixel-Art Reaction Bar -->
         <div id="floating-reaction-bar" class="floating-reaction-bar" aria-label="Live Pixel Reactions">
@@ -926,6 +963,10 @@
         </div>
       </div>
       <label class="audio-setting-row">
+        <span>Host Voice Announcements:</span>
+        <input type="checkbox" id="setting-host-voice">
+      </label>
+      <label class="audio-setting-row">
         <span>Push-to-Talk (Hold Space or V):</span>
         <input type="checkbox" id="setting-voice-ptt">
       </label>
@@ -1008,6 +1049,11 @@
         <strong>Win the Crown:</strong> Bet big on hidden <strong>Daily Doubles</strong> and <strong>Final Jeoparty</strong> to finish with the highest score!
       </li>
     </ol>
+    <p class="dialog-sub">
+      <strong>🔥 Streaks:</strong> three correct answers in a row unlocks an extra
+      <strong>+$100</strong> on every correct answer after that. <strong>🎡 Final Jeoparty</strong>
+      spins a category wheel built from the categories on your board.
+    </p>
     <form method="dialog" class="dialog-actions">
       <button value="close" class="btn-skribbl btn-green" autofocus>Got It!</button>
     </form>
@@ -1161,6 +1207,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=3.4.0"></script>
+  <script type="module" src="/js/app.js?v=4.0.0"></script>
 </body>
 </html>

@@ -21,6 +21,27 @@ An online multiplayer **Jeopardy** party web game crafted in an animated **MS Pa
   - **3 Game Modes**: Classic Buzzer (`Spacebar` or click + typo-tolerant fuzzy auto-judging), Everyone Answers (Skribbl speed guessing with progressive `_ _ _ _` hints), and Host Judges (party/voice mode).
   - Optional **Double Jeoparty** (Round 2), **Hidden Daily Doubles**, **Final Jeoparty** secret wagering finale, **Wrong Answer Penalties**, and **Play Again** rematch support.
 
+## Game-Show Presentation Update (v4.0)
+
+Jeoparty now presents every match like a televised game show while keeping the hand-drawn MS Paint pixel-art identity:
+
+- **Permanent host character** — a fixed "Jeoparty Host" pixel-art presenter (never player-customized, never random, never counted as a player) with scripted, contextual announcements and optional text-to-speech captions.
+- **Contestant podiums** — every human and bot stands behind their own podium with their real customized avatar (including Halloween cosmetics), name, player number and live authoritative money.
+- **Typing clue reveal** — clues type out word-by-word on a server-owned timeline. Buzzing freezes the visible text for *all* players at the exact server word position; a wrong answer resumes typing from that word.
+- **Streak bonus** — 3 correct answers in a row activates a server-calculated **+$100** bonus on that answer and every correct answer after it, with pixel flames, a streak chip and a floating money animation.
+- **Final Jeopardy wheel** — the final round begins with a server-selected, client-synchronized category wheel built from the categories on the match board, followed by private wagers and a narrated reveal.
+- **Money animations** — podiums count their totals up/down with floating `+$` / `-$` awards for correct, incorrect, timeout and final results.
+- **MS Paint styling everywhere** — pixel borders, sprite flames, category panels, torn-paper transitions, and a Halloween Mayhem palette that adapts the host, board, podiums and wheel without touching the Halloween background or cosmetic system.
+
+### Verification
+
+```bash
+node scripts/verify-gameshow.js    # headless multiplayer + bot + rule checks (87 assertions)
+node scripts/visual-check.js       # real Chrome screenshots of every stage (desktop + mobile)
+```
+
+Both scripts run the real server (no mocks) and write their output under `scripts/artifacts/`.
+
 ## Quick Start (Zero External Dependencies)
 
 No `npm install` is required — the server runs natively on Node.js 20+ using built-in HTTP and RFC 6455 WebSockets.

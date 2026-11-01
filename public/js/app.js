@@ -10,6 +10,8 @@ import {
 } from './avatar.js';
 import { sfx } from './audio.js';
 import { voiceChat } from './voice.js';
+import { gameShow } from './gameshow.js';
+import { hostPresenter } from './host.js';
 
 /* =========================================================================
    MODERN WEB GUIDANCE POLYFILLS / FALLBACKS
@@ -318,6 +320,7 @@ const state = {
   selectedBotDiff: 'medium',
   typingBots: new Map(),
   lastRenderedPhase: null,
+  lastRenderedStage: null,
   lastTickSecond: -1,
 };
 
@@ -390,6 +393,13 @@ const el = {
   settingVoiceVal: document.getElementById('setting-voice-val'),
   settingVoicePtt: document.getElementById('setting-voice-ptt'),
   settingVoiceAutoMute: document.getElementById('setting-voice-automute'),
+  settingHostVoice: document.getElementById('setting-host-voice'),
+
+  // Game-show presentation (host stage + contestant podiums + final wheel)
+  hostStage: document.getElementById('host-stage'),
+  contestantStage: document.getElementById('contestant-stage'),
+  finalWheelBox: document.getElementById('final-wheel-box'),
+  finalCategoryBanner: document.getElementById('final-category-banner'),
 
   // Mic Permission Dialog
   micHelpDialog: document.getElementById('mic-help-dialog'),
@@ -1063,6 +1073,7 @@ function startFreshRoomSession(actionType, extraPayload = {}) {
   clearAllBotTyping();
   state.room = null;
   state.lastRenderedPhase = null;
+  state.lastRenderedStage = null;
 
   const abandoned = popAnySavedRoomToken();
   const cleanUrl = new URL(window.location.href);
@@ -1223,6 +1234,12 @@ function handleServerMessage(msg) {
       break;
     }
 
+    case 'host_line': {
+      // Scripted, server-authoritative announcements only.
+      gameShow.onHostLine(msg);
+      break;
+    }
+
     case 'chat': {
       appendChatMessage(msg.message);
       break;
@@ -1251,6 +1268,8 @@ function returnToHomeScreen({ clearInvite = true } = {}) {
   clearAllBotTyping();
   state.room = null;
   state.lastRenderedPhase = null;
+  state.lastRenderedStage = null;
+  gameShow.reset();
   el.timerBadge.hidden = true;
   if (el.customCatDialog.open) el.customCatDialog.close();
 
@@ -1387,12 +1406,45 @@ function findPlayer(room, id) {
   return room?.players?.find((p) => p.id === id) || null;
 }
 
+/**
+ * Groups fine-grained server phases into the five visible "sets" of the show so
+ * cinematic transitions only play when the stage actually changes (board →
+ * question → final → results), never on buzz/answer sub-phase updates.
+ */
+function getStageGroup(phase) {
+  switch (phase) {
+    case 'lobby':
+      return 'lobby';
+    case 'board':
+      return 'board';
+    case 'daily_double_wager':
+    case 'daily_double_answer':
+    case 'clue_open':
+    case 'clue_buzzed':
+    case 'clue_chaos':
+    case 'clue_skribbl':
+    case 'clue_result':
+      return 'clue';
+    case 'round_intermission':
+      return 'intermission';
+    case 'final_wheel':
+    case 'final_wager':
+    case 'final_clue':
+      return 'final';
+    case 'game_over':
+      return 'results';
+    default:
+      return phase;
+  }
+}
+
 function renderRoomState() {
   const room = state.room;
   if (!room) return;
 
   const amHost = isMeHost(room);
-  const phaseChanged = state.lastRenderedPhase !== room.phase;
+  const prevPhase = state.lastRenderedPhase;
+  const phaseChanged = prevPhase !== room.phase;
   state.lastRenderedPhase = room.phase;
 
   // 1. Clean Topbar
@@ -1410,7 +1462,9 @@ function renderRoomState() {
   } else if (room.phase.startsWith('final_')) {
     el.topbarRoundBadge.textContent = 'Final Jeoparty';
     el.topbarStatusText.textContent =
-      room.phase === 'final_wager'
+      room.phase === 'final_wheel'
+        ? 'Spinning the category wheel...'
+        : room.phase === 'final_wager'
         ? 'Lock in your secret wager'
         : 'Type your final answer';
   } else {
@@ -1445,7 +1499,10 @@ function renderRoomState() {
     'clue_result',
   ].includes(room.phase);
   const showIntermission = room.phase === 'round_intermission';
-  const showFinal = room.phase === 'final_wager' || room.phase === 'final_clue';
+  const showFinal =
+    room.phase === 'final_wheel' ||
+    room.phase === 'final_wager' ||
+    room.phase === 'final_clue';
   const showGameover = room.phase === 'game_over';
 
   el.stageLobby.hidden = !showLobby;
@@ -1461,6 +1518,30 @@ function renderRoomState() {
   if (showIntermission) renderIntermissionStage(room);
   if (showFinal) renderFinalStage(room, phaseChanged);
   if (showGameover) renderGameoverStage(room, amHost);
+
+  // Game-show presentation layer (host captions, podiums, money, typing, wheel)
+  gameShow.update(room, {
+    playerId: state.playerId,
+    isHalloween: isHalloweenMode(room),
+    clockOffset: state.clockOffsetMs,
+    reduceMotion: state.reduceMotion,
+  });
+
+  // Fast, non-blocking stage transitions between board <-> question <-> final.
+  const nextStageGroup = getStageGroup(room.phase);
+  if (state.lastRenderedStage !== nextStageGroup) {
+    state.lastRenderedStage = nextStageGroup;
+    const panels = Array.from(el.gameScreen.querySelectorAll('.stage-panel')).filter(
+      (panel) => !panel.hidden
+    );
+    const returningToBoard = nextStageGroup === 'board';
+    for (const panel of panels) {
+      panel.classList.remove('stage-anim', 'stage-anim-back');
+      void panel.offsetWidth;
+      panel.classList.add(returningToBoard ? 'stage-anim-back' : 'stage-anim');
+      setTimeout(() => panel.classList.remove('stage-anim', 'stage-anim-back'), 480);
+    }
+  }
 
   // Synchronize Voice Chat Dock Visibility
   if (el.voiceChatDock) {
@@ -1483,7 +1564,11 @@ function renderRoomState() {
       sfx.startHalloweenMusic('clue');
     } else if (room.phase === 'daily_double_wager' || room.phase === 'daily_double_answer') {
       sfx.startHalloweenMusic('daily_double');
-    } else if (room.phase === 'final_wager' || room.phase === 'final_clue') {
+    } else if (
+      room.phase === 'final_wheel' ||
+      room.phase === 'final_wager' ||
+      room.phase === 'final_clue'
+    ) {
       sfx.startHalloweenMusic('final');
     } else if (room.phase === 'game_over') {
       sfx.startHalloweenMusic('victory');
@@ -1599,11 +1684,15 @@ function renderPlayersSidebar(room, amHost) {
 
     if (isOnFire) {
       const streakBadge = document.createElement('span');
-      streakBadge.className = 'player-streak-badge';
+      const streakBonusActive = Boolean(p.streakBonusActive || (p.streak || 0) >= 3);
+      streakBadge.className = `player-streak-badge${streakBonusActive ? ' is-bonus' : ''}`;
       streakBadge.appendChild(createPixelSprite('sprite-fire'));
       const streakTxt = document.createElement('span');
       streakTxt.textContent = `x${p.streak || 2}`;
       streakBadge.appendChild(streakTxt);
+      streakBadge.title = streakBonusActive
+        ? `On fire! ${p.streak} correct in a row — +$100 streak bonus active`
+        : `${p.streak || 2} correct in a row`;
       nameLine.appendChild(streakBadge);
     }
 
@@ -2179,6 +2268,8 @@ function renderBoardStage(room) {
             return;
           }
           sfx.play('click');
+          // Brief on-board flourish before the question presentation takes over.
+          btn.classList.add('is-selected-pulse');
           sendWs({ type: 'select_tile', col: c, row: r });
         });
         el.boardGrid.appendChild(btn);
@@ -2273,8 +2364,10 @@ function renderClueStage(room, amHost, phaseChanged) {
   }
 
   // 2. Clue Text & Progressive Letter Mask
+  // The word-by-word typing is owned by the game-show presentation layer so the
+  // reveal stays perfectly in sync with the server's countdown and buzzer freezes.
   el.clueTextArea.hidden = isDDWager;
-  el.cluePromptText.textContent = ac.clue || '';
+  if (isDDWager) el.cluePromptText.textContent = '';
   if (ac.hintMask) {
     el.skribblHintMask.hidden = false;
     el.skribblHintMask.textContent = ac.hintMask;
@@ -2381,8 +2474,12 @@ function renderClueStage(room, amHost, phaseChanged) {
       someoneWon ? 'sprite-correct' : 'sprite-wrong'
     }`;
     el.officialAnswerText.textContent = ac.answer || '';
+    const streakBonusNote =
+      someoneWon && Number(ac.winnerStreakBonus) > 0
+        ? ` 🔥 ON FIRE — +${formatCash(ac.winnerStreakBonus)} streak bonus!`
+        : '';
     el.clueWinnerLine.textContent = someoneWon
-      ? `${ac.winnerName} earned +${formatCash(ac.winnerDelta)}!`
+      ? `${ac.winnerName} earned +${formatCash(ac.winnerDelta)}!${streakBonusNote}`
       : ac.lastWrongText
       ? `No points awarded (${ac.lastWrongText})`
       : 'Nobody got this clue!';
@@ -2434,10 +2531,15 @@ function renderFinalStage(room, phaseChanged) {
   const fsState = room.finalState;
   if (!fsState) return;
 
-  el.finalCategoryName.textContent = fsState.category;
-
+  const isWheel = room.phase === 'final_wheel';
   const isWager = room.phase === 'final_wager';
   const isClue = room.phase === 'final_clue';
+
+  // Never spoil the wheel result before the server's spin lands.
+  if (el.finalCategoryBanner) {
+    el.finalCategoryBanner.hidden = isWheel;
+  }
+  el.finalCategoryName.textContent = isWheel ? '???' : fsState.category;
 
   el.finalWagerStep.hidden = !isWager;
   el.finalClueStep.hidden = !isClue;
@@ -2457,7 +2559,7 @@ function renderFinalStage(room, phaseChanged) {
   }
 
   if (isClue) {
-    el.finalClueText.textContent = fsState.clue || '';
+    // Typing is handled by the game-show layer (finalState.reveal plan).
     const locked = fsState.answerLockedIds.includes(state.playerId);
     el.finalAnswerForm.hidden = locked;
     el.finalAnswerLockedMsg.hidden = !locked;
@@ -2470,6 +2572,7 @@ function renderFinalStage(room, phaseChanged) {
   const lockedSet = new Set(
     isWager ? fsState.wagerLockedIds : fsState.answerLockedIds
   );
+  el.finalPlayersLockStatus.hidden = isWheel;
   el.finalPlayersLockStatus.innerHTML = '';
   for (const p of room.players) {
     const pill = document.createElement('span');
@@ -2487,6 +2590,11 @@ function renderGameoverStage(room, amHost) {
     { player: sorted[0], place: 1 },
     { player: sorted[2], place: 3 },
   ].filter((x) => Boolean(x.player));
+
+  const finalResults = Array.isArray(room.finalState?.results)
+    ? room.finalState.results
+    : [];
+  const animSeq = (state.gameoverAnimSeq = (state.gameoverAnimSeq || 0) + 1);
 
   el.podiumStage.innerHTML = '';
   for (const slot of podiumOrder) {
@@ -2509,7 +2617,31 @@ function renderGameoverStage(room, amHost) {
 
     const cashEl = document.createElement('div');
     cashEl.className = p.score < 0 ? 'podium-cash is-negative' : 'podium-cash';
-    cashEl.textContent = formatCash(p.score);
+
+    const result = finalResults.find((r) => r.playerId === p.id);
+    const fromScore = result ? result.finalScore - result.delta : p.score;
+    const delta = result ? result.delta : 0;
+    if (delta !== 0) {
+      cashEl.classList.add(delta > 0 ? 'is-cash-gain' : 'is-cash-loss');
+    }
+    cashEl.textContent = formatCash(fromScore);
+
+    // Animate the ceremony cash from the pre-final wager total to the final score.
+    if (result && delta !== 0) {
+      const start = performance.now();
+      const duration = 950;
+      const step = (ts) => {
+        if (animSeq !== state.gameoverAnimSeq) return;
+        const t = Math.max(0, Math.min(1, (ts - start) / duration));
+        const eased = 1 - Math.pow(1 - t, 3);
+        const value = Math.round(fromScore + (p.score - fromScore) * eased);
+        cashEl.textContent = formatCash(t >= 1 ? p.score : value);
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    } else {
+      cashEl.textContent = formatCash(p.score);
+    }
 
     const ped = document.createElement('div');
     ped.className = `podium-pedestal pedestal-${slot.place}`;
@@ -2622,11 +2754,29 @@ function startTimerLoop() {
 
   setInterval(() => {
     const room = state.room;
+    if (!room) {
+      el.timerBadge.hidden = true;
+      return;
+    }
+
+    const serverNowEstimate = Date.now() + state.clockOffsetMs;
+
+    // Keep the broadcast status in sync while the Final Jeopardy wheel lands.
+    if (room.phase === 'final_wheel' && room.finalState?.wheel) {
+      const landed = serverNowEstimate >= room.finalState.wheel.revealedAt;
+      const status = landed
+        ? 'The category is locked in!'
+        : 'Spinning the category wheel...';
+      if (el.topbarStatusText.textContent !== status) {
+        el.topbarStatusText.textContent = status;
+      }
+    }
+
     if (
-      !room ||
       !room.phaseEndsAt ||
       room.phase === 'lobby' ||
-      room.phase === 'game_over'
+      room.phase === 'game_over' ||
+      room.phase === 'final_wheel'
     ) {
       el.timerBadge.hidden = true;
       return;
@@ -2634,11 +2784,9 @@ function startTimerLoop() {
 
     if (room.phaseEndsAt !== trackedEndsAt) {
       trackedEndsAt = room.phaseEndsAt;
-      const approxNow = Date.now() + state.clockOffsetMs;
-      trackedTotalDurationMs = Math.max(1000, room.phaseEndsAt - approxNow);
+      trackedTotalDurationMs = Math.max(1000, room.phaseEndsAt - serverNowEstimate);
     }
 
-    const serverNowEstimate = Date.now() + state.clockOffsetMs;
     const remainingMs = Math.max(0, room.phaseEndsAt - serverNowEstimate);
     const secs = Math.ceil(remainingMs / 1000);
 
@@ -2880,6 +3028,7 @@ function bindEvents() {
       }
       if (el.settingVoicePtt) el.settingVoicePtt.checked = voiceChat.usePushToTalk;
       if (el.settingVoiceAutoMute) el.settingVoiceAutoMute.checked = voiceChat.autoMuteOnJoin;
+      if (el.settingHostVoice) el.settingHostVoice.checked = hostPresenter.voiceEnabled;
       el.audioSettingsDialog.showModal();
     });
   }
@@ -2931,6 +3080,15 @@ function bindEvents() {
   if (el.settingVoiceAutoMute) {
     el.settingVoiceAutoMute.addEventListener('change', () => {
       voiceChat.setAutoMuteOnJoin(el.settingVoiceAutoMute.checked);
+    });
+  }
+
+  if (el.settingHostVoice) {
+    el.settingHostVoice.addEventListener('change', () => {
+      hostPresenter.setVoiceEnabled(el.settingHostVoice.checked);
+      if (el.settingHostVoice.checked) {
+        sfx.play('pop');
+      }
     });
   }
 
@@ -3497,6 +3655,7 @@ function init() {
   renderHomeMascots();
   renderHomeAvatarPreview();
   syncHalloweenAtmosphere();
+  gameShow.init();
   checkUrlInviteParam();
   bindEvents();
   loadInitialServerMetadata();

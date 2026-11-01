@@ -264,6 +264,32 @@ class SoundEngine {
         this._tone(659.25, 0.14, 0.08, 'triangle', 0.14);
         this._tone(880, 0.21, 0.22, 'triangle', 0.16);
         break;
+      case 'money_up':
+        // Bright pixel coin cascade for a winning podium
+        this._tone(880, 0, 0.05, 'square', 0.1, 1320);
+        this._tone(1174.66, 0.05, 0.05, 'square', 0.1, 1568);
+        this._tone(1567.98, 0.1, 0.1, 'triangle', 0.11);
+        break;
+      case 'money_down':
+        // Sad descending buzzer for a losing podium
+        this._tone(392, 0, 0.09, 'sawtooth', 0.1, 262);
+        this._tone(261.63, 0.09, 0.16, 'triangle', 0.11, 174);
+        break;
+      case 'wheel_spin':
+        // Rising airy whoosh while the category wheel spins up
+        this._tone(180, 0, 0.5, 'triangle', 0.07, 520);
+        this._tone(240, 0.12, 0.6, 'sine', 0.06, 700);
+        break;
+      case 'wheel_tick':
+        this._tone(1200, 0, 0.025, 'square', 0.045, 900);
+        break;
+      case 'wheel_stop':
+        // Chunky landing fanfare with a little sparkle
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          this._tone(f, i * 0.055, i === 3 ? 0.32 : 0.1, 'triangle', 0.15);
+        });
+        this._tone(2093, 0.24, 0.16, 'sine', 0.08);
+        break;
       case 'reaction':
         this._tone(620, 0, 0.07, 'sine', 0.1, 950);
         break;
