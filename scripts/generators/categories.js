@@ -3,6 +3,7 @@
 const path = require('node:path');
 const { PixelCanvas, buildHorizontalStrip } = require('../pixel-canvas');
 const { BUILTIN_CATEGORIES } = require('../../server/categoriesData');
+const { HALLOWEEN_CATEGORIES } = require('../../server/categories/halloween');
 
 const B = '#000000';
 const W = '#ffffff';
@@ -583,16 +584,235 @@ const CATEGORY_DRAWERS = {
     c.outlinedCircle(18, 6, 2.4, PK);
     c.sparkle(7, 7, f === 0 ? 2 : 3, Y, B);
   },
+
+  /* =======================================================================
+     20 DEDICATED HALLOWEEN MAYHEM CATEGORIES (MS Paint Pixel-Art)
+     ======================================================================= */
+
+  // H01. HALLOWEEN HISTORY — Ancient Celtic Jack-o'-Turnip & Samhain Bonfire
+  'halloween-history'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.filledOval(12, 13 + dy, 7.5, 6.8, '#e8d7f5', B, 0.9, 0.2);
+    c.fillPolygon([[10, 6 + dy], [12, 2 + dy], [14, 6 + dy]], G, B, 0.8);
+    // Glowing carved eyes & smile
+    const glow = f === 0 ? O : Y;
+    c.fillPolygon([[7, 12 + dy], [9, 9 + dy], [11, 12 + dy]], glow, B, 0.6);
+    c.fillPolygon([[13, 12 + dy], [15, 9 + dy], [17, 12 + dy]], glow, B, 0.6);
+    c.polyline([[8, 15 + dy], [11, 17 + dy], [13, 17 + dy], [16, 15 + dy]], 0.9, B);
+  },
+
+  // H02. HORROR MOVIES — Iconic Slasher Mask + Gleaming Knife
+  'horror-movies'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.filledOval(10, 12 + dy, 7, 8.2, '#f2efe9', B, 0.9, 0.1);
+    c.brush(7, 10 + dy, 1.3, B);
+    c.brush(13, 10 + dy, 1.3, B);
+    c.line(10, 6 + dy, 9, 8 + dy, 0.7, R);
+    c.line(10, 6 + dy, 11, 8 + dy, 0.7, R);
+    c.setPixel(9, 15 + dy, B);
+    c.setPixel(11, 15 + dy, B);
+    // Gleaming knife on right
+    c.fillPolygon([[18, 4], [21, 12], [18, 12]], f === 0 ? GR : W, B, 0.8);
+    c.outlinedRect(18, 12, 3, 6, BR, B);
+  },
+
+  // H03. HALLOWEEN TRADITIONS — Glowing Carved Jack-o'-Lantern
+  'halloween-traditions'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.filledOval(12, 13 + dy, 8.5, 7, '#ff7b00', B, 1.0, 0.2);
+    c.outlinedRect(10, 4 + dy, 4, 4, G, B);
+    const glow = f === 0 ? Y : '#fff59d';
+    c.fillPolygon([[7, 12 + dy], [9, 9 + dy], [11, 12 + dy]], glow, B, 0.6);
+    c.fillPolygon([[13, 12 + dy], [15, 9 + dy], [17, 12 + dy]], glow, B, 0.6);
+    c.polyline([[7, 16 + dy], [10, 18 + dy], [12, 16 + dy], [14, 18 + dy], [17, 16 + dy]], 1.0, B);
+  },
+
+  // H04. GHOSTS & SPIRITS — Floating MS Paint Sheet Ghost
+  'ghosts-spirits'(c, f) {
+    const dy = f === 1 ? -2 : 0;
+    c.fillPolygon(
+      [[5, 20 + dy], [5, 9 + dy], [9, 4 + dy], [15, 4 + dy], [19, 9 + dy], [19, 20 + dy], [15, 17 + dy], [12, 20 + dy], [9, 17 + dy]],
+      '#f4f0ff',
+      B,
+      0.9
+    );
+    c.brush(9, 10 + dy, 1.3, B);
+    c.brush(15, 10 + dy, 1.3, B);
+    c.filledOval(12, 14 + dy, 1.8, 2.4, B, B, 0.6, 0);
+  },
+
+  // H05. MONSTERS & CREATURES — Green Frankenstein Monster with Neck Bolts
+  'monsters-creatures'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.outlinedRect(3, 14 + dy, 3, 3, GR, B);
+    c.outlinedRect(18, 14 + dy, 3, 3, GR, B);
+    c.outlinedRect(5, 5 + dy, 14, 15, G, B);
+    c.outlinedRect(5, 4 + dy, 14, 4, B, B);
+    c.line(8, 9 + dy, 12, 9 + dy, 0.7, R);
+    c.brush(9, 12 + dy, 1.2, B);
+    c.brush(15, 12 + dy, 1.2, B);
+    c.line(9, 16 + dy, 15, 16 + dy, 0.9, B);
+  },
+
+  // H06. VAMPIRES & BLOODSUCKERS — Vampire Fangs with Crimson Drops
+  'vampires'(c, f) {
+    const dy = f === 1 ? 1 : 0;
+    c.outlinedRect(3, 6, 18, 12, '#220938', B);
+    c.line(4, 9, 20, 9, 1.2, R);
+    c.fillPolygon([[6, 9], [8, 16 + dy], [10, 9]], W, B, 0.8);
+    c.fillPolygon([[14, 9], [16, 16 + dy], [18, 9]], W, B, 0.8);
+    c.outlinedRect(10, 9, 4, 4, W, B);
+    c.brush(8, 17 + dy, 1.1, R);
+    c.brush(16, 17 + dy, 1.1, R);
+  },
+
+  // H07. WEREWOLVES & LYCANTHROPY — Wolf Snout Howling at Full Moon
+  'werewolves'(c, f) {
+    c.filledOval(16, 8, f === 0 ? 5.2 : 5.8, f === 0 ? 5.2 : 5.8, Y, B, 0.9, 0.1);
+    c.fillPolygon([[3, 21], [4, 11], [7, 6], [10, 10], [16, 11], [15, 15], [11, 16], [12, 21]], '#636875', B, 0.9);
+    c.setPixel(9, 11, R);
+    c.setPixel(15, 11, B);
+  },
+
+  // H08. WITCHES & DARK MAGIC — Crooked Pointed Witch Hat with Gold Buckle
+  'witches-magic'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.filledOval(12, 18 + dy, 9.5, 3, '#220938', B, 0.9, 0.1);
+    c.fillPolygon([[6, 17 + dy], [11, 3 + dy], [16, 2 + dy], [14, 7 + dy], [18, 17 + dy]], '#31104f', B, 0.9);
+    c.outlinedRect(7, 14 + dy, 10, 3, '#ff7b00', B);
+    c.outlinedRect(10, 14 + dy, 4, 3, Y, B);
+    if (f === 1) c.sparkle(19, 6, 2, G, B);
+  },
+
+  // H09. ZOMBIES & THE UNDEAD — Green Zombie Hand Rising from Ground
+  'zombies'(c, f) {
+    const dy = f === 1 ? -2 : 0;
+    c.outlinedRect(2, 18, 20, 4, '#3d271d', B);
+    c.outlinedRect(9, 11 + dy, 6, 8, G, B);
+    c.outlinedRect(6, 7 + dy, 2, 5, G, B);
+    c.outlinedRect(9, 5 + dy, 2, 6, G, B);
+    c.outlinedRect(12, 6 + dy, 2, 5, G, B);
+    c.outlinedRect(15, 8 + dy, 2, 4, G, B);
+  },
+
+  // H10. HAUNTED PLACES — Spooky Haunted House with Glowing Windows
+  'haunted-places'(c, f) {
+    c.fillPolygon([[3, 11], [12, 2], [21, 11]], '#220938', B, 0.9);
+    c.outlinedRect(5, 11, 14, 10, '#311452', B);
+    const winCol = f === 0 ? Y : '#ff7b00';
+    c.outlinedRect(7, 13, 3, 3, winCol, B);
+    c.outlinedRect(14, 13, 3, 3, winCol, B);
+    c.outlinedRect(10, 16, 4, 5, B, B);
+  },
+
+  // H11. URBAN LEGENDS — Creepy Hook / Glowing Flashlight in the Dark
+  'urban-legends'(c, f) {
+    c.filledOval(12, 12, 9, 9, '#1a0c2e', B, 0.9, 0.1);
+    const eyeCol = f === 0 ? R : Y;
+    c.outlinedCircle(8, 10, 1.8, eyeCol);
+    c.outlinedCircle(16, 10, 1.8, eyeCol);
+    c.polyline([[9, 16], [12, 14], [15, 16]], 0.9, W);
+  },
+
+  // H12. MYSTERIOUS CRYPTIDS — Mothman Red Glowing Eyes & Wings
+  'cryptids'(c, f) {
+    const wingY = f === 1 ? -2 : 0;
+    c.fillPolygon([[2, 6 + wingY], [9, 11], [3, 18]], '#281d38', B, 0.8);
+    c.fillPolygon([[22, 6 + wingY], [15, 11], [21, 18]], '#281d38', B, 0.8);
+    c.filledOval(12, 12, 4.5, 6.5, '#171021', B, 0.9, 0.1);
+    c.outlinedCircle(10, 10, 1.6, R);
+    c.outlinedCircle(14, 10, 1.6, R);
+  },
+
+  // H13. HALLOWEEN CANDY — Festive Candy Corn Trio (White, Orange, Yellow)
+  'halloween-candy'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.fillPolygon([[12, 3 + dy], [20, 19 + dy], [4, 19 + dy]], '#ff7b00', B, 0.9);
+    c.fillPolygon([[12, 3 + dy], [15, 9 + dy], [9, 9 + dy]], W, B, 0.8);
+    c.fillPolygon([[6, 15 + dy], [18, 15 + dy], [20, 19 + dy], [4, 19 + dy]], Y, B, 0.8);
+    if (f === 1) c.sparkle(19, 6, 2, Y, B);
+  },
+
+  // H14. SPOOKY ANIMALS — Flapping Black Vampire Bat
+  'spooky-animals'(c, f) {
+    const wy = f === 1 ? -3 : 2;
+    c.fillPolygon([[1, 9 + wy], [8, 10], [6, 16], [12, 13], [18, 16], [16, 10], [23, 9 + wy], [16, 6], [8, 6]], '#1c122b', B, 0.9);
+    c.filledOval(12, 11, 3.5, 4, '#2b1b42', B, 0.8, 0);
+    c.setPixel(10, 10, Y);
+    c.setPixel(14, 10, Y);
+  },
+
+  // H15. SUPERNATURAL FOLKLORE — Bubbling Witches' Cauldron
+  'supernatural-folklore'(c, f) {
+    c.filledOval(12, 14, 8, 6.5, '#262030', B, 1.0, 0.1);
+    c.outlinedRect(5, 7, 14, 3, '#383046', B);
+    c.fillRect(7, 8, 10, 2, G);
+    c.outlinedCircle(9, 5 - f, 1.5, G);
+    c.outlinedCircle(14, 4 - (1 - f), 1.8, G);
+  },
+
+  // H16. FAMOUS HORROR ICONS — Ghostface / Skull Mask
+  'famous-horror-characters'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.filledOval(12, 11 + dy, 7, 8.5, W, B, 1.0, 0.2);
+    c.filledOval(9, 9 + dy, 1.8, 2.5, B, B, 0.5, 0);
+    c.filledOval(15, 9 + dy, 1.8, 2.5, B, B, 0.5, 0);
+    c.filledOval(12, 15 + dy, 2.0, 3.5, B, B, 0.5, 0);
+  },
+
+  // H17. HALLOWEEN WORLDWIDE — Decorative Sugar Skull (Calavera)
+  'halloween-around-world'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.filledOval(12, 10 + dy, 7.5, 7, W, B, 0.9, 0.1);
+    c.outlinedRect(8, 15 + dy, 8, 5, W, B);
+    c.outlinedCircle(9, 10 + dy, 2.0, '#ff7b00');
+    c.outlinedCircle(15, 10 + dy, 2.0, C);
+    c.setPixel(12, 6 + dy, PK);
+    c.line(10, 16 + dy, 10, 19 + dy, 0.7, B);
+    c.line(14, 16 + dy, 14, 19 + dy, 0.7, B);
+  },
+
+  // H18. MYTH OR FACT? — Mystical Crystal Ball on Gold Stand
+  'myth-or-fact'(c, f) {
+    c.outlinedRect(7, 17, 10, 4, Y, B);
+    c.filledOval(12, 10, 7.2, 7.2, P, B, 0.9, 0.1);
+    c.sparkle(12, 10, f === 0 ? 2 : 4, G, B);
+    c.line(8, 6, 10, 5, 0.8, W);
+  },
+
+  // H19. STRANGE & CREEPY FACTS —RIP Tombstone with Cross
+  'strange-creepy-facts'(c, f) {
+    const dy = f === 1 ? -1 : 0;
+    c.filledOval(12, 10 + dy, 7, 7, '#8f96a6', B, 0.9, 0);
+    c.outlinedRect(5, 10 + dy, 14, 10, '#8f96a6', B);
+    c.outlinedRect(3, 19, 18, 3, G, B);
+    c.line(12, 7 + dy, 12, 14 + dy, 1.1, B);
+    c.line(9, 9 + dy, 15, 9 + dy, 1.1, B);
+  },
+
+  // H20. HALLOWEEN POP CULTURE — Spooky Spider & Web
+  'halloween-pop-culture'(c, f) {
+    const dy = f === 1 ? 2 : 0;
+    c.line(12, 1, 12, 11 + dy, 0.8, W);
+    c.filledOval(12, 13 + dy, 4.5, 4, B, B, 0.8, 0);
+    c.line(8, 12 + dy, 3, 9 + dy, 0.9, B);
+    c.line(8, 14 + dy, 3, 16 + dy, 0.9, B);
+    c.line(16, 12 + dy, 21, 9 + dy, 0.9, B);
+    c.line(16, 14 + dy, 21, 16 + dy, 0.9, B);
+    c.setPixel(10, 13 + dy, R);
+    c.setPixel(14, 13 + dy, R);
+  },
 };
 
 function generateAllCategorySprites(categoriesDir, legacyAssetsDir) {
-  // Verify 100% of BUILTIN_CATEGORIES have a dedicated pixel drawer!
-  const missing = BUILTIN_CATEGORIES.filter((cat) => !CATEGORY_DRAWERS[cat.id]).map((c) => c.id);
+  const allCats = [...BUILTIN_CATEGORIES, ...HALLOWEEN_CATEGORIES];
+  // Verify 100% of categories have a dedicated pixel drawer!
+  const missing = allCats.filter((cat) => !CATEGORY_DRAWERS[cat.id]).map((c) => c.id);
   if (missing.length > 0) {
     throw new Error(`Missing category pixel art drawers for: ${missing.join(', ')}`);
   }
 
-  const orderedIds = [...BUILTIN_CATEGORIES.map((c) => c.id), 'custom'];
+  const orderedIds = [...allCats.map((c) => c.id), 'custom'];
   const masterSheet = new PixelCanvas(orderedIds.length * 24, 48); // 54 cols x 2 rows (24x24)
   const savedFiles = [];
 

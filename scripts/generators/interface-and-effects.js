@@ -596,6 +596,66 @@ function generateIconSprites(iconsDir, legacyDir) {
     c.outlinedCircle(9, 9 + dy, 1.3, C);
     c.outlinedCircle(9, 15 + (f % 2), 1.8, f % 2 === 0 ? O : Y);
   }).save(path.join(iconsDir, 'rocket-strip.png'));
+
+  // 4-frame Carved Jack-o'-Lantern Pumpkin (18x18 x 4)
+  buildHorizontalStrip(18, 18, 4, (c, f) => {
+    const dy = f % 2 === 1 ? -1 : 0;
+    c.outlinedRect(7, 2 + dy, 4, 3, G, B);
+    c.filledOval(9, 10 + dy, 7, 5.8, '#ff7b00', B, 0.9, 0.15);
+    const glow = f % 2 === 0 ? Y : '#ffffff';
+    c.fillPolygon([[5, 9 + dy], [7, 7 + dy], [8, 9 + dy]], glow, B, 0.5);
+    c.fillPolygon([[10, 9 + dy], [11, 7 + dy], [13, 9 + dy]], glow, B, 0.5);
+    c.polyline([[6, 12 + dy], [9, 14 + dy], [12, 12 + dy]], 0.9, B);
+  }).save(path.join(iconsDir, 'pumpkin-strip.png'));
+
+  // 4-frame Candy Corn Reward Icon (18x18 x 4)
+  buildHorizontalStrip(18, 18, 4, (c, f) => {
+    const dy = f % 2 === 1 ? -1 : 0;
+    c.fillPolygon([[9, 2 + dy], [15, 15 + dy], [3, 15 + dy]], '#ff7b00', B, 0.9);
+    c.fillPolygon([[9, 2 + dy], [11, 6 + dy], [7, 6 + dy]], W, B, 0.7);
+    c.fillPolygon([[4, 12 + dy], [14, 12 + dy], [15, 15 + dy], [3, 15 + dy]], Y, B, 0.7);
+    if (f === 1 || f === 3) c.sparkle(14, 4, 2, Y, B);
+  }).save(path.join(iconsDir, 'candy-corn-strip.png'));
+
+  // 4-frame Classic Dollar Coin Icon (18x18 x 4)
+  buildHorizontalStrip(18, 18, 4, (c, f) => {
+    const dy = f % 2 === 1 ? -1 : 0;
+    c.filledOval(9, 9 + dy, 7, 7, Y, B, 0.9, 0.1);
+    c.line(9, 4 + dy, 9, 14 + dy, 0.9, B);
+    c.polyline([[11, 6 + dy], [7, 6 + dy], [7, 9 + dy], [11, 9 + dy], [11, 12 + dy], [7, 12 + dy]], 0.9, B);
+  }).save(path.join(iconsDir, 'dollar-strip.png'));
+
+  // 4-frame Spooky Sheet Ghost Icon (18x18 x 4)
+  buildHorizontalStrip(18, 18, 4, (c, f) => {
+    const dy = f % 2 === 1 ? -1 : 0;
+    c.fillPolygon(
+      [[4, 15 + dy], [4, 7 + dy], [7, 3 + dy], [11, 3 + dy], [14, 7 + dy], [14, 15 + dy], [11, 13 + dy], [9, 15 + dy], [7, 13 + dy]],
+      '#f4f0ff',
+      B,
+      0.9
+    );
+    c.setPixel(7, 8 + dy, B);
+    c.setPixel(11, 8 + dy, B);
+    c.brush(9, 11 + dy, 1.0, B);
+  }).save(path.join(iconsDir, 'ghost-strip.png'));
+
+  // 4-frame Bubbling Cauldron Icon (18x18 x 4)
+  buildHorizontalStrip(18, 18, 4, (c, f) => {
+    c.filledOval(9, 11, 6.5, 5, '#2b2338', B, 0.9, 0.1);
+    c.outlinedRect(4, 6, 10, 3, '#3c324d', B);
+    c.fillRect(5, 7, 8, 2, G);
+    c.outlinedCircle(7, 4 - (f % 2), 1.3, G);
+    c.outlinedCircle(11, 3 - ((f + 1) % 2), 1.3, G);
+  }).save(path.join(iconsDir, 'cauldron-strip.png'));
+
+  // 4-frame Flapping Bat Icon (18x18 x 4)
+  buildHorizontalStrip(18, 18, 4, (c, f) => {
+    const wy = f % 2 === 1 ? -2 : 2;
+    c.fillPolygon([[1, 8 + wy], [6, 8], [5, 13], [9, 11], [13, 13], [12, 8], [17, 8 + wy], [12, 5], [6, 5]], '#220938', B, 0.85);
+    c.filledOval(9, 9, 2.8, 3, '#31104f', B, 0.8, 0);
+    c.setPixel(8, 8, '#ff7b00');
+    c.setPixel(10, 8, '#ff7b00');
+  }).save(path.join(iconsDir, 'bat-strip.png'));
 }
 
 /* =========================================================================

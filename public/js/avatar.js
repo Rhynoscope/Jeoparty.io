@@ -2,80 +2,147 @@
 // Renders crisp un-antialiased 4-frame 52x52 pixel-art sprite strips into cached PNG data URLs.
 
 export const AVATAR_COLORS = [
-  { name: 'Red', fill: '#ff2b2b', shade: '#c91818', stripe: null },
-  { name: 'Orange', fill: '#ff8800', shade: '#cc6600', stripe: null },
-  { name: 'Yellow', fill: '#fff200', shade: '#ccb800', stripe: null },
-  { name: 'Lime', fill: '#4ce619', shade: '#2fb30b', stripe: null },
-  { name: 'Cyan', fill: '#00eeff', shade: '#00b5cc', stripe: null },
-  { name: 'Blue', fill: '#335cff', shade: '#1d3bb8', stripe: null },
-  { name: 'Purple', fill: '#9d1aff', shade: '#6f0db8', stripe: null },
-  { name: 'Pink', fill: '#ff6be8', shade: '#cc47b6', stripe: null },
-  { name: 'Mint', fill: '#19e699', shade: '#0fb375', stripe: null },
-  { name: 'Salmon', fill: '#ff7b7b', shade: '#cc5656', stripe: null },
-  { name: 'Grey', fill: '#8a8f9e', shade: '#636875', stripe: null },
-  { name: 'Charcoal', fill: '#454954', shade: '#2b2e36', stripe: null },
-  { name: 'Brown', fill: '#8f5738', shade: '#693d24', stripe: null },
-  { name: 'Peach', fill: '#f2c89b', shade: '#c79e73', stripe: null },
-  { name: 'White', fill: '#ffffff', shade: '#cfd5e6', stripe: null },
-  // Fun Skribbl-style diagonal striped MS Paint skins (inspired by reference sheet!)
-  { name: 'Candy Red Stripe', fill: '#e61919', shade: '#9e0b0b', stripe: '#ff5959' },
-  { name: 'Gold Stripe', fill: '#ffd000', shade: '#bd9200', stripe: '#fff566' },
-  { name: 'Lime Stripe', fill: '#42cc14', shade: '#298f08', stripe: '#7aff4d' },
-  { name: 'Cyber Cyan Stripe', fill: '#00c8ff', shade: '#008eb8', stripe: '#75ebff' },
-  { name: 'Grape Stripe', fill: '#a633ff', shade: '#7319bd', stripe: '#ce85ff' },
-  // 🎃 Halloween / Spooky Event Monster Skins
-  { name: 'Ghostly Pale', fill: '#e6ecf5', shade: '#b8c3d9', stripe: null },
-  { name: 'Zombie Green', fill: '#4ea84e', shade: '#2f752f', stripe: null },
-  { name: 'Pumpkin Orange', fill: '#ff7518', shade: '#c95100', stripe: null },
-  { name: 'Vampire Alabaster', fill: '#f5eef7', shade: '#c4b5cc', stripe: null },
-  { name: 'Midnight Shadow', fill: '#281a38', shade: '#140c1e', stripe: null },
-  { name: 'Rotten Gray', fill: '#707775', shade: '#4d5452', stripe: null },
-  { name: 'Candy Corn Stripe', fill: '#ffaa00', shade: '#cc7700', stripe: '#ffffff' },
-  { name: 'Slime Stripe', fill: '#39ff14', shade: '#1a9e00', stripe: '#9d1aff' },
+  { name: 'Red', fill: '#ff2b2b', shade: '#c91818', stripe: null, isHalloween: false },
+  { name: 'Orange', fill: '#ff8800', shade: '#cc6600', stripe: null, isHalloween: false },
+  { name: 'Yellow', fill: '#fff200', shade: '#ccb800', stripe: null, isHalloween: false },
+  { name: 'Lime', fill: '#4ce619', shade: '#2fb30b', stripe: null, isHalloween: false },
+  { name: 'Cyan', fill: '#00eeff', shade: '#00b5cc', stripe: null, isHalloween: false },
+  { name: 'Blue', fill: '#335cff', shade: '#1d3bb8', stripe: null, isHalloween: false },
+  { name: 'Purple', fill: '#9d1aff', shade: '#6f0db8', stripe: null, isHalloween: false },
+  { name: 'Pink', fill: '#ff6be8', shade: '#cc47b6', stripe: null, isHalloween: false },
+  { name: 'Mint', fill: '#19e699', shade: '#0fb375', stripe: null, isHalloween: false },
+  { name: 'Salmon', fill: '#ff7b7b', shade: '#cc5656', stripe: null, isHalloween: false },
+  { name: 'Grey', fill: '#8a8f9e', shade: '#636875', stripe: null, isHalloween: false },
+  { name: 'Charcoal', fill: '#454954', shade: '#2b2e36', stripe: null, isHalloween: false },
+  { name: 'Brown', fill: '#8f5738', shade: '#693d24', stripe: null, isHalloween: false },
+  { name: 'Peach', fill: '#f2c89b', shade: '#c79e73', stripe: null, isHalloween: false },
+  { name: 'White', fill: '#ffffff', shade: '#cfd5e6', stripe: null, isHalloween: false },
+  // Fun Skribbl-style diagonal striped MS Paint skins
+  { name: 'Candy Red Stripe', fill: '#e61919', shade: '#9e0b0b', stripe: '#ff5959', isHalloween: false },
+  { name: 'Gold Stripe', fill: '#ffd000', shade: '#bd9200', stripe: '#fff566', isHalloween: false },
+  { name: 'Lime Stripe', fill: '#42cc14', shade: '#298f08', stripe: '#7aff4d', isHalloween: false },
+  { name: 'Cyber Cyan Stripe', fill: '#00c8ff', shade: '#008eb8', stripe: '#75ebff', isHalloween: false },
+  { name: 'Grape Stripe', fill: '#a633ff', shade: '#7319bd', stripe: '#ce85ff', isHalloween: false },
+  // Halloween Event Skins & Monster Appearances (integrated directly into arrow customizer!)
+  { name: 'Ghost Skin', fill: '#e8f0fa', shade: '#b8c8de', stripe: null, isHalloween: true, monsterType: 'ghost' },
+  { name: 'Skeleton Skin', fill: '#f4f1ea', shade: '#c7c1b4', stripe: '#2b2724', isHalloween: true, monsterType: 'skeleton' },
+  { name: 'Vampire Skin', fill: '#f0e8f7', shade: '#bfb0cf', stripe: null, isHalloween: true, monsterType: 'vampire' },
+  { name: 'Zombie Skin', fill: '#52b846', shade: '#317a29', stripe: null, isHalloween: true, monsterType: 'zombie' },
+  { name: 'Pumpkin Monster', fill: '#ff7b00', shade: '#c45100', stripe: '#db5f00', isHalloween: true, monsterType: 'pumpkin' },
+  { name: 'Mummy Skin', fill: '#e6dcc5', shade: '#b5a88b', stripe: '#c9be9f', isHalloween: true, monsterType: 'mummy' },
+  { name: 'Witch Skin', fill: '#7bd955', shade: '#4d992e', stripe: null, isHalloween: true, monsterType: 'witch' },
+  { name: 'Midnight Shadow', fill: '#26143b', shade: '#130921', stripe: '#3b1f5c', isHalloween: true, monsterType: 'shadow' },
+  { name: 'Candy Corn Skin', fill: '#ff8800', shade: '#cc5500', stripe: '#fff200', isHalloween: true, monsterType: 'candycorn' },
 ];
 
-export const EYE_COUNT = 22;
-export const MOUTH_COUNT = 22;
-export const HAT_COUNT = 21;
+export const EYE_ITEMS = [
+  { index: 0, name: 'Classic Dots', isHalloween: false },
+  { index: 1, name: 'Side Glance', isHalloween: false },
+  { index: 2, name: 'Goofy Derp', isHalloween: false },
+  { index: 3, name: 'Fierce Brows', isHalloween: false },
+  { index: 4, name: 'Sleepy Droop', isHalloween: false },
+  { index: 5, name: 'Cheerful Squint', isHalloween: false },
+  { index: 6, name: 'Wide Shocked', isHalloween: false },
+  { index: 7, name: 'Cool Shades', isHalloween: false },
+  { index: 8, name: 'Dizzy X-Eyes', isHalloween: false },
+  { index: 9, name: 'Money Eyes', isHalloween: false },
+  { index: 10, name: 'Puppy Eyes', isHalloween: false },
+  { index: 11, name: 'Posh Monocle', isHalloween: false },
+  { index: 12, name: 'Pirate Patch', isHalloween: false },
+  { index: 13, name: 'Heart Eyes', isHalloween: false },
+  { index: 14, name: 'Cheeky Wink', isHalloween: false },
+  { index: 15, name: 'Suspicious Squint', isHalloween: false },
+  // Halloween Event Eyes
+  { index: 16, name: 'Glowing Red Eyes', isHalloween: true },
+  { index: 17, name: 'Ghostly White Eyes', isHalloween: true },
+  { index: 18, name: 'Green Monster Eyes', isHalloween: true },
+  { index: 19, name: 'Cartoon Monster Eyes', isHalloween: true },
+  { index: 20, name: 'Creepy Glowing Eyes', isHalloween: true },
+  { index: 21, name: 'Spider Eyes', isHalloween: true },
+];
+
+export const MOUTH_ITEMS = [
+  { index: 0, name: 'Buck-Teeth Grin', isHalloween: false },
+  { index: 1, name: 'Cheerful Smile', isHalloween: false },
+  { index: 2, name: 'Wobbly Squiggle', isHalloween: false },
+  { index: 3, name: 'Grumpy Frown', isHalloween: false },
+  { index: 4, name: 'Cat Smile', isHalloween: false },
+  { index: 5, name: 'Surprised O', isHalloween: false },
+  { index: 6, name: 'Silly Tongue', isHalloween: false },
+  { index: 7, name: 'Shark Grin', isHalloween: false },
+  { index: 8, name: 'Deadpan Line', isHalloween: false },
+  { index: 9, name: 'Host Mustache', isHalloween: false },
+  { index: 10, name: 'Nerd Teeth', isHalloween: false },
+  { index: 11, name: 'Side Smirk', isHalloween: false },
+  { index: 12, name: 'Wide Scream', isHalloween: false },
+  { index: 13, name: 'Whiskered Cat', isHalloween: false },
+  { index: 14, name: 'Doodle Stitches', isHalloween: false },
+  { index: 15, name: 'Happy Smile', isHalloween: false },
+  // Halloween Event Mouths
+  { index: 16, name: 'Vampire Fangs', isHalloween: true },
+  { index: 17, name: 'Stitched Mouth', isHalloween: true },
+  { index: 18, name: 'Jack-o\'-Lantern Smile', isHalloween: true },
+  { index: 19, name: 'Zombie Mouth', isHalloween: true },
+  { index: 20, name: 'Skeleton Mouth', isHalloween: true },
+  { index: 21, name: 'Monster Grin', isHalloween: true },
+];
+
+export const HAT_ITEMS = [
+  { index: 0, name: 'No Hat', isHalloween: false },
+  { index: 1, name: 'Party Cone', isHalloween: false },
+  { index: 2, name: 'Pizza Slice', isHalloween: false },
+  { index: 3, name: 'Devil Horns', isHalloween: false },
+  { index: 4, name: 'Golden Halo', isHalloween: false },
+  { index: 5, name: 'Pink Cat Ears', isHalloween: false },
+  { index: 6, name: 'Wizard Hat', isHalloween: false },
+  { index: 7, name: 'Spiky Hair', isHalloween: false },
+  { index: 8, name: 'Pirate Hat', isHalloween: false },
+  { index: 9, name: 'Leafy Sprout', isHalloween: false },
+  { index: 10, name: 'Rainbow Band', isHalloween: false },
+  // Halloween Event Hats
+  { index: 11, name: 'Witch Hat', isHalloween: true },
+  { index: 12, name: 'Pumpkin Hat', isHalloween: true },
+  { index: 13, name: 'Ghost Hood', isHalloween: true },
+  { index: 14, name: 'Skeleton Hat', isHalloween: true },
+  { index: 15, name: 'Bat Wings Hat', isHalloween: true },
+  { index: 16, name: 'Spider Hat', isHalloween: true },
+  { index: 17, name: 'Haunted Crown', isHalloween: true },
+  { index: 18, name: 'Vampire Collar', isHalloween: true },
+  { index: 19, name: 'Slasher Mask', isHalloween: true },
+  { index: 20, name: 'Reaper Cowl', isHalloween: true },
+];
+
+export const EYE_COUNT = EYE_ITEMS.length;
+export const MOUTH_COUNT = MOUTH_ITEMS.length;
+export const HAT_COUNT = HAT_ITEMS.length;
+
+export function getAvatarPartInfo(part, index) {
+  if (part === 'hat') {
+    const idx = ((Number(index) || 0) % HAT_COUNT + HAT_COUNT) % HAT_COUNT;
+    return HAT_ITEMS[idx] || { index: idx, name: `Hat ${idx}`, isHalloween: false };
+  }
+  if (part === 'eyes') {
+    const idx = ((Number(index) || 0) % EYE_COUNT + EYE_COUNT) % EYE_COUNT;
+    return EYE_ITEMS[idx] || { index: idx, name: `Eyes ${idx + 1}`, isHalloween: false };
+  }
+  if (part === 'mouth') {
+    const idx = ((Number(index) || 0) % MOUTH_COUNT + MOUTH_COUNT) % MOUTH_COUNT;
+    return MOUTH_ITEMS[idx] || { index: idx, name: `Mouth ${idx + 1}`, isHalloween: false };
+  }
+  if (part === 'color' || part === 'skin') {
+    const len = AVATAR_COLORS.length;
+    const idx = ((Number(index) || 0) % len + len) % len;
+    const col = AVATAR_COLORS[idx];
+    return { index: idx, name: col?.name || 'Skin', isHalloween: Boolean(col?.isHalloween) };
+  }
+  return { index: 0, name: 'MS Paint Buddy', isHalloween: false };
+}
 
 export const HALLOWEEN_COSMETICS = [
-  // Hats
-  { id: 'witch_hat', category: 'hat', name: 'Witch Hat', index: 11, blurb: 'Pointy crooked witch hat with orange band' },
-  { id: 'pumpkin_cap', category: 'hat', name: 'Pumpkin Head', index: 12, blurb: 'Carved Jack-o\'-lantern cap' },
-  { id: 'ghost_hood', category: 'hat', name: 'Ghost Hood', index: 13, blurb: 'Ethereal floating sheet drape' },
-  { id: 'skullcap', category: 'hat', name: 'Skeleton Skullcap', index: 14, blurb: 'Exposed ivory skull cranium' },
-  { id: 'bat_wings', category: 'hat', name: 'Bat Wings', index: 15, blurb: 'Flapping black leathery bat wings' },
-  { id: 'spider_hat', category: 'hat', name: 'Spider Hat', index: 16, blurb: 'Creepy arachnid with silk strand' },
-  { id: 'cat_ears', category: 'hat', name: 'Black Cat Ears', index: 17, blurb: 'Midnight cat ears with purple fluff' },
-  { id: 'vampire_hair', category: 'hat', name: 'Vampire Cape', index: 18, blurb: 'Dracula hair with crimson-lined collar' },
-  { id: 'slasher_mask', category: 'hat', name: 'Slasher Mask', index: 19, blurb: 'Iconic hockey horror mask' },
-  { id: 'reaper_cowl', category: 'hat', name: 'Reaper Cowl', index: 20, blurb: 'Grim hooded cowl of shadow' },
-
-  // Eyes
-  { id: 'eyes_vampire', category: 'eyes', name: 'Vampire Red', index: 16, blurb: 'Crimson glowing predator eyes' },
-  { id: 'eyes_ghost', category: 'eyes', name: 'Hollow Ghost', index: 17, blurb: 'Dark void sockets with spectral pinpricks' },
-  { id: 'eyes_cat', category: 'eyes', name: 'Monster Slits', index: 18, blurb: 'Sulfur yellow cat slit pupils' },
-  { id: 'eyes_zombie', category: 'eyes', name: 'Zombie Mismatched', index: 19, blurb: 'Bloodshot capillary eye + dead eye' },
-  { id: 'eyes_demon', category: 'eyes', name: 'Demon Glow', index: 20, blurb: 'Blazing demon eyes with angled brows' },
-  { id: 'eyes_spider', category: 'eyes', name: 'Spider Cluster', index: 21, blurb: 'Cluster of 4 glossy spider eyes' },
-
-  // Mouths
-  { id: 'mouth_fangs', category: 'mouth', name: 'Vampire Fangs', index: 16, blurb: 'Sharp canine fangs dripping red' },
-  { id: 'mouth_stitched', category: 'mouth', name: 'Stitched Suture', index: 17, blurb: 'Dark Frankenstein sutures' },
-  { id: 'mouth_pumpkin', category: 'mouth', name: 'Jack Grin', index: 18, blurb: 'Carved triangle-toothed pumpkin grin' },
-  { id: 'mouth_zombie', category: 'mouth', name: 'Zombie Snarl', index: 19, blurb: 'Crooked snarl showing decayed teeth' },
-  { id: 'mouth_skull', category: 'mouth', name: 'Skeleton Teeth', index: 20, blurb: 'Exposed bone dental arcade' },
-  { id: 'mouth_wail', category: 'mouth', name: 'Ghost Wail', index: 21, blurb: 'Howling scream like Munch\'s Scream' },
-
-  // Monster Skins
-  { id: 'skin_ghost', category: 'skin', name: 'Ghostly Pale', index: 20, blurb: 'Translucent spectral skin' },
-  { id: 'skin_zombie', category: 'skin', name: 'Zombie Green', index: 21, blurb: 'Toxic undead green skin' },
-  { id: 'skin_pumpkin', category: 'skin', name: 'Pumpkin Orange', index: 22, blurb: 'Vibrant autumn pumpkin orange' },
-  { id: 'skin_vampire', category: 'skin', name: 'Vampire Alabaster', index: 23, blurb: 'Aristocratic pale vampire skin' },
-  { id: 'skin_shadow', category: 'skin', name: 'Midnight Shadow', index: 24, blurb: 'Deep supernatural void purple' },
-  { id: 'skin_rotten', category: 'skin', name: 'Rotten Gray', index: 25, blurb: 'Desaturated tombstone gray' },
-  { id: 'skin_candycorn', category: 'skin', name: 'Candy Corn Stripe', index: 26, blurb: 'Festive yellow, orange & white stripes' },
-  { id: 'skin_slime', category: 'skin', name: 'Slime Stripe', index: 27, blurb: 'Neon radioactive slime stripes' },
+  ...HAT_ITEMS.filter((i) => i.isHalloween).map((i) => ({ id: `hat_${i.index}`, category: 'hat', name: i.name, index: i.index })),
+  ...EYE_ITEMS.filter((i) => i.isHalloween).map((i) => ({ id: `eyes_${i.index}`, category: 'eyes', name: i.name, index: i.index })),
+  ...MOUTH_ITEMS.filter((i) => i.isHalloween).map((i) => ({ id: `mouth_${i.index}`, category: 'mouth', name: i.name, index: i.index })),
+  ...AVATAR_COLORS.map((c, idx) => ({ ...c, index: idx })).filter((c) => c.isHalloween).map((c) => ({ id: `skin_${c.index}`, category: 'skin', name: c.name, index: c.index })),
 ];
 
 const FRAME_W = 52;
@@ -759,15 +826,25 @@ function drawHatOrCrown(g, hatIdx, showCrown, bobY, frameIdx) {
       g.line(29, hy + 5, 36, hy + 6, 1.0, BLACK);
       g.px(26, hy + 4, RED);
       break;
-    case 17: // 🎃 Black Cat Ears
-      g.poly([[14, hy + 11], [15, hy + 1], [22, hy + 7]], 1.3, BLACK, true);
-      g.floodFill(17, hy + 6, hexToRgba('#16101f'));
-      g.poly([[16, hy + 8], [17, hy + 3], [20, hy + 6]], 0.9, BLACK, true);
-      g.floodFill(17, hy + 5, hexToRgba('#9d1aff'));
-      g.poly([[38, hy + 11], [37, hy + 1], [30, hy + 7]], 1.3, BLACK, true);
-      g.floodFill(35, hy + 6, hexToRgba('#16101f'));
-      g.poly([[36, hy + 8], [35, hy + 3], [32, hy + 6]], 0.9, BLACK, true);
-      g.floodFill(35, hy + 5, hexToRgba('#9d1aff'));
+    case 17: // Haunted Crown (Dark Purple & Orange Spiked Crown with Glowing Gem!)
+      {
+        const crownPts = [
+          [16, hy + 10],
+          [14, hy + 1],
+          [21, hy + 6],
+          [26, hy - 2],
+          [31, hy + 6],
+          [38, hy + 1],
+          [36, hy + 10],
+        ];
+        g.poly(crownPts, 1.4, BLACK, true);
+        g.floodFill(26, hy + 6, hexToRgba('#220938'));
+        g.poly(crownPts, 1.2, BLACK, true);
+        g.rect(17, hy + 7, 18, 2, hexToRgba('#ff7b00'));
+        g.brush(26, hy + 5, 1.5, frameIdx % 2 === 0 ? hexToRgba('#53e237') : hexToRgba('#ff7b00'));
+        g.px(20, hy + 6, hexToRgba('#ff7b00'));
+        g.px(32, hy + 6, hexToRgba('#ff7b00'));
+      }
       break;
     case 18: // 🎃 Vampire Hair & Cape Collar
       g.poly([[12, hy + 11], [9, hy - 2], [16, hy + 6]], 1.3, BLACK, true);

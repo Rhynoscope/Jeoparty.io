@@ -7,7 +7,7 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=3.1.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=3.3.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -106,28 +106,6 @@
               <span class="pixel-sprite sprite-arrow-right" aria-hidden="true"></span>
             </button>
           </div>
-        </div>
-
-        <!-- Spooky Wardrobe Quick Launcher -->
-        <div class="home-wardrobe-row">
-          <button type="button" id="open-spooky-wardrobe-btn" class="btn-skribbl btn-orange btn-wardrobe-pill" title="Browse and equip spooky Halloween hats, eyes, mouths & monster skins!">
-            <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
-            <span>Spooky Wardrobe</span>
-          </button>
-        </div>
-
-        <!-- Dedicated Game Mode Selector: Classic Jeoparty vs 🎃 Halloween Mayhem -->
-        <div class="home-mode-selector" role="radiogroup" aria-label="Game Mode Selection">
-          <button type="button" class="home-mode-btn active" data-mode="standard" role="radio" aria-checked="true">
-            <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
-            <span class="pixel-sprite sprite-dollar" aria-hidden="true"></span>
-            <span class="mode-btn-text">Classic Jeoparty</span>
-          </button>
-          <button type="button" class="home-mode-btn" data-mode="halloween" role="radio" aria-checked="false">
-            <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
-            <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
-            <span class="mode-btn-text">Halloween Mayhem</span>
-          </button>
         </div>
 
         <div class="home-actions-stack">
@@ -278,10 +256,6 @@
             <section class="lobby-group" aria-labelledby="lobby-settings-heading">
               <div class="group-title-row">
                 <h2 id="lobby-settings-heading" class="group-kicker">GAME SETTINGS</h2>
-                <button type="button" id="lobby-wardrobe-btn" class="btn-skribbl btn-orange btn-sm" title="Open Spooky Wardrobe">
-                  <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
-                  <span>Spooky Wardrobe</span>
-                </button>
               </div>
 
               <!-- Dedicated Game Mode Selector in Lobby -->
@@ -1184,74 +1158,9 @@
     </form>
   </dialog>
 
-  <!-- Modal: Spooky Halloween Wardrobe Dialog -->
-  <dialog id="halloween-wardrobe-dialog" class="skribbl-dialog halloween-wardrobe-dialog" closedby="any" aria-labelledby="halloween-wardrobe-title">
-    <div class="dialog-header-row">
-      <h2 id="halloween-wardrobe-title">
-        <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
-        <span>SPOOKY WARDROBE</span>
-      </h2>
-      <button type="button" class="dialog-x" id="close-wardrobe-x" aria-label="Close Wardrobe">
-        <span class="pixel-sprite sprite-close-x" aria-hidden="true"></span>
-      </button>
-    </div>
-    <p class="dialog-sub">Equip spooky MS Paint pixel-art Halloween hats, eyes, mouths &amp; monster skins!</p>
-
-    <div class="wardrobe-body-layout">
-      <!-- Live Avatar Preview in Wardrobe -->
-      <div class="wardrobe-preview-col">
-        <div id="wardrobe-avatar-preview" class="wardrobe-avatar-preview"></div>
-        <div id="wardrobe-active-item-hint" class="wardrobe-preview-label">Live Spooky Preview</div>
-        <button type="button" id="wardrobe-unequip-btn" class="btn-skribbl btn-gray btn-sm">
-          <span>Remove Hat</span>
-        </button>
-      </div>
-
-      <!-- Categories & Items Grid -->
-      <div class="wardrobe-catalog-col">
-        <div class="wardrobe-tabs" role="tablist" aria-label="Cosmetic Categories">
-          <button type="button" class="wardrobe-tab active" data-tab="hat" role="tab" aria-selected="true">
-            <span class="pixel-sprite sprite-witch-hat" aria-hidden="true"></span>
-            <span>Hats</span>
-          </button>
-          <button type="button" class="wardrobe-tab" data-tab="eyes" role="tab" aria-selected="false">
-            <span class="pixel-sprite sprite-ghost-eyes" aria-hidden="true"></span>
-            <span>Eyes</span>
-          </button>
-          <button type="button" class="wardrobe-tab" data-tab="mouth" role="tab" aria-selected="false">
-            <span class="pixel-sprite sprite-fangs" aria-hidden="true"></span>
-            <span>Mouths</span>
-          </button>
-          <button type="button" class="wardrobe-tab" data-tab="skin" role="tab" aria-selected="false">
-            <span class="pixel-sprite sprite-zombie-skin" aria-hidden="true"></span>
-            <span>Skins</span>
-          </button>
-        </div>
-
-        <div id="wardrobe-items-grid" class="wardrobe-items-grid" role="tabpanel" aria-label="Cosmetic Items">
-          <!-- Populated dynamically by app.js with item cards -->
-        </div>
-      </div>
-    </div>
-
-    <div class="dialog-actions">
-      <button type="button" id="close-wardrobe-btn" class="btn-skribbl btn-orange">DONE</button>
-    </div>
-  </dialog>
-
-  <!-- Ambient Animated Halloween Pixel Decorations (Ghosts, Bats, Spiderwebs, Jack-o'-Lanterns) -->
-  <div id="halloween-decorations" class="halloween-decorations" aria-hidden="true">
-    <div class="spooky-item ghost ghost-1"><span class="pixel-sprite sprite-ghost" aria-hidden="true"></span></div>
-    <div class="spooky-item ghost ghost-2"><span class="pixel-sprite sprite-ghost" aria-hidden="true"></span></div>
-    <div class="spooky-item bat bat-1"><span class="pixel-sprite sprite-bat" aria-hidden="true"></span></div>
-    <div class="spooky-item bat bat-2"><span class="pixel-sprite sprite-bat" aria-hidden="true"></span></div>
-    <div class="spooky-item cobweb cobweb-left"><span class="pixel-sprite sprite-cobweb" aria-hidden="true"></span></div>
-    <div class="spooky-item cobweb cobweb-right"><span class="pixel-sprite sprite-cobweb" aria-hidden="true"></span></div>
-  </div>
-
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=3.2.0"></script>
+  <script type="module" src="/js/app.js?v=3.3.0"></script>
 </body>
 </html>

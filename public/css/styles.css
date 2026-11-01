@@ -4734,114 +4734,704 @@ button:hover .sprite-plus {
 
 
 /* =========================================================================
-   HALLOWEEN MAYHEM EVENT THEME & STYLING 🎃
+   HALLOWEEN MAYHEM EVENT THEME & MS PAINT PIXEL-ART GUI (v3.3.0)
    ========================================================================= */
 
+/* 4-Frame Animated MS Paint Halloween Icon Sprites */
+.sprite-pumpkin {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/pumpkin-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.9s steps(1) infinite;
+}
+
+.sprite-candy-corn {
+  width: 15px;
+  height: 15px;
+  background-image: url('/assets/sprites/icons/candy-corn-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.95s steps(1) infinite;
+}
+
+.sprite-dollar {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/dollar-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 1.1s steps(1) infinite;
+}
+
+.sprite-ghost {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/ghost-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.85s steps(1) infinite;
+}
+
+.sprite-cauldron {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/cauldron-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.78s steps(1) infinite;
+}
+
+.sprite-bat {
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/sprites/icons/bat-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.65s steps(1) infinite;
+}
+
+/* Home Avatar Customizer Part Hint (Classic + Halloween Badge Indicator) */
+.avatar-part-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: var(--font-pixel);
+  font-size: 0.68rem;
+  color: #dce2ff;
+  background: rgba(8, 5, 36, 0.72);
+  border: 1.5px solid #000000;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-top: 2px;
+  max-width: 190px;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.avatar-part-hint.is-halloween-item {
+  background: #220938;
+  color: #ffaa00;
+  border-color: #ff7b00;
+  box-shadow: 2px 2px 0 #000000;
+}
+
+.avatar-hint-halloween-badge {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* =========================================================================
+   LOBBY EVENT MODE SELECTOR (Classic Jeoparty vs Halloween Mayhem)
+   ========================================================================= */
+.lobby-game-mode-container {
+  background: rgba(12, 8, 46, 0.75);
+  border: 2.5px solid #000000;
+  border-radius: 7px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 3px 3px 0 #000000;
+}
+
+.lobby-game-mode-container .match-pace-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mode-active-label {
+  font-family: var(--font-pixel);
+  font-size: 0.72rem;
+  font-weight: 900;
+  background: #0b3d1c;
+  color: #55ff94;
+  border: 2px solid #000000;
+  border-radius: 4px;
+  padding: 2px 8px;
+  box-shadow: 2px 2px 0 #000000;
+  letter-spacing: 0.5px;
+}
+
+body.theme-halloween .mode-active-label {
+  background: #ff7b00;
+  color: #000000;
+  border-color: #000000;
+}
+
+.game-mode-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mode-btn {
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 10px 12px;
+  border: 2.5px solid #000000;
+  border-radius: 6px;
+  background: #e8ecf7;
+  color: #1a1b2e;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.1s ease, background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.mode-btn:hover:not(:disabled) {
+  background: #ffffff;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #000000;
+}
+
+.mode-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #000000;
+}
+
+.mode-btn:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+
+.mode-btn .mode-check {
+  display: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: #000000;
+  border: 1.5px solid #ffffff;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mode-btn.active .mode-check {
+  display: inline-flex;
+}
+
+.mode-btn[data-mode="standard"].active {
+  background: #2ed573;
+  color: #052e16;
+  border: 2.5px solid #000000;
+  box-shadow: inset 0 0 0 2px #ffffff, 3px 3px 0 #000000;
+  animation: settingSelectPulse 0.22s ease-out;
+}
+
+.mode-btn[data-mode="halloween"].active {
+  background: #ff7b00;
+  color: #000000;
+  border: 2.5px solid #000000;
+  box-shadow: inset 0 0 0 2px #fff2cc, 3px 3px 0 #000000;
+  animation: settingSelectPulse 0.22s ease-out;
+}
+
+/* =========================================================================
+   USER'S EXACT UPLOADED HALLOWEEN PIXEL-ART BACKGROUND & PALETTE
+   ========================================================================= */
 body.theme-halloween,
 body[data-game-mode="halloween"] {
-  --bg-primary: #120422;
-  --bg-panel: #1e0736;
-  --bg-card: #280a48;
-  --border-color: #ff7b00;
-  --text-primary: #ffffff;
-  --text-secondary: #d1b8f0;
-  --text-gold: #ffaa00;
-  --accent-orange: #ff7b00;
-  --accent-green: #39ff14;
-  --accent-purple: #9c27b0;
-  --jeopardy-blue: #23083c;
-  --board-bg: #140326;
-  --tile-bg: #22083d;
-  --tile-hover: #3b0f64;
-  --tile-border: #ff7b00;
-  --tile-gold: #ffd54f;
-  background-color: #120422;
+  --skribbl-bg: #0f0818;
+  --skribbl-bg-deep: #140924;
+  --skribbl-panel: rgba(26, 13, 42, 0.94);
+  --skribbl-panel-solid: #1a0d2a;
+  --skribbl-stage-dark: #12071f;
+  --jeopardy-blue: #220938;
+  --jeopardy-blue-hover: #351056;
+  --jeopardy-header-blue: #ff7b00;
+  --jeopardy-gold: #ffaa00;
+  background-color: #0f0818 !important;
+  background-image: url('/assets/sprites/interface/halloween-bg.jpg') !important;
+  background-repeat: repeat !important;
+  background-size: 240px 240px !important;
+  background-position: top left !important;
+  image-rendering: pixelated !important;
+  color: #f4f0ff;
 }
 
-/* Atmospheric Halloween Background */
-body.theme-halloween {
-  background-image: 
-    radial-gradient(ellipse at 50% 0%, rgba(255, 123, 0, 0.12) 0%, transparent 65%),
-    radial-gradient(circle at 10% 90%, rgba(57, 255, 20, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 90% 85%, rgba(156, 39, 176, 0.12) 0%, transparent 45%);
+/* Top Arena Bar in Halloween Mode */
+body.theme-halloween .arena-topbar {
+  background: #1a0d2a;
+  color: #f4f0ff;
+  border: 3px solid #ff7b00;
+  box-shadow: 0 4px 0 #000000;
 }
 
-/* Halloween Header Bar */
-body.theme-halloween .game-header,
-body.theme-halloween .skribbl-top-nav {
-  background: #1b0632 !important;
-  border-bottom: 2px solid #ff7b00 !important;
-  box-shadow: 0 4px 12px rgba(255, 123, 0, 0.25) !important;
+body.theme-halloween .mini-brand {
+  color: #ff7b00;
+  text-shadow: 2px 2px 0 #000000;
 }
 
-/* Halloween Home Panels & Stage Panels */
-body.theme-halloween .screen-panel,
-body.theme-halloween .skribbl-card,
-body.theme-halloween .stage-panel,
-body.theme-halloween .sidebar-panel,
-body.theme-halloween .lobby-panel,
-body.theme-halloween .board-panel,
-body.theme-halloween .clue-card-wrap,
-body.theme-halloween .chat-panel {
-  background: #1f0738 !important;
-  border-color: #ff7b00 !important;
-  color: #ffffff !important;
+body.theme-halloween .room-code-pill {
+  background: #2b0f47;
+  color: #ffaa00;
+  border: 2.5px solid #ff7b00;
+  box-shadow: 2px 2px 0 #000000;
 }
 
-body.theme-halloween .panel-title,
-body.theme-halloween .lobby-header h2,
-body.theme-halloween .board-title {
-  color: #ffaa00 !important;
-  text-shadow: 2px 2px 0 #000000, 0 0 8px rgba(255, 170, 0, 0.4) !important;
+body.theme-halloween .room-code-pill:hover {
+  background: #ff7b00;
+  color: #000000;
 }
 
-/* Halloween Board Category Headers & Tiles */
-body.theme-halloween .j-category-header {
-  background: #ff7b00 !important;
-  color: #000000 !important;
-  border-color: #000000 !important;
-  text-shadow: none !important;
+body.theme-halloween .round-badge {
+  background: #ff7b00;
+  color: #000000;
+  border: 2px solid #000000;
+  font-weight: 800;
+}
+
+body.theme-halloween .topbar-status-text {
+  color: #f4f0ff;
+}
+
+body.theme-halloween .btn-top-tool {
+  background: #271040;
+  color: #f4f0ff;
+  border: 2.5px solid #000000;
+  box-shadow: 2px 2px 0 #000000;
+}
+
+body.theme-halloween .btn-top-tool:hover {
+  background: #ff7b00;
+  color: #000000;
+}
+
+body.theme-halloween .btn-top-leave {
+  background: #4a0e17;
+  color: #ffb3b8;
+  border-color: #000000;
+}
+
+body.theme-halloween .btn-top-leave:hover {
+  background: #e52521;
+  color: #ffffff;
+}
+
+/* Left Players Sidebar & Voice Chat Dock in Halloween Mode */
+body.theme-halloween .players-sidebar,
+body.theme-halloween .chat-sidebar {
+  background: #180c26;
+  color: #f4f0ff;
+  border: 3px solid #ff7b00;
+  box-shadow: 0 4px 0 #000000;
+}
+
+body.theme-halloween .sidebar-header {
+  background: #2a0f45;
+  color: #ffaa00;
+  border-bottom: 2.5px solid #ff7b00;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+body.theme-halloween .voice-chat-dock {
+  background: #12071f;
+  border-bottom: 2px solid #3c1763;
+  color: #f4f0ff;
+}
+
+body.theme-halloween .voice-dock-label {
+  color: #f4f0ff;
+}
+
+body.theme-halloween .voice-dock-count {
+  background: #2b0f47;
+  color: #ffaa00;
+  border: 1.5px solid #ff7b00;
+}
+
+body.theme-halloween .player-row {
+  background: #1b0e2b;
+  border-bottom: 1.5px solid #2e1549;
+  color: #f4f0ff;
+}
+
+body.theme-halloween .player-row:nth-child(even) {
+  background: #150a22;
+}
+
+body.theme-halloween .player-row.is-me {
+  background: #2b1147;
+  border-left: 3px solid #ff7b00;
+}
+
+body.theme-halloween .player-row.is-buzzed {
+  background: #472404;
+  border-left: 3px solid #ffaa00;
+}
+
+body.theme-halloween .player-row.is-solved {
+  background: #103318;
+  border-left: 3px solid #53e237;
+}
+
+body.theme-halloween .player-rank {
+  color: #b79fd6;
+}
+
+body.theme-halloween .player-name-line {
+  color: #f4f0ff;
+}
+
+body.theme-halloween .player-name-line.is-me-name {
+  color: #ffaa00;
+}
+
+body.theme-halloween .player-self-tag {
+  background: #3d1863;
+  color: #ffcf66;
+  border-color: #ff7b00;
+}
+
+body.theme-halloween .player-score {
+  color: #53e237;
+}
+
+body.theme-halloween .player-score.is-negative {
+  color: #ff5252;
+}
+
+body.theme-halloween .player-status-chip {
+  color: #ff9e40;
+}
+
+body.theme-halloween .host-bot-controls {
+  background: #12071f;
+  border-top: 2px solid #2e1549;
+}
+
+/* Right Chat Sidebar in Halloween Mode */
+body.theme-halloween .chat-line {
+  color: #f4f0ff;
+}
+
+body.theme-halloween .chat-line:nth-child(even) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.theme-halloween .chat-author {
+  color: #ffaa00;
+}
+
+body.theme-halloween .chat-line.c-join,
+body.theme-halloween .chat-line.c-success {
+  background: #113019;
+  color: #69f052;
+  border-left: 3px solid #53e237;
+}
+
+body.theme-halloween .chat-line.c-gold {
+  background: #3b2004;
+  color: #ffcc4d;
+  border-left: 3px solid #ff7b00;
+}
+
+body.theme-halloween .chat-line.c-warn {
+  background: #381d05;
+  color: #ffb74d;
+}
+
+body.theme-halloween .chat-line.c-danger,
+body.theme-halloween .chat-line.c-leave {
+  background: #3b0d14;
+  color: #ff8a8a;
+}
+
+body.theme-halloween .chat-line.c-info {
+  background: #23103d;
+  color: #d4b8ff;
+}
+
+body.theme-halloween .chat-form {
+  background: #12071f;
+  border-top: 2px solid #2e1549;
+}
+
+body.theme-halloween .skribbl-input,
+body.theme-halloween .skribbl-select {
+  background: #0f071a;
+  color: #f4f0ff;
+  border: 2.5px solid #ff7b00;
+}
+
+body.theme-halloween .skribbl-input::placeholder {
+  color: #9e94b0;
+}
+
+/* Center Stage, Lobby, Settings & Category Cards in Halloween Mode */
+body.theme-halloween .stage-panel {
+  background: rgba(24, 11, 40, 0.92);
+  border: 3px solid #ff7b00;
+  box-shadow: 0 4px 0 #000000;
+}
+
+body.theme-halloween .lobby-group {
+  background: #130821;
+  border: 2.5px solid #3c1763;
+  box-shadow: 3px 3px 0 #000000;
+}
+
+body.theme-halloween .group-kicker {
+  color: #ff9933;
+}
+
+body.theme-halloween .room-code-display {
+  color: #ffaa00;
+  text-shadow: 2px 2px 0 #000000;
+}
+
+body.theme-halloween .role-pill {
+  background: #ff7b00;
+  color: #000000;
+}
+
+body.theme-halloween .lan-hint-text {
+  color: #c9b8e0;
+}
+
+body.theme-halloween .lobby-game-mode-container {
+  background: #1b0a2e;
+  border-color: #ff7b00;
+}
+
+body.theme-halloween .pace-btn,
+body.theme-halloween .diff-btn {
+  background: #230e3b;
+  color: #e6dcf5;
+  border-color: #000000;
+}
+
+body.theme-halloween .pace-btn .diff-desc,
+body.theme-halloween .diff-btn .diff-desc {
+  color: #b7a4cf;
+}
+
+body.theme-halloween .pace-btn.active,
+body.theme-halloween .diff-btn.active {
+  background: #ff7b00;
+  color: #000000;
+  border-color: #000000;
+  box-shadow: inset 0 0 0 2px #fff2cc, 3px 3px 0 #000000;
+}
+
+body.theme-halloween .diff-btn.active .diff-desc {
+  color: #1f0d00;
+}
+
+body.theme-halloween .cat-customizer-box {
+  background: #0f061c;
+  border: 2.5px solid #3c1763;
+}
+
+body.theme-halloween .preset-chip {
+  background: #2c114a;
+  color: #f4f0ff;
+  border-color: #000000;
+}
+
+body.theme-halloween .preset-chip:hover:not(:disabled) {
+  background: #ff7b00;
+  color: #000000;
+}
+
+body.theme-halloween .preset-chip-gold {
+  background: #ffaa00;
+  color: #000000;
+}
+
+body.theme-halloween .cat-card {
+  --cat-bg: #1c0b30;
+  --cat-border: #3d1966;
+  --cat-text: #bdaed4;
+}
+
+body.theme-halloween .cat-card:hover {
+  border-color: #ff7b00;
+}
+
+body.theme-halloween .cat-card.selected,
+body.theme-halloween .cat-card:has(.cat-checkbox:checked) {
+  --cat-bg: #2e104f;
+  --cat-border: #ff7b00;
+  --cat-text: #ffffff;
+  box-shadow: 2px 2px 0 #000000;
+}
+
+body.theme-halloween .cat-card.selected .cat-check-badge,
+body.theme-halloween .cat-card:has(.cat-checkbox:checked) .cat-check-badge {
+  background: #ff7b00;
+  border-color: #000000;
+}
+
+body.theme-halloween .advanced-rules-details {
+  background: #160929;
+  border-color: #3d1966;
+}
+
+body.theme-halloween .rule-toggle-pill {
+  --pill-bg: #1c0b30;
+  --pill-border: #4a207a;
+  --pill-text: #c9b8e0;
+}
+
+body.theme-halloween .rule-toggle-pill:has(.rule-check:checked) {
+  --pill-bg: #3b1704;
+  --pill-border: #ff7b00;
+  --pill-text: #ffffff;
+}
+
+body.theme-halloween .lobby-footer-bar {
+  background: #12071f;
+  border-top: 3px solid #ff7b00;
+}
+
+/* Halloween Jeoparty Question Board & Category Headers */
+body.theme-halloween .board-panel {
+  background: rgba(15, 8, 24, 0.88);
+}
+
+body.theme-halloween .board-turn-banner {
+  background: #220938;
+  border: 2.5px solid #ff7b00;
+  color: #f4f0ff;
+}
+
+body.theme-halloween .board-turn-banner.is-my-turn {
+  background: #ff7b00;
+  border-color: #000000;
+  color: #000000;
+  font-weight: 800;
+}
+
+body.theme-halloween .j-cat-header {
+  background: #2b0c47;
+  color: #ffaa00;
+  border: 3px solid #ff7b00;
+  box-shadow: 0 3px 0 #000000;
+  text-shadow: 2px 2px 0 #000000;
 }
 
 body.theme-halloween .j-tile-btn {
-  background: #250942 !important;
-  border-color: #ff7b00 !important;
-  color: #ffd54f !important;
-  text-shadow: 1px 1px 0 #000000 !important;
-  box-shadow: 2px 2px 0 #000000 !important;
+  background: #1d0833;
+  border: 3px solid #ff7b00;
+  color: #ffaa00;
+  text-shadow: 2px 2px 0 #000000;
+  box-shadow: 0 4px 0 #000000;
 }
 
-body.theme-halloween .j-tile-btn:not(.tile-played):hover {
-  background: #3c1266 !important;
-  border-color: #ffaa00 !important;
-  box-shadow: 0 0 8px rgba(255, 170, 0, 0.5), 2px 2px 0 #000000 !important;
+body.theme-halloween .j-tile-btn.can-pick:hover {
+  background: #351059;
+  border-color: #53e237;
+  color: #ffffff;
+  box-shadow: 0 5px 0 #000000;
 }
 
-body.theme-halloween .j-tile-btn.tile-played {
-  background: #110321 !important;
-  border-color: #290847 !important;
-  color: #3d1466 !important;
-  box-shadow: none !important;
+body.theme-halloween .j-tile-used {
+  background: rgba(18, 7, 31, 0.55);
+  border: 2px dashed rgba(255, 123, 0, 0.25);
 }
 
-/* Halloween Active Clue Card */
-body.theme-halloween .clue-card {
-  background: #260a45 !important;
-  border: 3px solid #ff7b00 !important;
-  box-shadow: 6px 6px 0 #000000, 0 0 20px rgba(255, 123, 0, 0.3) !important;
-  color: #ffffff !important;
+.tile-val-candy-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  vertical-align: -1px;
 }
 
-body.theme-halloween .clue-category-pill {
-  background: #ff7b00 !important;
-  color: #000000 !important;
-  font-weight: 800 !important;
+@media (max-width: 768px) {
+  .tile-val-candy-icon {
+    width: 10px !important;
+    height: 10px !important;
+    margin-right: 2px !important;
+  }
+}
+
+/* Halloween Clue View, Daily Double (Jack-o'-Lantern Treasure), Buzzer & Results */
+body.theme-halloween .clue-panel,
+body.theme-halloween .final-panel,
+body.theme-halloween .gameover-panel,
+body.theme-halloween .intermission-panel {
+  background: rgba(18, 7, 31, 0.9);
+}
+
+body.theme-halloween .clue-card-doodle,
+body.theme-halloween .podium-card {
+  background: #1f0936;
+  border: 4px solid #ff7b00;
+  box-shadow: 0 8px 0 #000000;
+  color: #f4f0ff;
+}
+
+body.theme-halloween .clue-cat-pill {
+  background: #120521;
+  border: 2.5px solid #ff7b00;
+  color: #ffaa00;
 }
 
 body.theme-halloween .clue-value-pill {
-  background: #39ff14 !important;
-  color: #000000 !important;
-  font-weight: 800 !important;
+  background: #53e237;
+  color: #052602;
+  border: 2.5px solid #000000;
+}
+
+body.theme-halloween .clue-timer-track {
+  background: #0d0417;
+  border-color: #000000;
+}
+
+body.theme-halloween .clue-timer-fill {
+  background: linear-gradient(90deg, #53e237, #ff7b00);
+}
+
+body.theme-halloween .buzz-giant-btn {
+  background: #ff7b00;
+  color: #000000;
+  border: 4px solid #000000;
+  box-shadow: 0 7px 0 #8a3c00;
+  text-shadow: none;
+}
+
+body.theme-halloween .buzz-giant-btn:hover:not(:disabled) {
+  background: #ff9500;
+}
+
+body.theme-halloween .clue-result-box,
+body.theme-halloween .final-breakdown-wrap {
+  background: #140624;
+  border: 3px solid #ff7b00;
+}
+
+body.theme-halloween .final-category-banner {
+  background: #140624;
+  border: 2.5px solid #ff7b00;
+  color: #ffaa00;
+}
+
+body.theme-halloween .floating-reaction-bar {
+  background: #1a0b2e;
+  border-color: #ff7b00;
+}
+
+body.theme-halloween .reaction-trigger-btn {
+  background: #2b1147;
+  border-color: #ff7b00;
+}
+
+body.theme-halloween .reaction-trigger-btn:hover {
+  background: #ff7b00;
+}
+
+body.theme-halloween .skribbl-dialog {
+  background: #1c0930;
+  border: 3.5px solid #ff7b00;
+  color: #f4f0ff;
 }
 
 /* Halloween Modifier Variants */
@@ -4855,13 +5445,13 @@ body.theme-halloween .clue-value-pill {
 .mod-ghost,
 .mod-tile-ghost {
   background: #e0f7fa !important;
-  color: #006064 !important;
+  color: #004d40 !important;
   border-color: #000000 !important;
 }
 
 .mod-cauldron,
 .mod-tile-cauldron {
-  background: #39ff14 !important;
+  background: #53e237 !important;
   color: #000000 !important;
   border-color: #000000 !important;
 }
@@ -4873,29 +5463,29 @@ body.theme-halloween .clue-value-pill {
   border-color: #000000 !important;
 }
 
-/* Halloween Clue Modifier Banner */
-.clue-modifier-badge.mod-pumpkin {
-  background: #ff7b00 !important;
-  color: #000000 !important;
-  border-color: #000000 !important;
+body.theme-halloween .j-tile-btn.mod-tile-pumpkin,
+body.theme-halloween .j-tile-btn.mod-tile-ghost,
+body.theme-halloween .j-tile-btn.mod-tile-cauldron,
+body.theme-halloween .j-tile-btn.mod-tile-bat {
+  background: #1d0833 !important;
+  color: #ffaa00 !important;
+  border-color: #ff7b00 !important;
 }
 
-.clue-modifier-badge.mod-ghost {
-  background: #e0f7fa !important;
-  color: #004d40 !important;
-  border-color: #000000 !important;
+body.theme-halloween .j-tile-btn.mod-tile-pumpkin {
+  border-top: 4px solid #ff7b00 !important;
 }
 
-.clue-modifier-badge.mod-cauldron {
-  background: #39ff14 !important;
-  color: #000000 !important;
-  border-color: #000000 !important;
+body.theme-halloween .j-tile-btn.mod-tile-ghost {
+  border-top: 4px solid #e0f7fa !important;
 }
 
-.clue-modifier-badge.mod-bat {
-  background: #9c27b0 !important;
-  color: #ffffff !important;
-  border-color: #000000 !important;
+body.theme-halloween .j-tile-btn.mod-tile-cauldron {
+  border-top: 4px solid #53e237 !important;
+}
+
+body.theme-halloween .j-tile-btn.mod-tile-bat {
+  border-top: 4px solid #d05ce3 !important;
 }
 
 /* Absolute Corner Chip Rule: NEVER Obscure Value or Money on Any Screen! */
@@ -4974,352 +5564,10 @@ body.theme-halloween .clue-value-pill {
   }
 }
 
-/* Ambient Halloween Pixel Decorations */
-.halloween-decorations {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  overflow: hidden;
-}
-
-.halloween-decorations[hidden] {
-  display: none !important;
-}
-
-.spooky-item {
-  position: absolute;
-  pointer-events: none;
-}
-
-.ghost-1 {
-  top: 14%;
-  left: 3%;
-  animation: floatGhost 6s ease-in-out infinite alternate;
-  opacity: 0.8;
-}
-
-.ghost-2 {
-  top: 65%;
-  right: 4%;
-  animation: floatGhost 7.5s ease-in-out infinite alternate-reverse;
-  opacity: 0.8;
-}
-
-.bat-1 {
-  top: 9%;
-  right: 14%;
-  animation: flutterBat 4s ease-in-out infinite alternate;
-  opacity: 0.9;
-}
-
-.bat-2 {
-  top: 26%;
-  left: 6%;
-  animation: flutterBat 5.2s ease-in-out infinite alternate-reverse;
-  opacity: 0.9;
-}
-
-.spiderweb-tl {
-  top: 2px;
-  left: 2px;
-  opacity: 0.65;
-}
-
-.spiderweb-tr {
-  top: 2px;
-  right: 2px;
-  transform: scaleX(-1);
-  opacity: 0.65;
-}
-
-.jack-bl {
-  bottom: 8px;
-  left: 12px;
-  animation: pumpkinFlicker 3s infinite steps(2);
-}
-
-.jack-br {
-  bottom: 8px;
-  right: 12px;
-  animation: pumpkinFlicker 3.8s infinite steps(2);
-}
-
-@keyframes floatGhost {
-  0% { transform: translateY(0) translateX(0); }
-  50% { transform: translateY(-16px) translateX(10px); }
-  100% { transform: translateY(6px) translateX(-6px); }
-}
-
-@keyframes flutterBat {
-  0% { transform: translateY(0) rotate(-6deg); }
-  50% { transform: translateY(-14px) rotate(8deg); }
-  100% { transform: translateY(8px) rotate(-4deg); }
-}
-
-@keyframes pumpkinFlicker {
-  0%, 100% { filter: drop-shadow(0 0 3px #ff7b00); }
-  50% { filter: drop-shadow(0 0 10px #ffb300); }
-}
-
-/* Home Screen Mode Selector & Wardrobe Button */
-.home-wardrobe-row {
-  display: flex;
-  justify-content: center;
-  margin: 6px 0 12px 0;
-}
-
-.btn-wardrobe-pill {
-  background: #ff7b00 !important;
-  color: #000000 !important;
-  border: 2px solid #000000 !important;
-  box-shadow: 3px 3px 0 #000000 !important;
-  font-family: var(--font-pixel) !important;
-  font-weight: 800 !important;
-  font-size: 0.85rem !important;
-  padding: 8px 16px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  cursor: pointer;
-  border-radius: 8px !important;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
-}
-
-.btn-wardrobe-pill:hover {
-  transform: translateY(-2px);
-  box-shadow: 4px 4px 0 #000000 !important;
-  background: #ff9400 !important;
-}
-
-.home-mode-selector {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.home-mode-btn {
-  background: #d8d8d8;
-  color: #1a1a1a;
-  border: 2px solid #000000;
-  border-radius: 6px;
-  box-shadow: 2px 2px 0 #000000;
-  padding: 8px 10px;
-  font-family: var(--font-pixel);
-  font-size: 0.78rem;
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-transform: uppercase;
-  transition: all 0.1s ease;
-}
-
-.home-mode-btn:hover {
-  transform: translateY(-1px);
-}
-
-.home-mode-btn .mode-check {
-  display: none;
-}
-
-.home-mode-btn.active .mode-check {
-  display: inline-flex;
-}
-
-.home-mode-btn[data-mode="standard"].active {
-  background: #0056b3;
-  color: #ffffff;
-  border-color: #000000;
-  box-shadow: 3px 3px 0 #000000;
-}
-
-.home-mode-btn[data-mode="halloween"].active {
-  background: #ff7b00;
-  color: #000000;
-  border-color: #000000;
-  box-shadow: 3px 3px 0 #000000;
-}
-
-/* Spooky Halloween Wardrobe Dialog */
-.halloween-wardrobe-dialog {
-  max-width: 680px;
-  width: 95%;
-  background: #1c0833 !important;
-  border: 3px solid #ff7b00 !important;
-  box-shadow: 6px 6px 0 #000000, 0 0 24px rgba(255, 123, 0, 0.3) !important;
-  color: #ffffff !important;
-  padding: 18px !important;
-}
-
-.halloween-wardrobe-dialog .dialog-header-row h2 {
-  color: #ffaa00 !important;
-  font-family: var(--font-pixel);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.wardrobe-body-layout {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 16px;
-  margin: 14px 0;
-}
-
-@media (max-width: 620px) {
-  .wardrobe-body-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.wardrobe-preview-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #110321;
-  border: 2px solid #ff7b00;
-  border-radius: 6px;
-  box-shadow: 2px 2px 0 #000000;
-  padding: 14px;
-  text-align: center;
-  gap: 10px;
-}
-
-.wardrobe-avatar-preview {
-  width: 110px;
-  height: 110px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.wardrobe-preview-label {
-  font-family: var(--font-pixel);
-  font-size: 0.72rem;
-  color: #ffaa00;
-  line-height: 1.2;
-}
-
-.wardrobe-catalog-col {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-.wardrobe-tabs {
-  display: flex;
-  gap: 6px;
-  border-bottom: 2px solid #ff7b00;
-  padding-bottom: 6px;
-  overflow-x: auto;
-}
-
-.wardrobe-tab {
-  background: #2b0b4a;
-  color: #ffffff;
-  border: 2px solid #000000;
-  box-shadow: 2px 2px 0 #000000;
-  border-radius: 4px;
-  font-family: var(--font-pixel);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 6px 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: transform 0.08s ease;
-}
-
-.wardrobe-tab.active {
-  background: #ff7b00;
-  color: #000000;
-  border-color: #ffffff;
-}
-
-.wardrobe-tab:hover {
-  transform: translateY(-1px);
-}
-
-.wardrobe-items-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 10px;
-  max-height: 340px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.wardrobe-item-card {
-  background: #250942;
-  border: 2px solid #3c1269;
-  border-radius: 6px;
-  box-shadow: 2px 2px 0 #000000;
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: all 0.1s ease;
-}
-
-.wardrobe-item-card:hover {
-  border-color: #ff7b00;
-  background: #340f5a;
-  transform: translateY(-2px);
-}
-
-.wardrobe-item-card.is-equipped {
-  border-color: #39ff14 !important;
-  box-shadow: 0 0 8px rgba(57, 255, 20, 0.4), 2px 2px 0 #000000 !important;
-  background: #172b1b !important;
-}
-
-.wardrobe-item-avatar {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.wardrobe-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.wardrobe-item-title {
-  font-family: var(--font-pixel);
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1.2;
-}
-
-.wardrobe-item-blurb {
-  font-size: 0.62rem;
-  color: #c9b3e6;
-  line-height: 1.2;
-  margin-top: 2px;
-}
-
 /* Responsive Overrides for Mobile Phones */
 @media (max-width: 768px) {
-  .home-mode-selector {
+  .game-mode-buttons {
     grid-template-columns: 1fr;
-  }
-
-  .wardrobe-items-grid {
-    grid-template-columns: 1fr;
-    max-height: 240px;
   }
 
   /* Guarantee dollar and candy amounts are 100% centered and legible */
