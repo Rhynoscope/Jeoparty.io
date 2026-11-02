@@ -527,105 +527,30 @@ class GameShow {
     }
   }
 
-  /* --------------------------- CLUE TYPING ----------------------------- */
+  /* --------------------------- CLUE DISPLAY (FULL TEXT IMMEDIATELY) ----------------------------- */
 
-  resolveTypingSource(room) {
-    if (CLUE_PHASES.has(room.phase) && room.activeClue) {
-      const ac = room.activeClue;
-      const el = document.getElementById('clue-prompt-text');
-      if (!el) return null;
-      if (room.phase === 'daily_double_wager') return { el, full: '', reveal: null, key: 'dd_wager' };
-      const full = ac.clueText || ac.clue || '';
-      if (!full) return { el, full: '', reveal: null, key: 'empty' };
-      return {
-        el,
-        full,
-        reveal: ac.reveal || null,
-        key: `clue:${room.phase === 'clue_result' ? 'result' : room.phase}:${ac.col}:${ac.row}`,
-      };
-    }
-    if (room.phase === 'final_clue' && room.finalState) {
-      const el = document.getElementById('final-clue-text');
-      if (!el) return null;
-      return {
-        el,
-        full: room.finalState.clue || '',
-        reveal: room.finalState.reveal || null,
-        key: 'final_clue',
-      };
-    }
-    return null;
-  }
-
-  visibleWords(reveal, nowServer) {
-    if (!reveal || !reveal.totalWords) return Infinity;
-    if (this.ctx.reduceMotion) return reveal.totalWords;
-    if (reveal.frozenWords !== null && reveal.frozenWords !== undefined) {
-      return Math.max(0, Math.min(reveal.totalWords, reveal.frozenWords));
-    }
-    if (reveal.complete) return reveal.totalWords;
-    const elapsed = nowServer - Number(reveal.startedAt || 0);
-    if (elapsed <= 0) return Number(reveal.baseWords) || 0;
-    let n = 0;
-    const delays = reveal.wordDelays || [];
-    while (n < delays.length && delays[n] <= elapsed) n++;
-    return Math.min(reveal.totalWords, (Number(reveal.baseWords) || 0) + n);
-  }
-
-  renderTyping(nowServer) {
+  renderTyping() {
+    // Progressive typing removed: full questions appear immediately upon selection.
     const room = this.room;
     if (!room) return;
-    const source = this.resolveTypingSource(room);
-    if (!source) {
-      this.typing.el = null;
-      this.typing.key = null;
-      return;
-    }
-    if (source.key !== this.typing.key || source.el !== this.typing.el) {
-      this.typing.key = source.key;
-      this.typing.el = source.el;
-      this.typing.full = source.full;
-      this.typing.lastText = null;
-    }
-    this.typing.full = source.full;
-
-    if (!source.full) {
-      if (this.typing.lastText !== '') {
-        source.el.textContent = '';
-        this.typing.lastText = '';
+    const ac = room.activeClue;
+    const clueEl = document.getElementById('clue-prompt-text');
+    if (clueEl) {
+      clueEl.dataset.typing = '0';
+      clueEl.classList.remove('is-frozen');
+      clueEl.classList.add('is-complete');
+      if (ac && room.phase !== 'daily_double_wager' && !clueEl.textContent) {
+        clueEl.textContent = ac.clueText || ac.clue || '';
       }
-      source.el.dataset.typing = '0';
-      source.el.classList.remove('is-frozen', 'is-complete');
-      return;
     }
-
-    const visible = this.visibleWords(source.reveal, nowServer);
-    let text = source.full;
-    if (Number.isFinite(visible) && visible < source.reveal.totalWords) {
-      const offsets = source.reveal.wordOffsets || [];
-      const cut = visible > 0 ? offsets[visible - 1] || 0 : 0;
-      text = source.full.slice(0, cut).replace(/\s+$/, '');
-    }
-
-    const frozen =
-      source.reveal &&
-      source.reveal.frozenWords !== null &&
-      source.reveal.frozenWords !== undefined &&
-      source.reveal.frozenWords < source.reveal.totalWords &&
-      !source.reveal.complete;
-    const typing =
-      source.reveal &&
-      !source.reveal.complete &&
-      !frozen &&
-      Number(visible) < source.reveal.totalWords;
-
-    source.el.dataset.typing = typing ? '1' : '0';
-    source.el.classList.toggle('is-frozen', Boolean(frozen));
-    source.el.classList.toggle('is-complete', Boolean(source.reveal && !typing && !frozen));
-
-    if (text !== this.typing.lastText) {
-      this.typing.lastText = text;
-      source.el.textContent = text;
+    const finalEl = document.getElementById('final-clue-text');
+    if (finalEl) {
+      finalEl.dataset.typing = '0';
+      finalEl.classList.remove('is-frozen');
+      finalEl.classList.add('is-complete');
+      if (room.finalState && room.phase === 'final_clue' && !finalEl.textContent) {
+        finalEl.textContent = room.finalState.clue || room.finalState.clueText || '';
+      }
     }
   }
 

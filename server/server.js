@@ -1131,65 +1131,87 @@ function addBotToRoom(room) {
 /**
  * Dynamic bot trivia performance model tuned across Easy, Medium, Hard, and Champion.
  * IMPORTANT: Personality and trivia difficulty are strictly independent systems.
- * Also applies subtle human-like pacing in larger rooms (4–10 players) so no single
- * bot locks out every participant on every consecutive question.
+ * Human fairness: All bots are constrained by realistic human reading speeds so they
+ * NEVER buzz in before a human player could reasonably read and parse the complete clue.
  */
-function getBotSkillProfile(bot, room, row = 0, totalRows = 5) {
+function getBotSkillProfile(bot, room, row = 0, totalRows = 5, clueText = '') {
   const difficulty = (bot?.botDifficulty || room?.settings?.botDifficulty || 'medium').toLowerCase();
   const rowRatio = totalRows > 1 ? Math.max(0, Math.min(1, row / (totalRows - 1))) : 0;
+
+  // Real human reading time modeling:
+  // Trivia clues average 10–25 words. Humans read for comprehension at ~220–250 WPM (~240–270ms/word).
+  // A minimum comprehension window of 1800ms is strictly enforced so bots NEVER buzz before
+  // humans can even perceive and parse the question.
+  const clueWords = String(clueText || room?.activeClue?.clueObj?.clue || '').trim().split(/\s+/).filter(Boolean).length;
+  const baseReadingMs = Math.max(1800, Math.min(5000, clueWords * 230));
 
   let baseAccuracy = 0.65;
   let rowPenalty = 0.16;
   let buzzProbability = 0.68;
-  let minReactionMs = 1200;
-  let maxReactionMs = 3000;
+  let readingMultiplier = 1.0;
+  let minHesitationMs = 1400;
+  let maxHesitationMs = 2600;
   let answerDelayMinMs = 1500;
-  let answerDelayMaxMs = 2800;
+  let answerDelayMaxMs = 2600;
   let wagerAggressiveness = 0.50;
+  let reboundMinMs = 2000;
+  let reboundMaxMs = 3400;
 
   if (difficulty === 'easy') {
-    // Easy: ~35–50% accuracy, relaxed/hesitant buzzer, conservative wagers, struggles on higher value rows
-    baseAccuracy = 0.44;
-    rowPenalty = 0.22;
-    buzzProbability = 0.46;
-    minReactionMs = 1800;
-    maxReactionMs = 4000;
-    answerDelayMinMs = 2000;
-    answerDelayMaxMs = 3800;
+    // Easy: ~35–45% accuracy, slow/hesitant reader (1.25x), generous reaction buffer (2.4s–4.6s), struggles on high rows
+    baseAccuracy = 0.40;
+    rowPenalty = 0.20;
+    buzzProbability = 0.44;
+    readingMultiplier = 1.25;
+    minHesitationMs = 2400;
+    maxHesitationMs = 4600;
+    answerDelayMinMs = 2200;
+    answerDelayMaxMs = 3600;
     wagerAggressiveness = 0.30;
+    reboundMinMs = 3200;
+    reboundMaxMs = 5200;
   } else if (difficulty === 'medium') {
-    // Medium: ~55–70% accuracy, balanced buzzer and wagers
+    // Medium: ~58–68% accuracy, normal human reader (1.0x), balanced buzzer (1.4s–2.6s), solid trivia
     baseAccuracy = 0.65;
-    rowPenalty = 0.16;
+    rowPenalty = 0.14;
     buzzProbability = 0.68;
-    minReactionMs = 1200;
-    maxReactionMs = 3000;
+    readingMultiplier = 1.0;
+    minHesitationMs = 1400;
+    maxHesitationMs = 2600;
     answerDelayMinMs = 1500;
-    answerDelayMaxMs = 2800;
+    answerDelayMaxMs = 2500;
     wagerAggressiveness = 0.50;
+    reboundMinMs = 2000;
+    reboundMaxMs = 3400;
   } else if (difficulty === 'hard') {
-    // Hard: ~75–85% accuracy, fast & decisive buzzer, smart wagers
+    // Hard: ~78–84% accuracy, brisk reader (0.78x), quick buzzer (0.75s–1.55s), smart wagers, beatable
     baseAccuracy = 0.82;
-    rowPenalty = 0.10;
+    rowPenalty = 0.08;
     buzzProbability = 0.84;
-    minReactionMs = 850;
-    maxReactionMs = 2300;
+    readingMultiplier = 0.78;
+    minHesitationMs = 750;
+    maxHesitationMs = 1550;
     answerDelayMinMs = 1000;
-    answerDelayMaxMs = 2200;
+    answerDelayMaxMs = 1800;
     wagerAggressiveness = 0.75;
+    reboundMinMs = 1200;
+    reboundMaxMs = 2200;
   } else if (difficulty === 'champion') {
-    // Champion: ~85–93% accuracy, expert timing 0.65–1.9s, aggressive wagers, sharp but beatable
-    baseAccuracy = 0.92;
-    rowPenalty = 0.05;
-    buzzProbability = 0.94;
-    minReactionMs = 650;
-    maxReactionMs = 1900;
+    // Champion: ~88–93% accuracy, speed reader (0.62x), sharp buzzer (0.45s–0.95s), formidable yet humanly beatable
+    baseAccuracy = 0.91;
+    rowPenalty = 0.04;
+    buzzProbability = 0.93;
+    readingMultiplier = 0.62;
+    minHesitationMs = 450;
+    maxHesitationMs = 950;
     answerDelayMinMs = 750;
-    answerDelayMaxMs = 1750;
+    answerDelayMaxMs = 1400;
     wagerAggressiveness = 0.90;
+    reboundMinMs = 750;
+    reboundMaxMs = 1400;
   }
 
-  // Fair multi-player participation pacing: prevent one hot bot from monopolizing 4-10 player rooms
+  // Fair multi-player participation pacing: prevent one hot bot from monopolizing 4–10 player rooms
   const activeCount = getActivePlayerCount(room);
   const botStreak = bot?.stats?.currentStreak || 0;
   const justWonLast = room?.pickerId === bot?.id && botStreak >= 1;
@@ -1207,8 +1229,6 @@ function getBotSkillProfile(bot, room, row = 0, totalRows = 5) {
       crowdReactionOffsetMs += Math.random() * 420;
     }
   }
-  // Longer/harder clues naturally take slightly longer for humans AND bots to read
-  const readingOffsetMs = Math.round(rowRatio * 450);
 
   const effectiveAccuracy = Math.max(0.18, Math.min(0.95, baseAccuracy - rowRatio * rowPenalty));
   const effectiveBuzz = Math.max(
@@ -1216,19 +1236,28 @@ function getBotSkillProfile(bot, room, row = 0, totalRows = 5) {
     Math.min(0.98, buzzProbability - rowRatio * (rowPenalty * 0.5) + streakBuzzMod)
   );
 
-  const reactionMs =
-    minReactionMs +
-    Math.random() * (maxReactionMs - minReactionMs) +
-    crowdReactionOffsetMs +
-    readingOffsetMs;
-  const answerDelayMs = answerDelayMinMs + Math.random() * (answerDelayMaxMs - answerDelayMinMs);
+  const reactionMs = Math.round(
+    baseReadingMs * readingMultiplier +
+    minHesitationMs +
+    Math.random() * (maxHesitationMs - minHesitationMs) +
+    crowdReactionOffsetMs
+  );
+  const reboundMs = Math.round(
+    reboundMinMs +
+    Math.random() * (reboundMaxMs - reboundMinMs) +
+    crowdReactionOffsetMs
+  );
+  const answerDelayMs = Math.round(
+    answerDelayMinMs + Math.random() * (answerDelayMaxMs - answerDelayMinMs)
+  );
 
   return {
     difficulty,
     accuracy: effectiveAccuracy,
     buzzProbability: effectiveBuzz,
-    reactionMs: Math.round(reactionMs),
-    answerDelayMs: Math.round(answerDelayMs),
+    reactionMs,
+    reboundMs,
+    answerDelayMs,
     wagerAggressiveness,
   };
 }
@@ -2090,10 +2119,8 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
     if (!ac.hintMask) {
       ac.hintMask = renderMaskFromRevealed(ac.clueObj.answer, ac.revealedLetterIndices);
     }
-    // Server-scheduled word-by-word reveal. Typing and the countdown start
-    // together, and the schedule accelerates as the timer runs down.
-    ac.reveal = buildRevealPlan(ac.clueObj.clue, durationMs);
-    // Let the tile announcement land first, then prompt everyone to read.
+    // Full question appears immediately: no word-by-word typing plans
+    ac.reveal = null;
     scheduleRoomTimer(
       room,
       () => {
@@ -2103,9 +2130,6 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
       },
       Math.min(2600, Math.max(900, durationMs * 0.4))
     );
-  } else if (ac.reveal) {
-    // Wrong answer / departed player: resume typing from the frozen word.
-    resumeReveal(ac.reveal, durationMs, Date.now());
   }
   broadcastRoomState(room);
 
@@ -2121,13 +2145,23 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
     }, durationMs * 0.5);
   }
 
+  // Fair bot buzzer scheduling:
+  // - First open: bots must wait for realistic human reading time + difficulty hesitation
+  // - Rebound after wrong answer: bots wait for realistic rebound hesitation
   for (const bot of eligible.filter((p) => p.isBot)) {
-    const botProf = getBotSkillProfile(bot, room, ac.row, room.settings.cluesPerCat || 5);
+    const botProf = getBotSkillProfile(
+      bot,
+      room,
+      ac.row,
+      room.settings.cluesPerCat || 5,
+      ac.clueObj.clue
+    );
     const willBuzz = Math.random() < botProf.buzzProbability;
     if (willBuzz) {
-      const reactionMs = Math.max(500, Math.min(durationMs - 400, botProf.reactionMs));
+      const waitMs = isFirstOpen ? botProf.reactionMs : botProf.reboundMs;
+      const reactionMs = Math.max(isFirstOpen ? 800 : 500, Math.min(durationMs - 400, waitMs));
       scheduleRoomTimer(room, () => {
-        if (room.phase === 'clue_open') {
+        if (room.phase === 'clue_open' && !ac.attemptedIds.has(bot.id)) {
           handlePlayerBuzz(room, bot);
         }
       }, reactionMs);
@@ -2136,7 +2170,6 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
 
   scheduleRoomTimer(room, () => {
     if (room.phase !== 'clue_open') return;
-    completeReveal(ac.reveal);
     sendChat(room, {
       color: 'warn',
       text: `Time's up! The answer was: ${ac.clueObj.answer}`,
@@ -2178,10 +2211,7 @@ function handlePlayerBuzz(room, player) {
   const buzzAnswerMs = 11000;
   room.phaseEndsAt = Date.now() + buzzAnswerMs;
 
-  // Freeze the word-by-word reveal exactly where the server says it is. Every
-  // client renders the same frozen word count while this contestant answers.
-  const frozenWords = freezeReveal(ac.reveal, Date.now());
-  ac.frozenWordCount = frozenWords;
+  ac.frozenWordCount = null;
 
   sendChat(room, {
     color: 'info',

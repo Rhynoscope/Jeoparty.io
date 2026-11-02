@@ -151,7 +151,7 @@ const FRAME_COUNT = 4;
 
 const spriteUrlCache = new Map();
 
-function hexToRgba(h) {
+export function hexToRgba(h) {
   const s = h.replace('#', '');
   return [
     parseInt(s.slice(0, 2), 16),
@@ -161,15 +161,15 @@ function hexToRgba(h) {
   ];
 }
 
-const BLACK = [0, 0, 0, 255];
-const WHITE = [255, 255, 255, 255];
-const RED = [255, 42, 42, 255];
-const PINK = [255, 105, 180, 255];
-const GOLD = [255, 217, 0, 255];
-const CYAN = [0, 238, 255, 255];
-const LIME = [71, 230, 46, 255];
+export const BLACK = [0, 0, 0, 255];
+export const WHITE = [255, 255, 255, 255];
+export const RED = [255, 42, 42, 255];
+export const PINK = [255, 105, 180, 255];
+export const GOLD = [255, 217, 0, 255];
+export const CYAN = [0, 238, 255, 255];
+export const LIME = [71, 230, 46, 255];
 
-class MiniPixelGrid {
+export class MiniPixelGrid {
   constructor(w, h) {
     this.w = w;
     this.h = h;
@@ -880,7 +880,7 @@ function drawHatOrCrown(g, hatIdx, showCrown, bobY, frameIdx) {
   }
 }
 
-function drawPixelStar(g, cx, cy, arm, fillCol) {
+export function drawPixelStar(g, cx, cy, arm, fillCol) {
   g.line(cx - arm, cy, cx + arm, cy, 1.1, BLACK);
   g.line(cx, cy - arm, cx, cy + arm, 1.1, BLACK);
   g.line(cx - arm + 1, cy, cx + arm - 1, cy, 0.7, fillCol);

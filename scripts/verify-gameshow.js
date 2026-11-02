@@ -308,42 +308,15 @@ async function runMainMatch() {
         continue;
       }
       const alreadyTried = ac.attemptedIds?.includes(alice.playerId);
-      if (buzzed.has(key) && alreadyTried && ac.reveal && !resumedChecks.has(key)) {
-        resumedChecks.add(key);
-        if (
-          ac.reveal.frozenWords === null &&
-          ac.reveal.baseWords >= 1 &&
-          ac.reveal.wordDelays.length === ac.reveal.totalWords - ac.reveal.baseWords
-        ) {
-          seen.resumes.add(key);
-          check(
-            'incorrect answer resumes typing from the frozen word',
-            true,
-            `base=${ac.reveal.baseWords} remaining=${ac.reveal.wordDelays.length}`
-          );
-        } else {
-          check(
-            'incorrect answer resumes typing from the frozen word',
-            false,
-            JSON.stringify(ac.reveal)
-          );
-        }
-      }
       if (!buzzed.has(key) && !alreadyTried) {
-        if (ac.reveal && !planChecks.has(key) && ac.reveal.baseWords === 0) {
+        if (!planChecks.has(key)) {
           planChecks.add(key);
-          const n = ac.reveal.totalWords;
-          const delays = ac.reveal.wordDelays;
+          const clueStr = ac.clueText || ac.clue || '';
           check(
-            'server plans word-by-word clue typing',
-            n > 0 && delays.length === n && delays.every((d, i) => i === 0 || d > delays[i - 1]),
-            `${n} words, last word at ${delays[n - 1]}ms`
+            'full question appears immediately (typing removed)',
+            clueStr.length > 5 && (ac.reveal === null || ac.reveal === undefined),
+            `clue="${clueStr.slice(0, 30)}..." reveal=${ac.reveal}`
           );
-          if (n >= 3) {
-            const firstGap = delays[0];
-            const lastGap = delays[n - 1] - delays[n - 2];
-            check('typing accelerates as the timer runs down', lastGap < firstGap, `${firstGap}ms -> ${lastGap}ms`);
-          }
         }
         buzzed.add(key);
         alice.send({ type: 'buzz' });
@@ -354,18 +327,6 @@ async function runMainMatch() {
 
     if (room.phase === 'clue_buzzed' && room.activeClue?.buzzedPlayerId === alice.playerId) {
       const ac = room.activeClue;
-      if (ac.reveal && Number.isInteger(ac.reveal.frozenWords) && !seen.freeze.has(key)) {
-        seen.freeze.add(key);
-        const bobFrozen =
-          bob.room?.activeClue?.reveal?.frozenWords ?? null;
-        check(
-          'buzzer freezes the question reveal for everyone',
-          ac.reveal.frozenWords >= 1 &&
-            ac.reveal.frozenWords <= ac.reveal.totalWords &&
-            bobFrozen === ac.reveal.frozenWords,
-          `frozen at ${ac.reveal.frozenWords}/${ac.reveal.totalWords} words (both clients)`
-        );
-      }
       if (!submitted.has(key)) {
         submitted.add(key);
         const answer = ANSWER_MAP.get(ac.clueText) || '';
@@ -498,9 +459,9 @@ async function runMainMatch() {
         finalClueText = fs.clue;
         finalCorrectAnswer = ANSWER_MAP.get(fs.clue) || null;
         check(
-          'final clue types word-by-word too',
-          Boolean(fs.reveal && fs.reveal.totalWords > 0 && fs.reveal.wordDelays.length === fs.reveal.totalWords),
-          `${fs.reveal?.totalWords} words`
+          'final clue appears immediately (typing removed)',
+          Boolean(fs.clue && fs.clue.length > 5 && (fs.reveal === null || fs.reveal === undefined)),
+          `clue="${fs.clue.slice(0, 30)}..."`
         );
         check(
           'final clue is hidden until after the wheel + wagers',
@@ -529,8 +490,7 @@ async function runMainMatch() {
   check('match reaches game over', sawGameOver && room.phase === 'game_over', room.phase);
   // The champion announcement is intentionally delayed until after the reveal.
   await sleep(3400);
-  check('typing froze on buzzed questions', seen.freeze.size >= 4, `${seen.freeze.size} freezes`);
-  check('typing resumed after incorrect answers', seen.resumes.size >= 1, `${seen.resumes.size} resumes`);
+  check('full question displayed immediately on all clues', planChecks.size >= 4, `${planChecks.size} clues verified`);
 
   // Streak bonus (server calculated, appears in the awards stream)
   const aliceAwards = (room.awards || []).filter((a) => a.playerId === alice.playerId);
@@ -638,9 +598,9 @@ async function runHalloweenMatch() {
   const phase = h.room.phase;
   const ac = h.room.activeClue;
   check(
-    'Halloween clue presentation (typing plan) works',
+    'Halloween clue presentation works without typing reveal delay',
     ['clue_open', 'daily_double_wager', 'clue_chaos', 'clue_result'].includes(phase) &&
-      (phase === 'daily_double_wager' || phase === 'clue_result' || !ac || Boolean(ac.reveal)),
+      (phase === 'daily_double_wager' || phase === 'clue_result' || !ac || Boolean(ac.clueText || ac.clue)),
     phase
   );
 

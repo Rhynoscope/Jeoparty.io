@@ -12,9 +12,9 @@ const STAGE_W = 1600;
 const STAGE_H = 900;
 const MAX_PODIUMS = 10;
 
-const WIDE = { x: 800, y: 470, zoom: 1, rotY: 0, rotX: -1.5 };
-const HOST_TARGET = { x: 220, y: 610, zoom: 1.8, rotY: 2, rotX: -1 };
-const BOARD_TARGET = { x: 1120, y: 330, zoom: 1.55, rotY: 0, rotX: -1.5 };
+const WIDE = { x: 800, y: 470, zoom: 1, rotY: 0, rotX: 0 };
+const HOST_TARGET = { x: 220, y: 610, zoom: 1.8, rotY: 0, rotX: 0 };
+const BOARD_TARGET = { x: 1120, y: 330, zoom: 1.55, rotY: 0, rotX: 0 };
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const easeInOutCubic = (t) =>
@@ -362,6 +362,10 @@ class CinematicCamera {
 
     this.clearPodFocus();
     this.world.querySelector('.cine-host')?.classList.remove('is-talking');
+    const cinePrevHostFig = this.world.querySelector('.cine-host-figure');
+    if (cinePrevHostFig) {
+      cinePrevHostFig.innerHTML = buildHostSVG('idle', !!intro.halloween, { size: 140 });
+    }
     this.world.querySelector('.cine-board')?.classList.remove('is-active');
     this.els.lt.classList.remove('is-hidden');
     sfx.play('cine_shot');
@@ -380,10 +384,14 @@ class CinematicCamera {
       this.els.live.textContent = 'ON AIR';
       this.els.step.textContent = 'YOUR HOST';
       this.world.querySelector('.cine-host')?.classList.add('is-talking');
+      const cineHostFig = this.world.querySelector('.cine-host-figure');
+      if (cineHostFig) {
+        cineHostFig.innerHTML = buildHostSVG('talking', !!intro.halloween, { size: 140 });
+      }
       this.showLowerThird({
         name: intro.hostName || 'Jeoparty Host',
         line: step.line || '',
-        avatar: buildHostSVG(),
+        avatar: buildHostSVG('talking', !!intro.halloween, { size: 56 }),
         tag: 'YOUR HOST',
       });
       this.speakHost(step);
@@ -407,7 +415,7 @@ class CinematicCamera {
       this.showLowerThird({
         name: intro.hostName || 'Jeoparty Host',
         line: step.line || '',
-        avatar: buildHostSVG(),
+        avatar: buildHostSVG('waving', !!intro.halloween, { size: 56 }),
         tag: 'THE BOARD',
       });
       // The server announces this exact line when the intro hands over to the
@@ -440,20 +448,19 @@ class CinematicCamera {
         x: base.x,
         y: base.y - 55 + yShift,
         zoom: reduced ? 1.24 : 1.6 * mobileBoost,
-        rotY: reduced ? 0 : mobile ? 0 : 2.5,
-        rotX: reduced ? 0 : -1,
+        rotY: 0,
+        rotX: 0,
       };
     }
     if (step.kind === 'player') {
       const base = positions.podiums.get(step.playerId);
       if (!base) return { ...WIDE, zoom: mobile ? 1.2 : 1 };
-      const dir = (base.x - STAGE_W / 2) / (STAGE_W / 2);
       return {
         x: base.x,
         y: base.y - 150 + yShift,
         zoom: reduced ? 1.28 : 1.68 * mobileBoost,
-        rotY: reduced ? 0 : clamp(dir * 3.2, -3.2, 3.2),
-        rotX: reduced ? 0 : 0,
+        rotY: 0,
+        rotX: 0,
       };
     }
     if (step.kind === 'board') {
@@ -463,14 +470,15 @@ class CinematicCamera {
         y: base.y + yShift * 0.4,
         zoom: reduced ? 1.22 : 1.55 * (mobile ? 1.25 : 1),
         rotY: 0,
-        rotX: reduced ? 0 : -1.5,
+        rotX: 0,
       };
     }
     return {
       ...WIDE,
       x: mobile ? 650 : WIDE.x,
       zoom: mobile ? 1.18 : 1,
-      rotX: reduced ? 0 : WIDE.rotX,
+      rotX: 0,
+      rotY: 0,
     };
   }
 
@@ -727,7 +735,7 @@ class CinematicCamera {
     host.className = 'cine-host';
     host.innerHTML = `
       <span class="cine-host-spot" aria-hidden="true"></span>
-      <div class="cine-host-figure">${buildHostSVG()}</div>
+      <div class="cine-host-figure">${buildHostSVG('idle', !!room.halloween, { size: 140 })}</div>
       <div class="cine-host-plate">JEOPARTY HOST</div>
     `;
     actors.appendChild(host);
@@ -883,9 +891,7 @@ class CinematicCamera {
     this.world.style.transform = `translate(${(vw / 2 - x).toFixed(1)}px, ${(
       vh / 2 -
       y
-    ).toFixed(1)}px) scale(${z.toFixed(4)}) rotateY(${this.cam.rotY.toFixed(
-      2
-    )}deg) rotateX(${this.cam.rotX.toFixed(2)}deg)`;
+    ).toFixed(1)}px) scale(${z.toFixed(4)})`;
 
     // Parallax depth: background layers lag behind the camera target.
     const dx = x - STAGE_W / 2;

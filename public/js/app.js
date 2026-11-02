@@ -2412,10 +2412,13 @@ function renderClueStage(room, amHost, phaseChanged) {
   }
 
   // 2. Clue Text & Progressive Letter Mask
-  // The word-by-word typing is owned by the game-show presentation layer so the
-  // reveal stays perfectly in sync with the server's countdown and buzzer freezes.
+  // The full question appears immediately so players have full comprehension before buzzing.
   el.clueTextArea.hidden = isDDWager;
-  if (isDDWager) el.cluePromptText.textContent = '';
+  if (isDDWager) {
+    el.cluePromptText.textContent = '';
+  } else {
+    el.cluePromptText.textContent = ac.clueText || ac.clue || '';
+  }
   if (ac.hintMask) {
     el.skribblHintMask.hidden = false;
     el.skribblHintMask.textContent = ac.hintMask;
@@ -2607,7 +2610,9 @@ function renderFinalStage(room, phaseChanged) {
   }
 
   if (isClue) {
-    // Typing is handled by the game-show layer (finalState.reveal plan).
+    if (el.finalClueText) {
+      el.finalClueText.textContent = fsState.clue || fsState.clueText || '';
+    }
     const locked = fsState.answerLockedIds.includes(state.playerId);
     el.finalAnswerForm.hidden = locked;
     el.finalAnswerLockedMsg.hidden = !locked;
