@@ -737,63 +737,6 @@ summary:focus-visible {
   gap: 8px;
 }
 
-/* Skribbl-Style 3 Bottom Info Cards (About, News, How to Play) */
-.home-info-cards-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  width: min(780px, 94vw);
-  margin-top: 14px;
-}
-
-.home-info-card {
-  background: var(--skribbl-panel);
-  border: 2.5px solid #000;
-  border-radius: 8px;
-  padding: 12px 14px;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
-  color: #e5ebff;
-  font-size: 0.82rem;
-  line-height: 1.38;
-}
-
-.home-info-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 2px dashed rgba(255, 255, 255, 0.18);
-}
-
-.home-info-card-header h3 {
-  font-family: var(--font-pixel);
-  font-size: 0.95rem;
-  color: var(--jeopardy-gold);
-  margin: 0;
-  text-shadow: 1px 1px 0 #000;
-}
-
-.home-info-card p {
-  margin: 0;
-  color: #cfd8ff;
-}
-
-.home-info-card ul,
-.home-info-card ol {
-  margin: 0;
-  padding-left: 18px;
-  color: #cfd8ff;
-}
-
-.home-info-card li {
-  margin-bottom: 4px;
-}
-
-.home-info-card strong {
-  color: #ffffff;
-}
-
 /* ==========================================================================
    IN-GAME & LOBBY 3-COLUMN ARENA
    ========================================================================== */
