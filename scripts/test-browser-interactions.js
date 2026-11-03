@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const PORT = 3399;
 const LOCAL_URL = `http://127.0.0.1:${PORT}/`;
+const TARGET_URL = process.env.JEOPARTY_TEST_URL || LOCAL_URL;
 
 async function main() {
   console.log('=== STARTING COMPLETE BROWSER INTERACTIONS TEST ===\n');
@@ -178,8 +179,8 @@ async function main() {
   await pSend('Page.enable');
   await pSend('DOM.enable');
 
-  console.log('Navigating to', LOCAL_URL);
-  await pSend('Page.navigate', { url: LOCAL_URL });
+  console.log('Navigating to', TARGET_URL);
+  await pSend('Page.navigate', { url: TARGET_URL });
 
   // Wait 2.5s for load
   await new Promise(r => setTimeout(r, 2500));
