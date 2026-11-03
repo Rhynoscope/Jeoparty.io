@@ -737,6 +737,10 @@ summary:focus-visible {
   gap: 8px;
 }
 
+.home-public-browser-btn {
+  grid-column: 1 / -1;
+}
+
 /* ==========================================================================
    IN-GAME & LOBBY 3-COLUMN ARENA
    ========================================================================== */
@@ -1040,7 +1044,7 @@ summary:focus-visible {
 
 .host-bot-controls {
   padding: 8px;
-  border-top: 2px solid #dfe3f0;
+  border-bottom: 2px solid #dfe3f0;
   background: #f7f8fc;
 }
 
