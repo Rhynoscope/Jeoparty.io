@@ -359,12 +359,18 @@ const el = {
   roomCodePill: document.getElementById('room-code-pill'),
   topbarRoomCode: document.getElementById('topbar-room-code'),
   topbarRoundBadge: document.getElementById('topbar-round-badge'),
+  topbarModeBadge: document.getElementById('topbar-mode-badge'),
+  teamScoreboardBar: document.getElementById('team-scoreboard-bar'),
+  teamRedScore: document.getElementById('team-red-score'),
+  teamBlueScore: document.getElementById('team-blue-score'),
   timerBadge: document.getElementById('timer-badge'),
   timerSeconds: document.getElementById('timer-seconds'),
   topbarStatusText: document.getElementById('topbar-status-text'),
   soundToggleBtn: document.getElementById('sound-toggle-btn'),
   motionToggleBtn: document.getElementById('motion-toggle-btn'),
   leaveRoomBtn: document.getElementById('leave-room-btn'),
+  judgeAcceptBtn: document.getElementById('judge-accept-btn'),
+  judgeRejectBtn: document.getElementById('judge-reject-btn'),
 
   // Players sidebar
   playersList: document.getElementById('players-list'),
@@ -785,24 +791,48 @@ function renderHomeAvatarPreview(activePart = 'color', customHint = '') {
    HALLOWEEN MAYHEM THEME & CANDY PARTICLES
    ========================================================================= */
 
+const MODE_NAMES = {
+  standard: 'Classic Jeoparty',
+  survival: 'Survival (3 Lives)',
+  double_or_nothing: 'Double or Nothing',
+  hot_potato: 'Hot Potato',
+  teams: 'Team Jeopardy',
+  chaos: 'Chaos Mode',
+  speed: 'Speed Blitz (8s)',
+  halloween: 'Halloween Mayhem',
+};
+
 function syncHalloweenAtmosphere(room = state.room) {
-  const isHalloween = isHalloweenMode(room);
-  document.body.dataset.gameMode = isHalloween ? 'halloween' : 'standard';
+  const currentMode = room?.settings?.gameMode || room?.gameMode || 'standard';
+  const isHalloween = currentMode === 'halloween';
+  document.body.dataset.gameMode = currentMode;
   document.body.classList.toggle('theme-halloween', isHalloween);
 
   if (el.lobbyModeBtns) {
     el.lobbyModeBtns.forEach((btn) => {
       const mode = btn.getAttribute('data-mode');
-      const isSelected = mode === (isHalloween ? 'halloween' : 'standard');
+      const isSelected = mode === currentMode;
       btn.classList.toggle('active', isSelected);
       btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
     });
   }
 
   if (el.activeGameModeIndicator) {
-    el.activeGameModeIndicator.textContent = isHalloween
-      ? 'HALLOWEEN MAYHEM'
-      : 'CLASSIC JEOPARTY';
+    el.activeGameModeIndicator.textContent = (MODE_NAMES[currentMode] || currentMode).toUpperCase();
+  }
+
+  if (el.topbarModeBadge) {
+    el.topbarModeBadge.textContent = MODE_NAMES[currentMode] || 'Classic';
+  }
+
+  if (el.teamScoreboardBar) {
+    if (currentMode === 'teams' && room?.teamScores) {
+      el.teamScoreboardBar.hidden = false;
+      if (el.teamRedScore) el.teamRedScore.textContent = formatCash(room.teamScores.red || 0);
+      if (el.teamBlueScore) el.teamBlueScore.textContent = formatCash(room.teamScores.blue || 0);
+    } else {
+      el.teamScoreboardBar.hidden = true;
+    }
   }
 
   if (!room) {
@@ -1991,9 +2021,8 @@ function renderLobbyStage(room, amHost) {
     el.activeDifficultyIndicator.textContent = curDiff.toUpperCase();
   }
 
-  // Sync Game Mode Selector (Standard vs Halloween Mayhem)
-  const isHalloween = isHalloweenMode(room);
-  const curMode = isHalloween ? 'halloween' : 'standard';
+  // Sync Game Mode Selector
+  const curMode = s.gameMode || 'standard';
   if (el.lobbyModeBtns) {
     el.lobbyModeBtns.forEach((btn) => {
       const mode = btn.getAttribute('data-mode') || 'standard';
@@ -2004,9 +2033,7 @@ function renderLobbyStage(room, amHost) {
     });
   }
   if (el.activeGameModeIndicator) {
-    el.activeGameModeIndicator.textContent = isHalloween
-      ? 'HALLOWEEN MAYHEM'
-      : 'CLASSIC JEOPARTY';
+    el.activeGameModeIndicator.textContent = (MODE_NAMES[curMode] || curMode).toUpperCase();
   }
 
   // Sync Cinematic Camera setting (intro + broadcast camera)
@@ -2506,15 +2533,16 @@ function renderClueStage(room, amHost, phaseChanged) {
     }
   }
 
-  // 7. Host Judge Controls
+  // 7. Host / Fair Round Judge Controls
+  const isAssignedJudge = Boolean(ac.judgePlayerId && ac.judgePlayerId === state.playerId);
   const showHostJudge =
     isClueBuzzed &&
     room.settings.answerMode === 'host' &&
-    amHost &&
+    (isAssignedJudge || (amHost && !ac.judgePlayerId)) &&
     ac.buzzedPlayerId !== state.playerId;
   el.hostJudgeBox.hidden = !showHostJudge;
   if (showHostJudge) {
-    el.hostRefAnswerText.textContent = ac.answer || '(hidden)';
+    el.hostRefAnswerText.textContent = ac.judgeOfficialAnswer || ac.answer || '(hidden)';
   }
 
   // 8. Post-Clue Result Reveal with Animated Pixel Check / Cross
@@ -3400,13 +3428,15 @@ function bindEvents() {
     el.clueAnswerInput.value = '';
   });
 
-  // Host Ruling Buttons
-  el.hostRuleCorrectBtn.addEventListener('click', () => {
-    sendWs({ type: 'host_judge', ruling: 'correct' });
-  });
-  el.hostRuleWrongBtn.addEventListener('click', () => {
-    sendWs({ type: 'host_judge', ruling: 'wrong' });
-  });
+  // Host & Round Judge Ruling Buttons
+  const handleJudgeDecision = (ruling) => {
+    sfx.play('click');
+    sendWs({ type: 'host_judge', ruling });
+  };
+  el.hostRuleCorrectBtn?.addEventListener('click', () => handleJudgeDecision('correct'));
+  el.hostRuleWrongBtn?.addEventListener('click', () => handleJudgeDecision('wrong'));
+  el.judgeAcceptBtn?.addEventListener('click', () => handleJudgeDecision('correct'));
+  el.judgeRejectBtn?.addEventListener('click', () => handleJudgeDecision('wrong'));
 
   el.nextClueBtn.addEventListener('click', () => {
     sendWs({ type: 'next_clue' });
@@ -3545,9 +3575,7 @@ function bindEvents() {
           b.setAttribute('aria-checked', isSelected ? 'true' : 'false');
         });
         if (el.activeGameModeIndicator) {
-          el.activeGameModeIndicator.textContent = mode === 'halloween'
-            ? 'HALLOWEEN MAYHEM'
-            : 'CLASSIC JEOPARTY';
+          el.activeGameModeIndicator.textContent = (MODE_NAMES[mode] || mode).toUpperCase();
         }
         pushSettingsPatch({ gameMode: mode });
       });

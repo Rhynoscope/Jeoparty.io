@@ -85,7 +85,7 @@ body {
   background-color: var(--skribbl-bg);
   background-image: url('/assets/sprites/interface/doodle-bg.png');
   background-repeat: repeat;
-  background-size: 180px 180px;
+  background-size: 512px 512px;
   image-rendering: pixelated;
   color: #ffffff;
   letter-spacing: 0.15px;
@@ -4878,15 +4878,15 @@ body.theme-halloween .mode-active-label {
 
 .game-mode-buttons {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 8px;
 }
 
 .mode-btn {
   font-family: var(--font-pixel);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 2.5px solid #000000;
   border-radius: 6px;
   background: #e8ecf7;
@@ -4896,7 +4896,7 @@ body.theme-halloween .mode-active-label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   transition: transform 0.1s ease, background-color 0.12s ease, border-color 0.12s ease;
 }
 
@@ -4932,20 +4932,80 @@ body.theme-halloween .mode-active-label {
   display: inline-flex;
 }
 
-.mode-btn[data-mode="standard"].active {
-  background: #2ed573;
-  color: #052e16;
+.mode-btn.active {
+  background: #ffd900;
+  color: #000000;
   border: 2.5px solid #000000;
   box-shadow: inset 0 0 0 2px #ffffff, 3px 3px 0 #000000;
   animation: settingSelectPulse 0.22s ease-out;
 }
 
+.mode-btn[data-mode="standard"].active {
+  background: #2ed573;
+  color: #052e16;
+}
+
+.mode-btn[data-mode="survival"].active {
+  background: #ff4757;
+  color: #ffffff;
+}
+
+.mode-btn[data-mode="double_or_nothing"].active {
+  background: #ffa502;
+  color: #000000;
+}
+
+.mode-btn[data-mode="hot_potato"].active {
+  background: #e67e22;
+  color: #ffffff;
+}
+
+.mode-btn[data-mode="teams"].active {
+  background: #3742fa;
+  color: #ffffff;
+}
+
+.mode-btn[data-mode="chaos"].active {
+  background: #9b59b6;
+  color: #ffffff;
+}
+
+.mode-btn[data-mode="speed"].active {
+  background: #f1c40f;
+  color: #000000;
+}
+
 .mode-btn[data-mode="halloween"].active {
   background: #ff7b00;
   color: #000000;
-  border: 2.5px solid #000000;
-  box-shadow: inset 0 0 0 2px #fff2cc, 3px 3px 0 #000000;
-  animation: settingSelectPulse 0.22s ease-out;
+}
+
+.team-scoreboard-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.team-red-pill {
+  color: #ff5959;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.team-blue-pill {
+  color: #59a6ff;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.team-vs-pill {
+  color: #ffd900;
+  font-size: 0.65rem;
 }
 
 /* =========================================================================

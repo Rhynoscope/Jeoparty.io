@@ -7,9 +7,9 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=4.2.0" />
-  <link rel="stylesheet" href="/css/gameshow.css?v=4.2.0" />
-  <link rel="stylesheet" href="/css/cinematic.css?v=4.2.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=4.3.0" />
+  <link rel="stylesheet" href="/css/gameshow.css?v=4.3.0" />
+  <link rel="stylesheet" href="/css/cinematic.css?v=4.3.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -158,9 +158,15 @@
           CODE: <strong id="topbar-room-code">------</strong>
         </button>
         <span id="topbar-round-badge" class="round-badge">Lobby</span>
+        <span id="topbar-mode-badge" class="round-badge mode-badge">Classic</span>
       </div>
 
       <div class="topbar-center">
+        <div id="team-scoreboard-bar" class="team-scoreboard-bar" hidden>
+          <span class="team-red-pill">RED: <strong id="team-red-score">$0</strong></span>
+          <span class="team-vs-pill">VS</span>
+          <span class="team-blue-pill">BLUE: <strong id="team-blue-score">$0</strong></span>
+        </div>
         <div id="timer-badge" class="timer-badge" hidden>
           <span class="pixel-sprite sprite-clock" aria-hidden="true"></span>
           <span id="timer-seconds">20</span>
@@ -252,6 +258,38 @@
           </button>
         </div>
 
+        <!-- FAIR HOST-JUDGE BOOTH (Dedicated Judge Position on Stage) -->
+        <div id="judge-stage" class="judge-stage" data-tone="neutral" hidden>
+          <div id="judge-figure" class="judge-figure" aria-hidden="true"></div>
+          <div class="judge-speech" role="status" aria-live="polite">
+            <div class="judge-speech-head">
+              <span id="judge-name-text" class="judge-nameplate">Judge's Bench</span>
+              <span class="judge-live-badge">
+                <span class="judge-gavel-icon" aria-hidden="true">⚖️</span>
+                <span id="judge-badge-text">COURT IN SESSION</span>
+              </span>
+            </div>
+            <p id="judge-speech-text">The court is ready to rule on ambiguous answers.</p>
+            <div id="judge-action-controls" class="judge-action-controls" hidden>
+              <div class="judge-clue-recap">
+                <span class="judge-recap-label">Official Answer: </span>
+                <strong id="judge-official-answer-text">...</strong>
+              </div>
+              <div class="judge-buttons-row">
+                <button type="button" id="judge-accept-btn" class="btn-skribbl btn-green judge-decision-btn">
+                  <span>⚖️ ACCEPT ANSWER</span>
+                </button>
+                <button type="button" id="judge-reject-btn" class="btn-skribbl btn-red judge-decision-btn">
+                  <span>❌ REJECT ANSWER</span>
+                </button>
+              </div>
+              <div class="judge-timer-bar">
+                <div id="judge-timer-fill" class="judge-timer-fill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 2.5D CINEMATIC STAGE CAMERA (intro + broadcast close-ups) -->
         <div id="cinematic-layer" class="cinematic-layer" hidden aria-live="off"></div>
 
@@ -286,18 +324,48 @@
               <div class="lobby-game-mode-container" role="group" aria-labelledby="lobby-game-mode-heading">
                 <div class="pace-header-row">
                   <span id="lobby-game-mode-heading" class="match-pace-title">
-                    <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
-                    <span>Event Mode:</span>
+                    <span class="pixel-sprite sprite-target" aria-hidden="true"></span>
+                    <span>Game Mode:</span>
                   </span>
-                  <span id="active-game-mode-indicator" class="mode-active-label">CLASSIC</span>
+                  <span id="active-game-mode-indicator" class="mode-active-label">CLASSIC JEOPARTY</span>
                 </div>
-                <div class="game-mode-buttons" role="radiogroup" aria-label="Event Game Mode">
-                  <button type="button" class="mode-btn active" data-mode="standard" role="radio" aria-checked="true">
+                <div class="game-mode-buttons" role="radiogroup" aria-label="Game Mode">
+                  <button type="button" class="mode-btn active" data-mode="standard" role="radio" aria-checked="true" title="Traditional Jeopardy quiz-show match">
                     <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     <span class="pixel-sprite sprite-dollar" aria-hidden="true"></span>
                     <span class="mode-name">Classic Jeoparty</span>
                   </button>
-                  <button type="button" class="mode-btn" data-mode="halloween" role="radio" aria-checked="false">
+                  <button type="button" class="mode-btn" data-mode="survival" role="radio" aria-checked="false" title="3 Lives per player. Wrong answers cost a life. 0 lives eliminates player from buzzing. Last player standing wins!">
+                    <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="mode-icon-emoji" aria-hidden="true">❤️</span>
+                    <span class="mode-name">Survival (3 Lives)</span>
+                  </button>
+                  <button type="button" class="mode-btn" data-mode="double_or_nothing" role="radio" aria-checked="false" title="High stakes: 2X rewards for correct answers, 2X penalties for wrong answers!">
+                    <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-dice" aria-hidden="true"></span>
+                    <span class="mode-name">Double or Nothing</span>
+                  </button>
+                  <button type="button" class="mode-btn" data-mode="hot_potato" role="radio" aria-checked="false" title="The clue ticks and passes between contestants. Holding it when time expires detonates a penalty!">
+                    <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="mode-icon-emoji" aria-hidden="true">🥔</span>
+                    <span class="mode-name">Hot Potato</span>
+                  </button>
+                  <button type="button" class="mode-btn" data-mode="teams" role="radio" aria-checked="false" title="Contestants split into Red and Blue teams with a shared bank. Highest team score wins!">
+                    <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="mode-icon-emoji" aria-hidden="true">🔴🔵</span>
+                    <span class="mode-name">Team Jeopardy</span>
+                  </button>
+                  <button type="button" class="mode-btn" data-mode="chaos" role="radio" aria-checked="false" title="Every tile has wild modifiers: 2X/3X multipliers, speed blitzes, clue steals, and all-plays!">
+                    <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-anim-star" aria-hidden="true"></span>
+                    <span class="mode-name">Chaos Mode</span>
+                  </button>
+                  <button type="button" class="mode-btn" data-mode="speed" role="radio" aria-checked="false" title="8-second rapid clue timers with +50% blitz bonus for answering in under 3.5s!">
+                    <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-clock" aria-hidden="true"></span>
+                    <span class="mode-name">Speed Blitz (8s)</span>
+                  </button>
+                  <button type="button" class="mode-btn" data-mode="halloween" role="radio" aria-checked="false" title="Halloween Mayhem: Spooky monsters, candy currency, trick-or-treat tiles!">
                     <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
                     <span class="mode-name">Halloween Mayhem</span>
@@ -414,11 +482,11 @@
               <!-- Essential Match Customization Controls -->
               <div class="settings-grid-primary">
                 <label class="setting-field" for="set-answer-mode">
-                  <span>Game Mode</span>
+                  <span>Answering Style</span>
                   <select id="set-answer-mode" name="answerMode" class="skribbl-select">
                     <option value="buzzer">Classic Buzzer (Buzz + Type)</option>
+                    <option value="host">Fair Judge Mode (Random Player Judge)</option>
                     <option value="skribbl">Everyone Answers (Speed Mode)</option>
-                    <option value="host">Host Judges (Party / Voice)</option>
                   </select>
                 </label>
 
@@ -1239,6 +1307,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=4.2.0"></script>
+  <script type="module" src="/js/app.js?v=4.3.0"></script>
 </body>
 </html>

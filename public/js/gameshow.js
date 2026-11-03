@@ -10,6 +10,7 @@
 import { buildAvatarHTML } from './avatar.js';
 import { sfx } from './audio.js';
 import { hostPresenter } from './host.js';
+import { judgePresenter } from './judge.js';
 import { cinematic } from './cinematic.js';
 
 const CLUE_PHASES = new Set([
@@ -115,6 +116,12 @@ class GameShow {
       hostCaption: elements.hostCaption || document.getElementById('host-speech-text'),
       hostName: elements.hostName || document.getElementById('host-name-text'),
       hostVoiceBtn: elements.hostVoiceBtn || document.getElementById('host-voice-btn'),
+      judgeStage: elements.judgeStage || document.getElementById('judge-stage'),
+      judgeFigure: elements.judgeFigure || document.getElementById('judge-figure'),
+      judgeName: elements.judgeName || document.getElementById('judge-name-text'),
+      judgeStatus: elements.judgeStatus || document.getElementById('judge-speech-text'),
+      judgeControls: elements.judgeControls || document.getElementById('judge-action-controls'),
+      judgeTimer: elements.judgeTimer || document.getElementById('judge-timer-fill'),
       contestantStage: elements.contestantStage || document.getElementById('contestant-stage'),
       wheelBox: elements.wheelBox || document.getElementById('final-wheel-box'),
       wheelEl: elements.wheelEl || document.getElementById('final-wheel'),
@@ -128,6 +135,15 @@ class GameShow {
       captionEl: this.elements.hostCaption,
       nameEl: this.elements.hostName,
       voiceBtnEl: this.elements.hostVoiceBtn,
+    });
+
+    judgePresenter.init({
+      stageEl: this.elements.judgeStage,
+      figureEl: this.elements.judgeFigure,
+      nameEl: this.elements.judgeName,
+      statusEl: this.elements.judgeStatus,
+      controlsEl: this.elements.judgeControls,
+      timerEl: this.elements.judgeTimer,
     });
 
     if (typeof window !== 'undefined') {
@@ -188,6 +204,7 @@ class GameShow {
     }
 
     this.updateHostStage(room);
+    this.updateJudgeStage(room);
     this.updateContestantStage(room);
     this.consumeAwards(room);
     this.updateWheelVisibility(room);
@@ -214,6 +231,38 @@ class GameShow {
     if (!visible) return;
     stage.dataset.mode = this.ctx.isHalloween ? 'halloween' : 'classic';
     stage.dataset.phase = room.phase;
+  }
+
+  updateJudgeStage(room) {
+    const stage = this.elements.judgeStage;
+    if (!stage) return;
+    const isHostJudgeMode = room.settings?.answerMode === 'host';
+    const ac = room.activeClue;
+    const isClueBuzzed = room.phase === 'clue_buzzed';
+    if (!isHostJudgeMode || !ac || !isClueBuzzed) {
+      judgePresenter.hideJudgeStage();
+      return;
+    }
+
+    if (ac.isAmbiguous && ac.judgePlayerId) {
+      const isViewerJudge = ac.judgePlayerId === this.ctx.playerId;
+      const judgePlayer = room.players?.find((p) => p.id === ac.judgePlayerId);
+      const judgeName = judgePlayer ? judgePlayer.name : 'Contestant';
+      judgePresenter.showRulingPrompt(
+        ac.judgeGuessText || ac.buzzedGuessText || '',
+        ac.judgeOfficialAnswer || ac.answer || '',
+        isViewerJudge
+      );
+      if (this.elements.judgeName) {
+        this.elements.judgeName.textContent = `ROUND JUDGE: ${judgeName.toUpperCase()}`;
+      }
+      const officialEl = document.getElementById('judge-official-answer-text');
+      if (officialEl) {
+        officialEl.textContent = ac.judgeOfficialAnswer || ac.answer || '(verifying...)';
+      }
+    } else {
+      judgePresenter.showJudgeStage();
+    }
   }
 
   /* ----------------------------- PODIUMS ------------------------------- */
@@ -270,6 +319,28 @@ class GameShow {
       pod.root.classList.toggle('is-winner', winnerId === p.id);
       pod.root.classList.toggle('is-bot', Boolean(p.isBot));
 
+      const isJudging = Boolean(p.isJudging || (room.activeClue?.judgePlayerId === p.id));
+      pod.root.classList.toggle('is-judging', isJudging);
+
+      const isEliminated = Boolean(p.isEliminated || (room.settings?.gameMode === 'survival' && p.lives <= 0));
+      pod.root.classList.toggle('is-eliminated', isEliminated);
+
+      if (room.settings?.gameMode === 'survival') {
+        pod.livesEl.hidden = false;
+        const lives = Math.max(0, p.lives ?? 3);
+        pod.livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+      } else {
+        pod.livesEl.hidden = true;
+      }
+
+      if (room.settings?.gameMode === 'teams') {
+        pod.teamEl.hidden = false;
+        pod.teamEl.className = `podium-team-badge team-${p.team || 'red'}`;
+        pod.teamEl.textContent = p.team === 'red' ? '🔴 RED' : '🔵 BLUE';
+      } else {
+        pod.teamEl.hidden = true;
+      }
+
       pod.nameEl.textContent = p.name;
       pod.numberEl.textContent = String(idx + 1).padStart(2, '0');
       pod.botTag.hidden = !p.isBot;
@@ -308,7 +379,7 @@ class GameShow {
     stage.innerHTML = '';
 
     const count = players.length;
-    const avatarSize = count <= 3 ? 78 : count <= 5 ? 66 : count <= 7 ? 58 : count <= 9 ? 52 : 46;
+    const avatarSize = count <= 3 ? 136 : count <= 6 ? 108 : 88;
     stage.dataset.count = String(count);
 
     players.forEach((p, idx) => {
@@ -349,6 +420,10 @@ class GameShow {
       numberEl.className = 'podium-number';
       numberEl.textContent = String(idx + 1).padStart(2, '0');
 
+      const teamEl = document.createElement('span');
+      teamEl.className = 'podium-team-badge';
+      teamEl.hidden = true;
+
       const nameEl = document.createElement('span');
       nameEl.className = 'podium-name-plate';
       nameEl.textContent = p.name;
@@ -376,11 +451,15 @@ class GameShow {
       streakBonus.textContent = '1 more!';
       streakChip.append(streakIcon, streakValue, streakBonus);
 
+      const livesEl = document.createElement('div');
+      livesEl.className = 'podium-lives';
+      livesEl.hidden = true;
+
       const awardLayer = document.createElement('div');
       awardLayer.className = 'podium-award-layer';
       awardLayer.setAttribute('aria-hidden', 'true');
 
-      body.append(numberEl, nameEl, botTag, moneyEl, streakChip);
+      body.append(numberEl, teamEl, nameEl, botTag, moneyEl, streakChip, livesEl);
       root.append(avatarWrap, body, awardLayer);
       stage.appendChild(root);
 
@@ -390,6 +469,7 @@ class GameShow {
         avatarSize,
         avatarKey: '',
         crownEl,
+        teamEl,
         nameEl,
         numberEl,
         botTag,
@@ -397,6 +477,7 @@ class GameShow {
         streakChip,
         streakValue,
         streakBonus,
+        livesEl,
         awardLayer,
         shownText: moneyEl.textContent,
       });

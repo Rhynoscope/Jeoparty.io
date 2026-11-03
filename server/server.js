@@ -304,24 +304,36 @@ function syncAutoScaledSettingsForLobby(room) {
   }
 }
 
+const VALID_GAME_MODES = [
+  'standard',
+  'survival',
+  'double_or_nothing',
+  'hot_potato',
+  'teams',
+  'chaos',
+  'speed',
+  'halloween',
+];
+
 function createDefaultSettings(gameMode = 'standard') {
-  const isHalloween = gameMode === 'halloween';
+  const safeMode = VALID_GAME_MODES.includes(gameMode) ? gameMode : 'standard';
+  const isHalloween = safeMode === 'halloween';
   const pool = isHalloween ? HALLOWEEN_CATEGORIES : BUILTIN_CATEGORIES;
   return {
-    gameMode: isHalloween ? 'halloween' : 'standard', // 'standard' | 'halloween'
+    gameMode: safeMode,
     autoScaleMatch: true, // Automatically scales board & timers based on active player count!
     matchPace: 'auto', // 'auto' | 'shorter' | 'standard' | 'extended' | 'custom'
-    specialFrequency: 'normal', // 'low' | 'normal' | 'high'
+    specialFrequency: safeMode === 'chaos' ? 'high' : 'normal', // 'low' | 'normal' | 'high'
     botDifficulty: 'medium', // 'easy' | 'medium' | 'hard' | 'champion'
     answerMode: 'buzzer', // 'buzzer' | 'skribbl' | 'host'
     cinematicCamera: 'on', // 'on' | 'reduced' | 'off' — game-show intro + camera moves
     boardCols: 4, // 3..8 (auto-updated for active roster when autoScaleMatch is true)
     cluesPerCat: 4, // 3..6 ($200..$1200)
-    clueTimeSec: 15, // 12 | 15 | 18 | 20 | 25 | 30 | 45
+    clueTimeSec: safeMode === 'speed' ? 8 : 15, // 12 | 15 | 18 | 20 | 25 | 30 | 45
     doubleJeopardy: false, // Host can toggle Round 2 Double Jeoparty anytime
     dailyDoubles: true,
     finalJeopardy: true,
-    wrongPenalty: false, // Friendly party default
+    wrongPenalty: safeMode === 'survival' || safeMode === 'double_or_nothing',
     includedCategoryIds: pool.map((c) => c.id),
     customCategories: [],
   };
@@ -331,10 +343,17 @@ function applySettingsPatch(room, patch) {
   if (!patch || typeof patch !== 'object') return;
   const s = room.settings;
 
-  if (patch.gameMode === 'standard' || patch.gameMode === 'halloween') {
+  if (VALID_GAME_MODES.includes(patch.gameMode)) {
     const changedMode = s.gameMode !== patch.gameMode;
     s.gameMode = patch.gameMode;
     room.gameMode = patch.gameMode;
+    if (patch.gameMode === 'speed') {
+      s.clueTimeSec = 8;
+    } else if (patch.gameMode === 'survival' || patch.gameMode === 'double_or_nothing') {
+      s.wrongPenalty = true;
+    } else if (patch.gameMode === 'chaos') {
+      s.specialFrequency = 'high';
+    }
     if (changedMode && !Array.isArray(patch.includedCategoryIds)) {
       const defaultPool = s.gameMode === 'halloween' ? HALLOWEEN_CATEGORIES : BUILTIN_CATEGORIES;
       s.includedCategoryIds = defaultPool.map((c) => c.id);
@@ -646,11 +665,13 @@ function serializeRoomForPlayer(room, viewerId) {
   let activeClueView = null;
   if (room.activeClue) {
     const ac = room.activeClue;
+    const isJudge = Boolean(ac.judgePlayerId && ac.judgePlayerId === viewerId);
     const revealAnswer =
       room.phase === 'clue_result' ||
+      isJudge ||
       (room.settings.answerMode === 'host' &&
         room.phase === 'clue_buzzed' &&
-        isHost &&
+        (isHost || isJudge) &&
         ac.buzzedPlayerId !== viewerId);
 
     const hideClueTextYet = room.phase === 'daily_double_wager';
@@ -684,6 +705,12 @@ function serializeRoomForPlayer(room, viewerId) {
       lastWrongText: ac.lastWrongText || null,
       reveal: serializeReveal(ac.reveal),
       answer: revealAnswer ? ac.clueObj.answer : null,
+      judgePlayerId: ac.judgePlayerId || null,
+      judgeGuessText: ac.judgeGuessText || null,
+      judgeOfficialAnswer: revealAnswer ? ac.clueObj.answer : null,
+      isAmbiguous: Boolean(ac.isAmbiguous),
+      judgeCanRule: Boolean(isJudge && room.phase === 'clue_buzzed' && ac.judgePlayerId === viewerId),
+      hotPotatoHolderId: ac.hotPotatoHolderId || null,
     };
   }
 
@@ -745,6 +772,10 @@ function serializeRoomForPlayer(room, viewerId) {
       room.settings.includedCategoryIds.includes(c.id)
     ).length,
     players: room.players.map((p) => {
+      const lives = typeof p.lives === 'number' ? p.lives : 3;
+      const isEliminated = Boolean(
+        p.isEliminated || (room.settings.gameMode === 'survival' && lives <= 0)
+      );
       return {
         id: p.id,
         name: p.name,
@@ -757,11 +788,17 @@ function serializeRoomForPlayer(room, viewerId) {
         onFire: Boolean(p.stats?.currentStreak >= 2),
         streakBonusActive: Boolean(p.stats?.currentStreak >= 3),
         maxStreak: p.stats?.maxStreak || 0,
+        lives,
+        isEliminated,
+        team: p.team || null,
+        isJudging: Boolean(room.activeClue && room.activeClue.judgePlayerId === p.id),
         inVoice: room.voiceMembers ? room.voiceMembers.has(p.id) : false,
         voiceMuted: room.voiceMembers?.get(p.id)?.muted ?? false,
         voiceSpeaking: room.voiceMembers?.get(p.id)?.speaking ?? false,
       };
     }),
+    teamScores: room.teamScores || { red: 0, blue: 0 },
+    activeJudgeId: room.activeClue?.judgePlayerId || null,
     board: boardView,
     activeClue: activeClueView,
     finalState: finalView,
@@ -1158,46 +1195,46 @@ function getBotSkillProfile(bot, room, row = 0, totalRows = 5, clueText = '') {
   let reboundMaxMs = 3400;
 
   if (difficulty === 'easy') {
-    // Easy: ~35–45% accuracy, slow/hesitant reader (1.25x), generous reaction buffer (2.4s–4.6s), struggles on high rows
-    baseAccuracy = 0.40;
-    rowPenalty = 0.20;
-    buzzProbability = 0.44;
-    readingMultiplier = 1.25;
-    minHesitationMs = 2400;
-    maxHesitationMs = 4600;
-    answerDelayMinMs = 2200;
-    answerDelayMaxMs = 3600;
-    wagerAggressiveness = 0.30;
-    reboundMinMs = 3200;
-    reboundMaxMs = 5200;
+    // Easy: ~50–55% accuracy, slightly hesitant reader (1.12x), knows basic trivia, casual-friendly
+    baseAccuracy = 0.52;
+    rowPenalty = 0.16;
+    buzzProbability = 0.58;
+    readingMultiplier = 1.12;
+    minHesitationMs = 1800;
+    maxHesitationMs = 3600;
+    answerDelayMinMs = 1800;
+    answerDelayMaxMs = 3000;
+    wagerAggressiveness = 0.35;
+    reboundMinMs = 2400;
+    reboundMaxMs = 4200;
   } else if (difficulty === 'medium') {
-    // Medium: ~58–68% accuracy, normal human reader (1.0x), balanced buzzer (1.4s–2.6s), solid trivia
-    baseAccuracy = 0.65;
-    rowPenalty = 0.14;
-    buzzProbability = 0.68;
-    readingMultiplier = 1.0;
-    minHesitationMs = 1400;
-    maxHesitationMs = 2600;
-    answerDelayMinMs = 1500;
-    answerDelayMaxMs = 2500;
-    wagerAggressiveness = 0.50;
-    reboundMinMs = 2000;
-    reboundMaxMs = 3400;
+    // Medium: noticeably harder, ~72–78% accuracy, brisk reader (0.88x), faster buzzer, fewer random mistakes
+    baseAccuracy = 0.74;
+    rowPenalty = 0.10;
+    buzzProbability = 0.78;
+    readingMultiplier = 0.88;
+    minHesitationMs = 950;
+    maxHesitationMs = 1950;
+    answerDelayMinMs = 1200;
+    answerDelayMaxMs = 2200;
+    wagerAggressiveness = 0.55;
+    reboundMinMs = 1500;
+    reboundMaxMs = 2600;
   } else if (difficulty === 'hard') {
-    // Hard: ~78–84% accuracy, brisk reader (0.78x), quick buzzer (0.75s–1.55s), smart wagers, beatable
-    baseAccuracy = 0.82;
-    rowPenalty = 0.08;
-    buzzProbability = 0.84;
-    readingMultiplier = 0.78;
-    minHesitationMs = 750;
-    maxHesitationMs = 1550;
-    answerDelayMinMs = 1000;
-    answerDelayMaxMs = 1800;
-    wagerAggressiveness = 0.75;
-    reboundMinMs = 1200;
-    reboundMaxMs = 2200;
+    // Hard: substantially more competitive, ~86–90% accuracy, sharp reader (0.70x), rapid buzzer, challenges veterans
+    baseAccuracy = 0.88;
+    rowPenalty = 0.05;
+    buzzProbability = 0.90;
+    readingMultiplier = 0.70;
+    minHesitationMs = 550;
+    maxHesitationMs = 1150;
+    answerDelayMinMs = 850;
+    answerDelayMaxMs = 1600;
+    wagerAggressiveness = 0.80;
+    reboundMinMs = 900;
+    reboundMaxMs = 1650;
   } else if (difficulty === 'champion') {
-    // Champion: ~88–93% accuracy, speed reader (0.62x), sharp buzzer (0.45s–0.95s), formidable yet humanly beatable
+    // Champion: UNCHANGED - exact current behavior, accuracy (91%), reading multiplier (0.62x) and challenge preserved
     baseAccuracy = 0.91;
     rowPenalty = 0.04;
     buzzProbability = 0.93;
@@ -1420,14 +1457,27 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
     shuffle(cat.tiles.filter((t) => !t.dailyDouble))
   );
   const totalNonDD = nonDDByCol.reduce((sum, arr) => sum + arr.length, 0);
-  const ratio = freq === 'low' ? 0.09 : freq === 'high' ? 0.24 : 0.16;
-  const minMods = freq === 'low' ? 1 : freq === 'high' ? 3 : 2;
+  const isChaosMode = room.settings.gameMode === 'chaos';
+  const ratio = isChaosMode ? 0.45 : freq === 'low' ? 0.09 : freq === 'high' ? 0.28 : 0.18;
+  const minMods = isChaosMode ? 4 : freq === 'low' ? 1 : freq === 'high' ? 3 : 2;
   const modCount = Math.min(
     totalNonDD,
     Math.max(minMods, Math.round(totalTiles * ratio))
   );
 
-  const MODIFIERS = ['speed_blitz', 'steal', 'chaos_all_play', 'double_trouble'];
+  const MODIFIERS = [
+    'speed_blitz',
+    'steal',
+    'chaos_all_play',
+    'double_trouble',
+    'treasure_clue',
+    'risky_business',
+    'triple_threat',
+    'category_takeover',
+    'last_chance',
+    'mystery_question',
+    'reverse_jeoparty',
+  ];
   const colOrder = shuffle(Array.from({ length: categories.length }, (_, idx) => idx));
   let modsPlaced = 0;
   let pass = 0;
@@ -1478,8 +1528,13 @@ function startNewGame(room) {
     room.botMemory.lastLeaderId = null;
     room.botMemory.endgameAnnouncedRound = 0;
   }
+  let pIdx = 0;
   for (const p of room.players) {
     p.score = 0;
+    p.lives = 3;
+    p.isEliminated = false;
+    p.team = pIdx % 2 === 0 ? 'red' : 'blue';
+    pIdx++;
     p.stats = {
       correctCount: 0,
       wrongCount: 0,
@@ -1489,6 +1544,8 @@ function startNewGame(room) {
       reactionsSent: 0,
     };
   }
+  room.teamScores = { red: 0, blue: 0 };
+  room.lastJudgeId = null;
   room.round = 1;
   room.usedCategoryIds = new Set();
   room.boardCategoryHistory = [];
@@ -1894,15 +1951,100 @@ function handleSelectTile(room, player, col, row) {
     return;
   }
 
+  if (modifier === 'treasure_clue') {
+    room.activeClue.value = Math.round(tile.value * 1.5);
+    sendChat(room, {
+      color: 'gold',
+      icon: 'treasure',
+      text: `TREASURE CLUE! Secret hidden reward: +50% bonus (${formatCurrency(room.activeClue.value, room)})!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'blitz' });
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    return;
+  }
+
+  if (modifier === 'triple_threat') {
+    room.activeClue.value = tile.value * 3;
+    sendChat(room, {
+      color: 'gold',
+      icon: 'star',
+      text: `TRIPLE THREAT! This question is worth 3X points (${formatCurrency(room.activeClue.value, room)})!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    return;
+  }
+
+  if (modifier === 'risky_business') {
+    room.activeClue.value = tile.value * 2;
+    sendChat(room, {
+      color: 'gold',
+      icon: 'dice',
+      text: `RISKY BUSINESS! High stakes: 2X points (${formatCurrency(room.activeClue.value, room)}), but double penalty on incorrect guess!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    return;
+  }
+
+  if (modifier === 'last_chance') {
+    sendChat(room, {
+      color: 'gold',
+      icon: 'rocket',
+      text: `LAST CHANCE! Contenders trailing or with negative scores earn 2X recovery points with zero wrong penalty!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'blitz' });
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    return;
+  }
+
+  if (modifier === 'category_takeover') {
+    sendChat(room, {
+      color: 'gold',
+      icon: 'crown',
+      text: `CATEGORY TAKEOVER! Answering gives you category control and an extra +$300 domination reward!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'blitz' });
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    return;
+  }
+
+  if (modifier === 'mystery_question') {
+    sendChat(room, {
+      color: 'gold',
+      icon: 'help',
+      text: `MYSTERY QUESTION! Unveiled from the shadows!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'tile_selected' });
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    return;
+  }
+
+  if (modifier === 'reverse_jeoparty') {
+    sendChat(room, {
+      color: 'gold',
+      icon: 'help',
+      text: `REVERSE JEOPARTY! The answer is given — identify the subject!`,
+    });
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'tile_selected' });
+    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    return;
+  }
+
   if (modifier === 'chaos_all_play') {
     enterChaosAllPlayPhase(room);
     return;
   }
 
+  if (room.settings.gameMode === 'double_or_nothing') {
+    room.activeClue.value = tile.value * 2;
+  }
+
   if (room.settings.answerMode === 'skribbl') {
     enterSkribblCluePhase(room);
   } else {
-    enterBuzzerClueOpenPhase(room, clueDurationMs, true);
+    const finalDuration = room.settings.gameMode === 'speed' ? 8000 : clueDurationMs;
+    enterBuzzerClueOpenPhase(room, finalDuration, true);
   }
 }
 
@@ -2114,6 +2256,17 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
   room.phaseEndsAt = Date.now() + durationMs;
 
   if (isFirstOpen) {
+    if (room.settings.gameMode === 'hot_potato') {
+      const activeCandidates = room.players.filter((p) => p.connected);
+      const startingHolder = room.players.find((p) => p.id === room.pickerId) || activeCandidates[0];
+      if (startingHolder) {
+        ac.hotPotatoHolderId = startingHolder.id;
+        sendChat(room, {
+          color: 'warn',
+          text: `🥔 HOT POTATO! ${startingHolder.name} is holding the potato! Buzz in before it explodes!`,
+        });
+      }
+    }
     broadcastRoomEvent(room, { type: 'sfx', sound: 'clue_reveal' });
     if (!ac.revealedLetterIndices) ac.revealedLetterIndices = new Set();
     if (!ac.hintMask) {
@@ -2170,6 +2323,18 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
 
   scheduleRoomTimer(room, () => {
     if (room.phase !== 'clue_open') return;
+    if (room.settings.gameMode === 'hot_potato' && ac.hotPotatoHolderId) {
+      const holder = room.players.find((p) => p.id === ac.hotPotatoHolderId);
+      if (holder) {
+        const boomPenalty = ac.value || 200;
+        holder.score -= boomPenalty;
+        sendChat(room, {
+          color: 'danger',
+          text: `💥 HOT POTATO EXPLODED! ${holder.name} was caught holding it (-${formatCurrency(boomPenalty, room)})!`,
+        });
+        broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
+      }
+    }
     sendChat(room, {
       color: 'warn',
       text: `Time's up! The answer was: ${ac.clueObj.answer}`,
@@ -2185,6 +2350,8 @@ function handlePlayerBuzz(room, player) {
   if (room.phase !== 'clue_open') return;
   const ac = room.activeClue;
   if (!ac || ac.attemptedIds.has(player.id)) return;
+  if (room.settings.gameMode === 'survival' && (player.lives ?? 3) <= 0) return;
+  if (ac.judgePlayerId && ac.judgePlayerId === player.id) return;
 
   const remainingMain = Math.max(6000, room.phaseEndsAt - Date.now());
   clearRoomTimers(room);
@@ -2262,7 +2429,45 @@ function applyCorrectBuzz(room, player) {
     });
   }
 
-  const totalPoints = ac.value + underdogBonus;
+  let totalPoints = ac.value + underdogBonus;
+
+  // Game Mode Hooks
+  if (room.settings.gameMode === 'survival') {
+    if ((player.lives ?? 3) < 3) {
+      player.lives = Math.min(3, (player.lives ?? 3) + 1);
+      sendChat(room, {
+        color: 'success',
+        text: `❤️ ${player.name} restored a life! (${player.lives}/3 lives)`,
+      });
+    }
+  }
+
+  if (room.settings.gameMode === 'teams' && player.team) {
+    room.teamScores[player.team] = (room.teamScores[player.team] || 0) + totalPoints;
+  }
+
+  if (room.settings.gameMode === 'speed') {
+    const elapsed = Date.now() - (ac.clueStartedAt || Date.now());
+    if (elapsed < 3500) {
+      const speedBonus = Math.round(ac.value * 0.5);
+      totalPoints += speedBonus;
+      sendChat(room, {
+        color: 'gold',
+        text: `⚡ SPEED BLITZ BONUS! ${player.name} answered in under 3.5s (+${formatCurrency(speedBonus, room)})!`,
+      });
+    }
+  }
+
+  if (ac.modifier === 'category_takeover') {
+    const takeoverBonus = 300;
+    totalPoints += takeoverBonus;
+    sendChat(room, {
+      color: 'gold',
+      icon: 'crown',
+      text: `👑 CATEGORY TAKEOVER! ${player.name} dominated the category (+${formatCurrency(takeoverBonus, room)})!`,
+    });
+  }
+
   player.score += totalPoints;
   room.pickerId = player.id;
   ac.winnerName = player.name;
@@ -2329,8 +2534,44 @@ function applyWrongBuzz(room, player, displayGuess, { hostEvent = 'wrong' } = {}
   const ac = room.activeClue;
   const scoreBefore = player.score;
   ac.attemptedIds.add(player.id);
-  const penalty = room.settings.wrongPenalty ? ac.value : 0;
+  const isNoPenaltyModifier = ac.modifier === 'last_chance';
+  const penalty = (room.settings.wrongPenalty && !isNoPenaltyModifier) ? ac.value : 0;
   player.score -= penalty;
+
+  // Game Mode: Survival lives
+  if (room.settings.gameMode === 'survival') {
+    player.lives = Math.max(0, (player.lives ?? 3) - 1);
+    if (player.lives <= 0) {
+      player.isEliminated = true;
+      sendChat(room, {
+        color: 'danger',
+        text: `💀 ${player.name} has lost all lives and is ELIMINATED from buzzing!`,
+      });
+    } else {
+      sendChat(room, {
+        color: 'warn',
+        text: `❤️ ${player.name} lost a life! (${player.lives} remaining)`,
+      });
+    }
+  }
+
+  if (room.settings.gameMode === 'teams' && player.team && penalty > 0) {
+    room.teamScores[player.team] = (room.teamScores[player.team] || 0) - penalty;
+  }
+
+  if (room.settings.gameMode === 'hot_potato') {
+    const nextCandidates = room.players.filter(
+      (p) => p.connected && p.id !== player.id && !ac.attemptedIds.has(p.id)
+    );
+    if (nextCandidates.length > 0) {
+      const nextPlayer = nextCandidates[Math.floor(Math.random() * nextCandidates.length)];
+      ac.hotPotatoHolderId = nextPlayer.id;
+      sendChat(room, {
+        color: 'warn',
+        text: `🥔 The Hot Potato was tossed to ${nextPlayer.name}! Buzz or it blows!`,
+      });
+    }
+  }
 
   recordWrongAnswer(player);
   maybeSpawnBotReaction(room, 'wrong_answer', { player });
@@ -2364,28 +2605,59 @@ function handleBuzzedAnswerSubmit(room, player, rawGuess) {
   const guess = String(rawGuess || '').trim().slice(0, 100);
   if (!guess) return;
 
-  if (room.settings.answerMode === 'host' && player.id !== room.hostId) {
-    ac.buzzedGuessText = guess;
-    clearRoomTimers(room);
-    room.phaseEndsAt = Date.now() + 20000;
-    sendChat(room, {
-      color: 'info',
-      text: `${player.name} answered: "${guess}" — waiting for Host ruling!`,
-    });
-    broadcastRoomState(room);
-    scheduleRoomTimer(room, () => {
-      if (room.phase !== 'clue_buzzed' || ac.buzzedPlayerId !== player.id) return;
-      const auto = evaluateAnswer(guess, ac.clueObj);
-      if (auto.status === 'correct') applyCorrectBuzz(room, player);
-      else applyWrongBuzz(room, player, guess);
-    }, 20000);
+  // 1. Authoritative Server Check First
+  const evaluation = evaluateAnswer(guess, ac.clueObj);
+
+  // 2. Clearly Correct: Automatically Award Immediately! Judge CANNOT deny!
+  if (evaluation.status === 'correct') {
+    applyCorrectBuzz(room, player);
     return;
   }
 
-  const evaluation = evaluateAnswer(guess, ac.clueObj);
-  if (evaluation.status === 'correct') {
-    applyCorrectBuzz(room, player);
-  } else if (evaluation.status === 'close' && !player.isBot) {
+  // 3. Fair Random Judge Mode: Only Genuinely Ambiguous ('close') answers go to the Judge!
+  if (room.settings.answerMode === 'host') {
+    if (evaluation.status === 'close') {
+      const eligibleJudges = room.players.filter(
+        (p) => p.connected && !p.isBot && p.id !== player.id
+      );
+
+      let judge = null;
+      if (eligibleJudges.length > 0) {
+        const lastJudgeIndex = eligibleJudges.findIndex((p) => p.id === room.lastJudgeId);
+        judge = eligibleJudges[(lastJudgeIndex + 1) % eligibleJudges.length];
+        room.lastJudgeId = judge.id;
+      }
+
+      if (judge) {
+        ac.judgePlayerId = judge.id;
+        ac.judgeGuessText = guess;
+        ac.judgeOfficialAnswer = ac.clueObj.answer;
+        ac.isAmbiguous = true;
+        clearRoomTimers(room);
+        room.phaseEndsAt = Date.now() + 12000;
+        sendChat(room, {
+          color: 'warn',
+          text: `⚖️ Ambiguous answer from ${player.name}: "${guess}" — Round Judge ${judge.name} is ruling!`,
+        });
+        broadcastRoomState(room);
+        scheduleRoomTimer(room, () => {
+          if (room.phase !== 'clue_buzzed' || ac.buzzedPlayerId !== player.id) return;
+          sendChat(room, {
+            color: 'info',
+            text: `Judge ${judge.name} timed out. Auto-ruling accepted "${guess}"!`,
+          });
+          applyCorrectBuzz(room, player);
+        }, 12000);
+        return;
+      }
+    }
+    // If clearly wrong or no eligible human judge, auto-reject
+    applyWrongBuzz(room, player, guess);
+    return;
+  }
+
+  // Standard non-judge buzzer mode:
+  if (evaluation.status === 'close' && !player.isBot) {
     sendPrivateChat(player, {
       color: 'warn',
       text: `"${guess}" is super close! Keep typing before your timer ends!`,
@@ -2395,18 +2667,43 @@ function handleBuzzedAnswerSubmit(room, player, rawGuess) {
   }
 }
 
-function handleHostJudge(room, hostPlayer, ruling) {
+function handleHostJudge(room, judgePlayer, ruling) {
   if (!room || room.terminated) return;
   if (room.phase !== 'clue_buzzed') return;
-  if (hostPlayer.id !== room.hostId) return;
   const ac = room.activeClue;
+  if (!ac) return;
+
+  // Caller must be assigned judge or room host fallback
+  const isAssignedJudge = ac.judgePlayerId && judgePlayer.id === ac.judgePlayerId;
+  const isHostFallback = judgePlayer.id === room.hostId;
+  if (!isAssignedJudge && !isHostFallback) return;
+
   const buzzed = room.players.find((p) => p.id === ac?.buzzedPlayerId);
   if (!buzzed) return;
 
-  if (ruling === 'correct') {
+  // Anti-griefing: cannot judge self
+  if (judgePlayer.id === buzzed.id) return;
+
+  // Anti-griefing: cannot reject an answer that server already found correct
+  const auto = evaluateAnswer(ac.judgeGuessText || '', ac.clueObj);
+  if (auto.status === 'correct') {
+    applyCorrectBuzz(room, buzzed);
+    return;
+  }
+
+  clearRoomTimers(room);
+  if (ruling === 'correct' || ruling === 'accept') {
+    sendChat(room, {
+      color: 'success',
+      text: `⚖️ Judge ${judgePlayer.name} ACCEPTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
+    });
     applyCorrectBuzz(room, buzzed);
   } else {
-    applyWrongBuzz(room, buzzed, ac.buzzedGuessText || '(host ruled incorrect)');
+    sendChat(room, {
+      color: 'danger',
+      text: `⚖️ Judge ${judgePlayer.name} REJECTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
+    });
+    applyWrongBuzz(room, buzzed, ac.judgeGuessText || '(judge ruled incorrect)');
   }
 }
 
