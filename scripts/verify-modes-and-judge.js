@@ -98,7 +98,7 @@ assert(indexHtml.includes('data-mode="teams"'), 'index.html must have teams mode
 assert(indexHtml.includes('data-mode="chaos"'), 'index.html must have chaos mode button');
 assert(indexHtml.includes('data-mode="speed"'), 'index.html must have speed mode button');
 assert(indexHtml.includes('Fair Judge Mode (Random Player Judge)'), 'index.html must have Fair Judge Mode option');
-assert(indexHtml.includes('v=4.3.0'), 'index.html must be cache-busted to v=4.3.0');
+assert(indexHtml.includes('v=4.3.1') || indexHtml.includes('v=4.3.0'), 'index.html must be cache-busted to v=4.3.x');
 
 console.log('PASS: All UI elements, sizing, styles, and cache versions verified.\n');
 

@@ -7,9 +7,9 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=4.3.0" />
-  <link rel="stylesheet" href="/css/gameshow.css?v=4.3.0" />
-  <link rel="stylesheet" href="/css/cinematic.css?v=4.3.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=4.3.1" />
+  <link rel="stylesheet" href="/css/gameshow.css?v=4.3.1" />
+  <link rel="stylesheet" href="/css/cinematic.css?v=4.3.1" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -141,6 +141,43 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Skribbl-Style Bottom Info Cards (About, News, How to Play) -->
+      <div class="home-info-cards-row">
+        <div class="home-info-card">
+          <div class="home-info-card-header">
+            <span class="pixel-sprite sprite-crown" aria-hidden="true"></span>
+            <h3>About</h3>
+          </div>
+          <p>Jeoparty is an MS Paint pixel-art multiplayer trivia game show! Play with friends or AI bots across exciting trivia categories and custom game modes.</p>
+        </div>
+
+        <div class="home-info-card">
+          <div class="home-info-card-header">
+            <span class="pixel-sprite sprite-anim-star" aria-hidden="true"></span>
+            <h3>News &amp; Updates</h3>
+          </div>
+          <ul>
+            <li><strong>Fair Bot Buzz:</strong> Bots wait for humans to read questions!</li>
+            <li><strong>Full Questions:</strong> Complete clues appear instantly.</li>
+            <li><strong>Judge Mode:</strong> Host can accept or reject answers.</li>
+            <li><strong>New Modes:</strong> Classic, Halloween, Survival &amp; Teams!</li>
+          </ul>
+        </div>
+
+        <div class="home-info-card">
+          <div class="home-info-card-header">
+            <span class="pixel-sprite sprite-help-q" aria-hidden="true"></span>
+            <h3>How to Play</h3>
+          </div>
+          <ol>
+            <li>Select a category tile on the board.</li>
+            <li>Hit <strong>Buzz In</strong> (or press <strong>Space</strong>) when you know the answer.</li>
+            <li>Type your response before the timer runs out!</li>
+            <li>Climb the scoreboard to take home the crown!</li>
+          </ol>
         </div>
       </div>
     </section>
@@ -1307,6 +1344,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=4.3.0"></script>
+  <script type="module" src="/js/app.js?v=4.3.1"></script>
 </body>
 </html>

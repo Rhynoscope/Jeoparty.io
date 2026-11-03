@@ -2969,7 +2969,7 @@ function bindEvents() {
     el.howtoDialog.showModal();
   });
 
-  // Home Primary Actions: 1. PLAY (Opens Public Matchmaking Browser)
+  // Home Primary Actions: 1. PLAY (Quick play matchmaking or room creation!)
   el.playBtn.addEventListener('click', () => {
     sfx.play('click');
     if (state.invitedRoomCode) {
@@ -2982,12 +2982,8 @@ function bindEvents() {
         { roomCodeForToken: state.invitedRoomCode }
       );
     } else {
-      if (el.publicRoomsDialog && typeof el.publicRoomsDialog.showModal === 'function') {
-        el.publicRoomsDialog.showModal();
-        fetchAndRenderPublicRooms();
-      } else {
-        startFreshRoomSession('quick_play', { matchExisting: true });
-      }
+      showToast('Finding public game or creating room...', 'info');
+      startFreshRoomSession('quick_play', { matchExisting: true });
     }
   });
 
@@ -3766,8 +3762,16 @@ function init() {
   renderHomeMascots();
   renderHomeAvatarPreview();
   syncHalloweenAtmosphere();
-  gameShow.init();
-  cinematic.init({ onSkipIntro: () => sendWs({ type: 'skip_intro' }) });
+  try {
+    gameShow.init();
+  } catch (err) {
+    console.error('[App] gameShow.init failed:', err);
+  }
+  try {
+    cinematic.init({ onSkipIntro: () => sendWs({ type: 'skip_intro' }) });
+  } catch (err) {
+    console.error('[App] cinematic.init failed:', err);
+  }
   checkUrlInviteParam();
   bindEvents();
   loadInitialServerMetadata();

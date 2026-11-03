@@ -667,29 +667,41 @@ summary:focus-visible {
 }
 
 .arrow-btn {
-  width: 36px;
-  height: 32px;
+  width: 40px;
+  height: 34px;
   background: #ffffff;
   color: #000000;
   border: 2.5px solid #000000;
-  border-radius: 4px;
+  border-radius: 6px;
   font-family: var(--font-pixel);
   font-weight: 700;
   font-size: 1.15rem;
   line-height: 1;
   cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 2px 0 #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 0 #000;
   touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.05s ease, background 0.1s ease, box-shadow 0.05s ease;
 }
 
 .arrow-btn:hover {
-  background: var(--jeopardy-gold);
+  background: #ffea78;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 #000;
 }
 
 .arrow-btn:active {
-  transform: translateY(1px);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #000;
+  background: #ffd000;
+}
+
+.arrow-btn * {
+  pointer-events: none;
 }
 
 .avatar-preview-center {
@@ -723,6 +735,63 @@ summary:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+}
+
+/* Skribbl-Style 3 Bottom Info Cards (About, News, How to Play) */
+.home-info-cards-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  width: min(780px, 94vw);
+  margin-top: 14px;
+}
+
+.home-info-card {
+  background: var(--skribbl-panel);
+  border: 2.5px solid #000;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+  color: #e5ebff;
+  font-size: 0.82rem;
+  line-height: 1.38;
+}
+
+.home-info-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.18);
+}
+
+.home-info-card-header h3 {
+  font-family: var(--font-pixel);
+  font-size: 0.95rem;
+  color: var(--jeopardy-gold);
+  margin: 0;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.home-info-card p {
+  margin: 0;
+  color: #cfd8ff;
+}
+
+.home-info-card ul,
+.home-info-card ol {
+  margin: 0;
+  padding-left: 18px;
+  color: #cfd8ff;
+}
+
+.home-info-card li {
+  margin-bottom: 4px;
+}
+
+.home-info-card strong {
+  color: #ffffff;
 }
 
 /* ==========================================================================
@@ -4130,10 +4199,12 @@ button:hover .sprite-close-x {
 }
 
 .sprite-arrow-left {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   background-image: url('/assets/sprites/interface/arrow-left-strip.png');
   background-size: 200% 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 button:hover .sprite-arrow-left {
@@ -4141,10 +4212,12 @@ button:hover .sprite-arrow-left {
 }
 
 .sprite-arrow-right {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   background-image: url('/assets/sprites/interface/arrow-right-strip.png');
   background-size: 200% 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 button:hover .sprite-arrow-right {

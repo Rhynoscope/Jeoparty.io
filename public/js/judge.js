@@ -146,13 +146,13 @@ export function drawJudgeFrame(g, mood = 'idle', isHalloween = false, f = 0) {
     // Critical thinking gaze (left eye squinting, right eye wide)
     g.line(18, 23 + bobY, 22, 23 + bobY, 1.6, BLACK);
     g.rect(30, 22 + bobY, 3, 3, BLACK);
-    g.dot(31, 23 + bobY, 1, WHITE);
+    g.brush(31, 23 + bobY, 1, WHITE);
   } else {
     // Open round doodle eyes with white highlight
     g.rect(19, 22 + bobY, 3, 3, BLACK);
-    g.dot(20, 22 + bobY, 1, WHITE);
+    g.brush(20, 22 + bobY, 1, WHITE);
     g.rect(30, 22 + bobY, 3, 3, BLACK);
-    g.dot(31, 22 + bobY, 1, WHITE);
+    g.brush(31, 22 + bobY, 1, WHITE);
   }
 
   // Thick dignified Judge Eyebrows
@@ -189,13 +189,13 @@ export function drawJudgeFrame(g, mood = 'idle', isHalloween = false, f = 0) {
   if (safeMood === 'accepting') {
     // Warm satisfied smile
     g.line(23, stacheY + 4, 29, stacheY + 4, 1.5, BLACK);
-    g.dot(22, stacheY + 3, 1.2, BLACK);
-    g.dot(30, stacheY + 3, 1.2, BLACK);
+    g.brush(22, stacheY + 3, 1.2, BLACK);
+    g.brush(30, stacheY + 3, 1.2, BLACK);
   } else if (safeMood === 'rejecting') {
     // Stern frown
     g.line(23, stacheY + 4, 29, stacheY + 4, 1.5, BLACK);
-    g.dot(22, stacheY + 5, 1.2, BLACK);
-    g.dot(30, stacheY + 5, 1.2, BLACK);
+    g.brush(22, stacheY + 5, 1.2, BLACK);
+    g.brush(30, stacheY + 5, 1.2, BLACK);
   } else {
     // Neutral firm mouth
     g.line(24, stacheY + 4, 28, stacheY + 4, 1.3, BLACK);

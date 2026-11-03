@@ -209,6 +209,10 @@ export class MiniPixelGrid {
     }
   }
 
+  dot(cx, cy, r = 1, rgba = [0, 0, 0, 255]) {
+    this.brush(cx, cy, r, rgba);
+  }
+
   line(x0, y0, x1, y1, r, rgba) {
     const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
     for (let i = 0; i <= steps; i++) {
