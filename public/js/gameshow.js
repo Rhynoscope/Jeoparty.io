@@ -251,7 +251,8 @@ class GameShow {
       judgePresenter.showRulingPrompt(
         ac.judgeGuessText || ac.buzzedGuessText || '',
         ac.judgeOfficialAnswer || ac.answer || '',
-        isViewerJudge
+        isViewerJudge,
+        ac.judgeAlternatives || []
       );
       if (this.elements.judgeName) {
         this.elements.judgeName.textContent = `ROUND JUDGE: ${judgeName.toUpperCase()}`;
@@ -328,7 +329,11 @@ class GameShow {
       if (room.settings?.gameMode === 'survival') {
         pod.livesEl.hidden = false;
         const lives = Math.max(0, p.lives ?? 3);
-        pod.livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+        let heartHtml = '';
+        for (let i = 0; i < 3; i++) {
+          heartHtml += `<span class="podium-heart ${i < lives ? 'full' : 'empty'}" aria-hidden="true"></span>`;
+        }
+        pod.livesEl.innerHTML = heartHtml;
       } else {
         pod.livesEl.hidden = true;
       }
@@ -336,7 +341,7 @@ class GameShow {
       if (room.settings?.gameMode === 'teams') {
         pod.teamEl.hidden = false;
         pod.teamEl.className = `podium-team-badge team-${p.team || 'red'}`;
-        pod.teamEl.textContent = p.team === 'red' ? '🔴 RED' : '🔵 BLUE';
+        pod.teamEl.innerHTML = `<span class="pixel-team-dot dot-${p.team || 'red'}" aria-hidden="true"></span> ${p.team === 'red' ? 'RED' : 'BLUE'}`;
       } else {
         pod.teamEl.hidden = true;
       }

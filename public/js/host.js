@@ -393,6 +393,8 @@ class HostPresenter {
     localStorage.setItem(HOST_VOICE_KEY, this.voiceEnabled ? '1' : '0');
     if (!this.voiceEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
+      clearTimeout(this.talkingTimer);
+      this.setMood('idle');
     }
     this.syncVoiceButton();
   }
@@ -432,40 +434,58 @@ class HostPresenter {
       hostStage.classList.add(`tone-${tone || 'neutral'}`);
     }
 
-    // Set animated sprite mood matching the line tone
-    if (tone === 'excited') {
-      this.setMood('celebrating');
-    } else if (tone === 'sad') {
-      this.setMood('reacting');
-    } else if (tone === 'winner') {
-      this.setMood('winner');
-    } else {
-      this.setMood('talking');
-    }
-
     clearTimeout(this.talkingTimer);
-    const durationMs = Math.min(5200, 1400 + line.length * 36);
+    const activeMood =
+      tone === 'excited'
+        ? 'celebrating'
+        : tone === 'sad'
+        ? 'reacting'
+        : tone === 'winner'
+        ? 'winner'
+        : 'talking';
+
+    this.setMood(activeMood);
+
+    // Speak with direct speech-synthesis start/end synchronization
+    const speechStarted = this.speak(line, activeMood);
+
+    // Safety fallback timer if speech synthesis is disabled, muted, or doesn't fire onend
+    const durationMs = Math.min(4500, Math.max(1200, line.length * 28));
     this.talkingTimer = setTimeout(() => {
       this.setMood('idle');
-    }, durationMs);
-
-    this.speak(line);
+    }, speechStarted ? 8000 : durationMs);
   }
 
-  speak(text) {
-    if (!this.voiceEnabled) return;
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    if (sfx.muted) return;
+  speak(text, activeMood = 'talking') {
+    if (!this.voiceEnabled) return false;
+    if (typeof window === 'undefined' || !window.speechSynthesis) return false;
+    if (sfx.muted) return false;
     try {
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(String(text).slice(0, 220));
       if (this.voice) utter.voice = this.voice;
-      utter.rate = 1.06;
-      utter.pitch = 0.82;
+      utter.rate = 1.15; // Natural game-show broadcast cadence
+      utter.pitch = 0.95;
       utter.volume = 0.95;
+
+      utter.onstart = () => {
+        this.setMood(activeMood);
+      };
+
+      utter.onend = () => {
+        clearTimeout(this.talkingTimer);
+        this.setMood('idle');
+      };
+
+      utter.onerror = () => {
+        clearTimeout(this.talkingTimer);
+        this.setMood('idle');
+      };
+
       window.speechSynthesis.speak(utter);
+      return true;
     } catch {
-      // Speech synthesis is optional
+      return false;
     }
   }
 }

@@ -58,6 +58,16 @@
   --av-size: 136px;
 }
 
+@media (min-width: 860px) {
+  .host-figure {
+    width: 196px;
+    height: 196px;
+  }
+  .host-figure .pixel-avatar.host-avatar {
+    --av-size: 190px;
+  }
+}
+
 .host-svg {
   position: relative;
   z-index: 1;
@@ -299,6 +309,16 @@
   animation: judgeBob 3.2s steps(2) infinite;
 }
 
+@media (min-width: 860px) {
+  .judge-figure {
+    width: 160px;
+    height: 160px;
+  }
+  .judge-figure .judge-avatar {
+    --av-size: 156px !important;
+  }
+}
+
 @keyframes judgeBob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
@@ -352,7 +372,73 @@
   margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+.judge-ruling-head {
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #11141a;
+}
+
+.judge-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .judge-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.judge-compare-card {
+  padding: 6px 10px;
+  border: 2px solid #000;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.judge-compare-card.guess-card {
+  background: #fff8e6;
+  border-color: #d4a017;
+}
+
+.judge-compare-card.official-card {
+  background: #eef7ee;
+  border-color: #2e8b57;
+}
+
+.compare-tag {
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: #444;
+  letter-spacing: 0.5px;
+}
+
+.compare-text {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #000;
+  word-break: break-word;
+}
+
+.judge-alt-row {
+  font-size: 0.78rem;
+  color: #333;
+  padding: 3px 6px;
+  background: #f0f4f8;
+  border: 1px dashed #777;
+  border-radius: 3px;
+}
+
+.judge-alt-tag {
+  font-weight: bold;
 }
 
 .judge-clue-recap {

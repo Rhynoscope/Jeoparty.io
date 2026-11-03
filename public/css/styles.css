@@ -4069,58 +4069,63 @@ dialog::backdrop {
    COMPLETE MS PAINT PIXEL-ART SPRITE SYSTEM & REACTION SHEETS (v3.0)
    ========================================================================= */
 
-/* Interface & Control Sprites (Multi-Frame Animated) */
+/* Interface & Control Sprites (MS Paint Animated Assets) */
 .sprite-dice {
   width: 28px;
   height: 28px;
-  background-image: url('/assets/sprites/interface/dice-strip.png');
-  background-size: 400% 100%;
-  animation: sprite4Frame 1.6s steps(1) infinite;
+  background-image: url('/assets/ms-paint/icon-dice.gif');
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
 .dice-btn:hover .sprite-dice {
-  animation: sprite4Frame 0.45s steps(1) infinite;
+  transform: scale(1.1);
 }
 
 .sprite-dice-sm {
-  width: 14px;
-  height: 14px;
-  background-image: url('/assets/sprites/interface/dice-strip.png');
-  background-size: 400% 100%;
-  animation: sprite4Frame 1.6s steps(1) infinite;
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/ms-paint/icon-dice.gif');
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
 .sprite-clock {
   width: 20px;
   height: 20px;
-  background-image: url('/assets/sprites/interface/clock-strip.png');
-  background-size: 400% 100%;
-  animation: sprite4Frame 0.9s steps(1) infinite;
+  background-image: url('/assets/ms-paint/icon-clock.gif');
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
 .sprite-gear {
-  width: 15px;
-  height: 15px;
-  background-image: url('/assets/sprites/interface/gear-strip.png');
-  background-size: 400% 100%;
-  animation: sprite4Frame 1.8s steps(1) infinite;
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/ms-paint/icon-gear.gif');
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
 button:hover .sprite-gear {
-  animation: sprite4Frame 0.55s steps(1) infinite;
+  transform: rotate(30deg);
 }
 
 .sprite-sound-on {
-  width: 15px;
-  height: 15px;
-  background-image: url('/assets/sprites/interface/sound-on-strip.png');
-  background-size: 300% 100%;
-  animation: sprite3Frame 0.95s steps(1) infinite;
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/ms-paint/icon-sound.gif');
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
 .sprite-sound-off {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   background-image: url('/assets/sprites/interface/sound-off-strip.png');
   background-size: 200% 100%;
 }
@@ -4134,10 +4139,167 @@ button:hover .sprite-gear {
 }
 
 .sprite-help-q {
-  width: 15px;
-  height: 15px;
-  background-image: url('/assets/sprites/interface/help-q-strip.png');
-  background-size: 200% 100%;
+  width: 16px;
+  height: 16px;
+  background-image: url('/assets/ms-paint/icon-help.gif');
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+/* Authentic MS Paint Pixel Icons for Game Modes and Judge */
+.sprite-heart {
+  width: 18px;
+  height: 18px;
+  background: #ff2b2b;
+  clip-path: polygon(50% 88%, 15% 55%, 0% 32%, 10% 12%, 35% 10%, 50% 26%, 65% 10%, 90% 12%, 100% 32%, 85% 55%);
+  border: 1.5px solid #000;
+  display: inline-block;
+  vertical-align: middle;
+  image-rendering: pixelated;
+}
+
+.sprite-potato {
+  width: 20px;
+  height: 16px;
+  background: #c88836;
+  border: 2px solid #000;
+  border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+  box-shadow: inset 2px -2px 0 #8c531b;
+  display: inline-block;
+  vertical-align: middle;
+  image-rendering: pixelated;
+  position: relative;
+}
+
+.sprite-potato::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  background: #ffcc00;
+  border-radius: 50%;
+  box-shadow: 0 0 3px #ff4400;
+}
+
+.sprite-teams {
+  width: 20px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.sprite-teams::before {
+  content: '';
+  width: 8px;
+  height: 13px;
+  background: #ff2b2b;
+  border: 1.5px solid #000;
+  border-radius: 2px 2px 4px 4px;
+}
+
+.sprite-teams::after {
+  content: '';
+  width: 8px;
+  height: 13px;
+  background: #2b6eff;
+  border: 1.5px solid #000;
+  border-radius: 2px 2px 4px 4px;
+}
+
+.sprite-gavel {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+}
+
+.sprite-gavel::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 6px;
+  background: #8a4c1c;
+  border: 1.5px solid #000;
+  top: 2px;
+  left: 2px;
+  transform: rotate(-35deg);
+}
+
+.sprite-gavel::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 11px;
+  background: #572c0c;
+  border: 1px solid #000;
+  top: 6px;
+  left: 7px;
+  transform: rotate(-35deg);
+}
+
+.sprite-check-sm {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 9 L6 13 L14 3 L12 1 L6 9 L4 7 Z' fill='%2322c55e' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.sprite-cross-sm {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 1 L1 3 L5 8 L1 13 L3 15 L8 10 L13 15 L15 13 L10 8 L15 3 L13 1 L8 6 Z' fill='%23ef4444' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.podium-heart {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  background: #ff2b2b;
+  clip-path: polygon(50% 88%, 15% 55%, 0% 32%, 10% 12%, 35% 10%, 50% 26%, 65% 10%, 90% 12%, 100% 32%, 85% 55%);
+  border: 1.5px solid #000;
+  image-rendering: pixelated;
+  margin-inline: 1px;
+}
+
+.podium-heart.empty {
+  background: #3a4154;
+  opacity: 0.55;
+}
+
+.pixel-team-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1.5px solid #000;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+
+.pixel-team-dot.dot-red {
+  background: #ff2b2b;
+}
+
+.pixel-team-dot.dot-blue {
+  background: #2b6eff;
+}
   animation: sprite2Frame 1.4s steps(1) infinite;
 }
 

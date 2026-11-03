@@ -718,24 +718,24 @@ class CinematicCamera {
 
     layer('cine-sky');
     layer('cine-sky-glow');
-    layer('cine-curtain cine-curtain-l');
-    layer('cine-curtain cine-curtain-r');
-    layer('cine-valance', '<span class="cine-valance-lights"></span>');
+    layer('cine-studio-pillar cine-curtain cine-curtain-l');
+    layer('cine-studio-pillar cine-curtain cine-curtain-r');
+    layer('cine-studio-truss cine-valance', '<span class="cine-valance-lights cine-studio-lights"></span>');
     layer('cine-rig', '<span class="cine-rig-bar"></span><span class="cine-rig-lamp cine-lamp-l"></span><span class="cine-rig-lamp cine-lamp-r"></span>');
     layer(
       'cine-sign',
       `<span class="cine-logo pixel-logo" aria-hidden="true"></span><span class="cine-sign-sub">LIVE FROM THE PIXEL STAGE</span>`
     );
-    layer('cine-floor', '<span class="cine-floor-grid"></span>');
+    layer('cine-floor', '<span class="cine-floor-grid"></span><span class="cine-floor-reflection" aria-hidden="true"></span>');
 
     const actors = layer('cine-actors');
 
-    // Host
+    // Host (Enlarged to 180px with authentic modern Jeopardy host lectern)
     const host = document.createElement('div');
     host.className = 'cine-host';
     host.innerHTML = `
       <span class="cine-host-spot" aria-hidden="true"></span>
-      <div class="cine-host-figure">${buildHostSVG('idle', !!room.halloween, { size: 140 })}</div>
+      <div class="cine-host-figure">${buildHostSVG('idle', !!room.halloween, { size: 180 })}</div>
       <div class="cine-host-plate">JEOPARTY HOST</div>
     `;
     actors.appendChild(host);
@@ -759,11 +759,11 @@ class CinematicCamera {
     board.innerHTML = boardHtml;
     actors.appendChild(board);
 
-    // Contestant podiums
+    // Contestant podiums (Prominent enlarged avatars: 88px - 124px)
     const podRow = document.createElement('div');
     podRow.className = 'cine-podiums';
     podRow.style.setProperty('--cine-pod-count', String(Math.max(1, players.length)));
-    const avatarSize = players.length > 7 ? 74 : players.length > 4 ? 84 : 92;
+    const avatarSize = players.length > 7 ? 88 : players.length > 4 ? 108 : 124;
     players.forEach((p, idx) => {
       const pod = document.createElement('div');
       pod.className = 'cine-pod';

@@ -122,20 +122,22 @@
   display: none;
 }
 
-/* Studio Light Pillars (Replacing theater curtains with sleek quiz-show studio pylons) */
-.cine-curtain {
+/* Studio Light Pillars (Modern Jeopardy blue neon light columns) */
+.cine-curtain,
+.cine-studio-pillar {
   top: 0;
   bottom: 0;
   width: 14%;
   background:
     repeating-linear-gradient(
-      90deg,
-      #0d142e 0 8px,
-      #19234d 8px 24px,
-      #00d4ff 24px 26px
+      180deg,
+      #080f24 0 32px,
+      #00d4ff 32px 35px,
+      #0e193d 35px 68px,
+      #1f6fd6 68px 70px
     );
   border: 3.5px solid #000;
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.35);
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.4), inset 0 0 10px rgba(0, 212, 255, 0.3);
   z-index: 2;
 }
 
@@ -151,36 +153,32 @@
   clip-path: polygon(0 0, 100% 0, 100% 100%, 8% 100%);
 }
 
-.cine-valance {
+.cine-valance,
+.cine-studio-truss {
   top: 0;
-  height: 48px;
+  height: 52px;
   z-index: 3;
   background:
-    linear-gradient(180deg, #111a3d 0%, #0a0f26 100%),
+    linear-gradient(180deg, #1b2438 0%, #0a0f1d 100%),
     repeating-linear-gradient(
       90deg,
-      rgba(0, 212, 255, 0.4) 0 4px,
-      transparent 4px 32px
+      #2b3956 0 3px,
+      transparent 3px 28px
     );
   border-bottom: 4px solid #000;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 -2px 0 #00d4ff;
-}
-    76% 64%, 72% 100%, 68% 64%, 64% 100%, 60% 64%, 56% 100%,
-    52% 64%, 48% 100%, 44% 64%, 40% 100%, 36% 64%, 32% 100%,
-    28% 64%, 24% 100%, 20% 64%, 16% 100%, 12% 64%, 8% 100%,
-    4% 64%, 0 100%
-  );
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), inset 0 -2px 0 #00d4ff;
 }
 
+.cine-studio-lights,
 .cine-valance-lights {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50px;
+  top: 48px;
   height: 12px;
   background:
-    radial-gradient(circle at 12px 6px, #ffd900 0 3px, transparent 3.5px) 0 0 / 48px 12px repeat-x,
-    radial-gradient(circle at 24px 6px, #ffffff 0 2.5px, transparent 3px) 0 0 / 72px 12px repeat-x;
+    radial-gradient(circle at 14px 6px, #00d4ff 0 3px, transparent 3.5px) 0 0 / 48px 12px repeat-x,
+    radial-gradient(circle at 28px 6px, #ffd900 0 2.5px, transparent 3px) 0 0 / 72px 12px repeat-x;
   animation: cineBulbPulse 1.6s steps(1) infinite;
 }
 
@@ -267,24 +265,49 @@
   text-shadow: 1px 2px 0 #000;
 }
 
-/* Stage floor */
+/* Modern Jeopardy glossy dark studio floor with neon grid lines and reflection */
 .cine-floor {
   top: 54%;
   bottom: 0;
   z-index: 1;
   overflow: hidden;
   background:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 212, 255, 0.28) 0%, transparent 68%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 212, 255, 0.08) 0 2px,
+      transparent 2px 80px
+    ),
     repeating-linear-gradient(
       0deg,
-      #59280b 0 2px,
-      #7a3f18 2px 28px
+      #070a17 0 2px,
+      #0c1328 2px 24px
     );
-  border-top: 3.5px solid #000;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
+  border-top: 4px solid #000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), inset 0 3px 0 #00d4ff;
 }
 
 .cine-floor-grid {
-  display: none;
+  display: block;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 212, 255, 0.15) 0%, transparent 40%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 78px,
+      rgba(0, 212, 255, 0.12) 78px 80px
+    );
+  pointer-events: none;
+}
+
+.cine-floor-reflection {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 260px 100px at 220px 80px, rgba(0, 212, 255, 0.22), transparent 70%),
+    radial-gradient(ellipse 480px 120px at 800px 90px, rgba(0, 212, 255, 0.18), transparent 75%);
+  pointer-events: none;
 }
 
 .cine-floor::after {
@@ -294,8 +317,8 @@
   right: 0;
   top: 0;
   height: 8px;
-  background: linear-gradient(90deg, transparent, #ffd900, transparent);
-  opacity: 0.55;
+  background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+  opacity: 0.75;
   filter: blur(1px);
 }
 
@@ -308,7 +331,7 @@
   position: absolute;
   left: 26px;
   bottom: 56px;
-  width: 250px;
+  width: 260px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -316,8 +339,8 @@
 }
 
 .cine-host-figure {
-  width: 210px;
-  height: 236px;
+  width: 220px;
+  height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -326,14 +349,14 @@
 }
 
 .cine-host-figure .pixel-avatar.host-avatar {
-  --av-size: 140px;
-  width: 140px;
-  height: 140px;
+  --av-size: 180px;
+  width: 180px;
+  height: 180px;
 }
 
 .cine-host-figure svg {
-  width: 140px;
-  height: 140px;
+  width: 180px;
+  height: 180px;
   display: block;
   overflow: visible;
 }

@@ -708,6 +708,7 @@ function serializeRoomForPlayer(room, viewerId) {
       judgePlayerId: ac.judgePlayerId || null,
       judgeGuessText: ac.judgeGuessText || null,
       judgeOfficialAnswer: revealAnswer ? ac.clueObj.answer : null,
+      judgeAlternatives: revealAnswer ? (ac.clueObj.acceptedAlternatives || []) : [],
       isAmbiguous: Boolean(ac.isAmbiguous),
       judgeCanRule: Boolean(isJudge && room.phase === 'clue_buzzed' && ac.judgePlayerId === viewerId),
       hotPotatoHolderId: ac.hotPotatoHolderId || null,
@@ -2637,7 +2638,7 @@ function handleBuzzedAnswerSubmit(room, player, rawGuess) {
         room.phaseEndsAt = Date.now() + 12000;
         sendChat(room, {
           color: 'warn',
-          text: `⚖️ Ambiguous answer from ${player.name}: "${guess}" — Round Judge ${judge.name} is ruling!`,
+          text: `[JUDGE] Ambiguous answer from ${player.name}: "${guess}" — Round Judge ${judge.name} is ruling!`,
         });
         broadcastRoomState(room);
         scheduleRoomTimer(room, () => {
@@ -2695,13 +2696,13 @@ function handleHostJudge(room, judgePlayer, ruling) {
   if (ruling === 'correct' || ruling === 'accept') {
     sendChat(room, {
       color: 'success',
-      text: `⚖️ Judge ${judgePlayer.name} ACCEPTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
+      text: `[JUDGE] Judge ${judgePlayer.name} ACCEPTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
     });
     applyCorrectBuzz(room, buzzed);
   } else {
     sendChat(room, {
       color: 'danger',
-      text: `⚖️ Judge ${judgePlayer.name} REJECTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
+      text: `[JUDGE] Judge ${judgePlayer.name} REJECTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
     });
     applyWrongBuzz(room, buzzed, ac.judgeGuessText || '(judge ruled incorrect)');
   }

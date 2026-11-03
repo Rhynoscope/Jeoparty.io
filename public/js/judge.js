@@ -336,7 +336,7 @@ export class JudgePresenter {
   renderFigure() {
     if (!this.figureEl) return;
     this.checkHalloween();
-    this.figureEl.innerHTML = buildJudgeHTML(this.mood, this.isHalloween, { size: 120 });
+    this.figureEl.innerHTML = buildJudgeHTML(this.mood, this.isHalloween, { size: 136 });
   }
 
   showJudgeStage(activeJudgeName = 'Judge') {
@@ -351,20 +351,48 @@ export class JudgePresenter {
     this.stageEl.hidden = true;
   }
 
-  showRulingPrompt(guess, officialAnswer, isViewerJudge) {
+  showRulingPrompt(guess, officialAnswer, isViewerJudge, alternatives = []) {
     if (!this.stageEl) return;
     this.stageEl.hidden = false;
     this.setMood('thinking');
     if (this.statusEl) {
       if (isViewerJudge) {
-        this.statusEl.innerHTML = `<strong>RULING NEEDED:</strong> Contestant answered <em>"${guess}"</em><br><small>Official: ${officialAnswer}</small>`;
+        let altHtml = '';
+        if (Array.isArray(alternatives) && alternatives.length > 0) {
+          altHtml = `<div class="judge-alt-row"><span class="judge-alt-tag">Accepted variations:</span> <em>${alternatives.join(', ')}</em></div>`;
+        }
+        this.statusEl.innerHTML = `
+          <div class="judge-ruling-head"><strong>⚖️ RULING REQUIRED:</strong> Does the contestant's answer match?</div>
+          <div class="judge-compare-grid">
+            <div class="judge-compare-card guess-card">
+              <span class="compare-tag">CONTESTANT SUBMITTED:</span>
+              <strong class="compare-text">"${guess}"</strong>
+            </div>
+            <div class="judge-compare-card official-card">
+              <span class="compare-tag">OFFICIAL ANSWER:</span>
+              <strong class="compare-text">${officialAnswer}</strong>
+            </div>
+          </div>
+          ${altHtml}
+        `;
       } else {
-        this.statusEl.innerHTML = `Judge is evaluating <em>"${guess}"</em>...`;
+        this.statusEl.innerHTML = `Round Judge is evaluating contestant answer <em>"${guess}"</em> against official answer...`;
       }
     }
     if (this.controlsEl) {
       this.controlsEl.hidden = !isViewerJudge;
     }
+    this.startCountdown(12000);
+  }
+
+  startCountdown(durationMs = 12000) {
+    if (!this.timerEl) return;
+    const fill = this.timerEl.querySelector('.judge-timer-fill') || this.timerEl;
+    fill.style.transition = 'none';
+    fill.style.width = '100%';
+    void fill.offsetWidth;
+    fill.style.transition = `width ${durationMs}ms linear`;
+    fill.style.width = '0%';
   }
 
   announceDecision(ruling, judgeName, guess) {
