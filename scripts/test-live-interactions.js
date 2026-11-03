@@ -105,9 +105,9 @@ async function main() {
 
   // Capture screenshot of live home screen
   const shot1 = await pSend('Page.captureScreenshot', { format: 'png' });
-  const shot1Path = 'C:/Users/Administrator/.gemini/antigravity/brain/ff3a672f-5cbd-45ff-9514-77bfbeb492ae/live-render-v431.png';
+  const shot1Path = 'C:/Users/Administrator/.gemini/antigravity/brain/ff3a672f-5cbd-45ff-9514-77bfbeb492ae/live-render-v440.png';
   fs.writeFileSync(shot1Path, Buffer.from(shot1.data, 'base64'));
-  console.log('Saved live-render-v431.png');
+  console.log('Saved live-render-v440.png');
 
   // TEST 1: Avatar Customization Arrows on Live Site
   console.log('\n--- TEST 1: Testing all 8 Avatar Arrows on Live Site ---');
@@ -183,9 +183,9 @@ async function main() {
 
   // Capture screenshot of live lobby after Play!
   const shot2 = await pSend('Page.captureScreenshot', { format: 'png' });
-  const shot2Path = 'C:/Users/Administrator/.gemini/antigravity/brain/ff3a672f-5cbd-45ff-9514-77bfbeb492ae/live-lobby-after-play.png';
+  const shot2Path = 'C:/Users/Administrator/.gemini/antigravity/brain/ff3a672f-5cbd-45ff-9514-77bfbeb492ae/live-lobby-v440.png';
   fs.writeFileSync(shot2Path, Buffer.from(shot2.data, 'base64'));
-  console.log('Saved live-lobby-after-play.png');
+  console.log('Saved live-lobby-v440.png');
 
   chromeProc.kill();
   console.log('\n=== LIVE BROWSER VERIFICATION COMPLETE: ALL PASS ===');
