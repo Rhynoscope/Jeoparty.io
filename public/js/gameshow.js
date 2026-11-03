@@ -11,6 +11,7 @@ import { buildAvatarHTML } from './avatar.js';
 import { sfx } from './audio.js';
 import { hostPresenter } from './host.js';
 import { cinematic } from './cinematic.js';
+import { judgeCharacterHTML } from './judge.js';
 
 const CLUE_PHASES = new Set([
   'clue_open',
@@ -116,6 +117,7 @@ class GameShow {
       hostName: elements.hostName || document.getElementById('host-name-text'),
       hostVoiceBtn: elements.hostVoiceBtn || document.getElementById('host-voice-btn'),
       contestantStage: elements.contestantStage || document.getElementById('contestant-stage'),
+      judgeStage: elements.judgeStage || document.getElementById('judge-stage'),
       wheelBox: elements.wheelBox || document.getElementById('final-wheel-box'),
       wheelEl: elements.wheelEl || document.getElementById('final-wheel'),
       wheelSectors: elements.wheelSectors || document.getElementById('final-wheel-sectors'),
@@ -188,6 +190,7 @@ class GameShow {
     }
 
     this.updateHostStage(room);
+    this.updateJudgeStage(room);
     this.updateContestantStage(room);
     this.consumeAwards(room);
     this.updateWheelVisibility(room);
@@ -216,6 +219,27 @@ class GameShow {
     stage.dataset.phase = room.phase;
   }
 
+  updateJudgeStage(room) {
+    const stage = this.elements.judgeStage;
+    const ac = room.activeClue;
+    const show = room.settings?.answerMode === 'judge' && Boolean(ac?.judgeId) &&
+      ['clue_open', 'clue_buzzed', 'clue_result'].includes(room.phase);
+    if (!stage) return;
+    stage.hidden = !show;
+    if (!show) return;
+
+    const judge = room.players.find((player) => player.id === ac.judgeId);
+    if (!judge) return;
+    const mood = ac.judgeMood || (ac.pendingJudgment ? 'thinking' : 'announce');
+    const safeName = String(judge.name || 'Contestant').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[char]));
+    stage.innerHTML = `<div class="judge-stage-card" data-mood="${mood}">
+      <div class="judge-stage-art">${judgeCharacterHTML(mood)}<div class="judge-player-avatar">${buildAvatarHTML(judge.avatar, { size: 76, mood: mood === 'accept' ? 'happy' : mood === 'reject' ? 'sad' : 'idle' })}</div></div>
+      <div class="judge-stage-copy"><span class="judge-role-label">ROTATING JUDGE</span><strong>${safeName}</strong><span class="judge-stage-status">${ac.pendingJudgment ? 'Reviewing an ambiguous answer' : 'Temporarily off the contestant board'}</span></div>
+    </div>`;
+  }
+
   /* ----------------------------- PODIUMS ------------------------------- */
 
   updateContestantStage(room) {
@@ -225,7 +249,11 @@ class GameShow {
     stage.hidden = !visible;
     if (!visible) return;
 
-    const players = room.players.slice(0, 10);
+    const judgeIsActive = room.settings?.answerMode === 'judge' && Boolean(room.activeClue?.judgeId) &&
+      ['clue_open', 'clue_buzzed', 'clue_result'].includes(room.phase);
+    const players = room.players
+      .filter((player) => !judgeIsActive || player.id !== room.activeClue.judgeId)
+      .slice(0, 10);
     const signature = players
       .map(
         (p) =>
@@ -289,9 +317,8 @@ class GameShow {
         pod.teamEl.hidden = false;
         const safeTeam = p.team || 'red';
         pod.teamEl.className = `podium-team-badge team-${safeTeam}`;
-        const icons = { red: '🚩', blue: '🛡️', green: '⚔️', yellow: '⚡' };
         const labels = { red: 'RED', blue: 'BLUE', green: 'GREEN', yellow: 'YELLOW' };
-        pod.teamEl.innerHTML = `<span class="pixel-team-dot dot-${safeTeam}" aria-hidden="true">${icons[safeTeam] || '🚩'}</span> ${labels[safeTeam] || 'RED'}`;
+        pod.teamEl.innerHTML = `<span class="pixel-team-dot dot-${safeTeam}" aria-hidden="true"></span>${labels[safeTeam] || 'RED'}${p.teamAnswererUp ? ' · NEXT' : ''}`;
       } else {
         pod.teamEl.hidden = true;
       }
@@ -343,7 +370,8 @@ class GameShow {
     stage.innerHTML = '';
 
     const count = players.length;
-    const avatarSize = count <= 3 ? 136 : count <= 6 ? 108 : 88;
+    const avatarSize = count <= 3 ? 172 : count <= 6 ? 142 : 116;
+    stage.dataset.density = count <= 3 ? 'wide' : count <= 6 ? 'medium' : 'compact';
     stage.dataset.count = String(count);
 
     players.forEach((p, idx) => {

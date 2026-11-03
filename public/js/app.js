@@ -257,6 +257,11 @@ function savePreferredSettingsFromRoom(room) {
     matchPace: autoScale ? 'auto' : s.matchPace || 'custom',
     botDifficulty: s.botDifficulty || 'medium',
     specialFrequency: s.specialFrequency || 'normal',
+    enabledSpecialRounds: Array.isArray(s.enabledSpecialRounds) ? s.enabledSpecialRounds : [],
+    specialSchedule: s.specialSchedule || 'random',
+    specialBonusAmount: s.specialBonusAmount || 300,
+    specialPenaltyMultiplier: s.specialPenaltyMultiplier || 1,
+    streakRequirement: s.streakRequirement || 3,
     answerMode: s.answerMode,
     cinematicCamera: s.cinematicCamera || 'on',
     doubleJeopardy: s.doubleJeopardy,
@@ -448,6 +453,12 @@ const el = {
   setCluesPerCat: document.getElementById('set-clues-per-cat'),
   setClueTime: document.getElementById('set-clue-time'),
   setSpecialFreq: document.getElementById('set-special-freq'),
+  setSpecialSchedule: document.getElementById('set-special-schedule'),
+  setSpecialBonus: document.getElementById('set-special-bonus'),
+  setSpecialPenalty: document.getElementById('set-special-penalty'),
+  setStreakTarget: document.getElementById('set-streak-target'),
+  specialRoundChecks: document.querySelectorAll('[data-special-round]'),
+  gameModeDescription: document.getElementById('game-mode-description'),
   setDoubleJeopardy: document.getElementById('set-double-jeopardy'),
   setDailyDoubles: document.getElementById('set-daily-doubles'),
   setFinalJeopardy: document.getElementById('set-final-jeopardy'),
@@ -470,6 +481,16 @@ const el = {
   clueCatIcon: document.getElementById('clue-cat-icon'),
   clueCatName: document.getElementById('clue-cat-name'),
   clueModifierBadge: document.getElementById('clue-modifier-badge'),
+  riskChoiceWrap: document.getElementById('risk-choice-wrap'),
+  riskChoiceSelect: document.getElementById('risk-choice-select'),
+  hotPotatoControls: document.getElementById('hot-potato-controls'),
+  hotPotatoCountdown: document.getElementById('hot-potato-countdown'),
+  passHotPotatoBtn: document.getElementById('pass-hot-potato-btn'),
+  judgeReviewPanel: document.getElementById('judge-review-panel'),
+  judgeReviewMessage: document.getElementById('judge-review-message'),
+  judgeDecisionActions: document.getElementById('judge-decision-actions'),
+  judgeAcceptBtn: document.getElementById('judge-accept-btn'),
+  judgeRejectBtn: document.getElementById('judge-reject-btn'),
   clueValuePill: document.getElementById('clue-value-pill'),
   clueTimerFill: document.getElementById('clue-timer-fill'),
   ddWagerBox: document.getElementById('dd-wager-box'),
@@ -801,7 +822,20 @@ const MODE_NAMES = {
   teams: 'Team Jeopardy',
   chaos: 'Chaos Mode',
   speed: 'Speed Blitz (8s)',
+  streak_race: 'Streak Race',
   halloween: 'Halloween Mayhem',
+};
+
+const MODE_DESCRIPTIONS = {
+  standard: 'Classic board values, buzzer play, and the familiar Jeoparty rules.',
+  survival: 'Three lives each. Wrong answers cost a life, correct answers can restore one, and eliminated players sit out.',
+  double_or_nothing: 'Choose safe or double at the buzzer. A double answer pays 2×, but a miss costs the clue value.',
+  hot_potato: 'A six-second fuse moves the potato between contestants. Pass it or take a small hit; the holder at clue timeout takes the bigger penalty.',
+  teams: 'Pick a color team. Teammates share a live score bank and the highest-scoring team wins.',
+  chaos: 'More special tiles and all-play rounds put the whole board into surprise mode.',
+  speed: 'Eight-second clues and a quick-answer bonus keep each round moving.',
+  streak_race: 'Build a streak to your selected target and bank the bonus. One miss resets your run.',
+  halloween: 'Halloween Mayhem keeps its candy scoring, monsters, and spooky tile events.',
 };
 
 function syncHalloweenAtmosphere(room = state.room) {
@@ -1992,6 +2026,14 @@ function renderLobbyStage(room, amHost) {
   if (el.setSpecialFreq) {
     el.setSpecialFreq.value = s.specialFrequency || 'normal';
   }
+  if (el.setSpecialSchedule) el.setSpecialSchedule.value = s.specialSchedule || 'random';
+  if (el.setSpecialBonus) el.setSpecialBonus.value = String(s.specialBonusAmount || 300);
+  if (el.setSpecialPenalty) el.setSpecialPenalty.value = String(s.specialPenaltyMultiplier || 1);
+  if (el.setStreakTarget) el.setStreakTarget.value = String(s.streakRequirement || 3);
+  const enabledSpecials = new Set(Array.isArray(s.enabledSpecialRounds) ? s.enabledSpecialRounds : []);
+  el.specialRoundChecks?.forEach((checkbox) => {
+    checkbox.checked = enabledSpecials.has(checkbox.dataset.specialRound);
+  });
   el.setDoubleJeopardy.checked = Boolean(s.doubleJeopardy);
   el.setDailyDoubles.checked = Boolean(s.dailyDoubles);
   el.setFinalJeopardy.checked = Boolean(s.finalJeopardy);
@@ -2062,6 +2104,7 @@ function renderLobbyStage(room, amHost) {
   if (el.activeGameModeIndicator) {
     el.activeGameModeIndicator.textContent = (MODE_NAMES[curMode] || curMode).toUpperCase();
   }
+  if (el.gameModeDescription) el.gameModeDescription.textContent = MODE_DESCRIPTIONS[curMode] || MODE_DESCRIPTIONS.standard;
 
   // Sync Cinematic Camera setting (intro + broadcast camera)
   const cameraMode = ['on', 'reduced', 'off'].includes(s.cinematicCamera)
@@ -2091,6 +2134,10 @@ function renderLobbyStage(room, amHost) {
     el.setCluesPerCat,
     el.setClueTime,
     el.setSpecialFreq,
+    el.setSpecialSchedule,
+    el.setSpecialBonus,
+    el.setSpecialPenalty,
+    el.setStreakTarget,
     el.setDoubleJeopardy,
     el.setDailyDoubles,
     el.setFinalJeopardy,
@@ -2100,6 +2147,7 @@ function renderLobbyStage(room, amHost) {
     ...document.querySelectorAll('.preset-chip[data-preset]'),
     ...document.querySelectorAll('.camera-btn'),
   ].filter(Boolean);
+  el.specialRoundChecks?.forEach((checkbox) => { checkbox.disabled = !amHost; });
   for (const ctrl of controls) {
     ctrl.disabled = !amHost;
   }
@@ -2336,6 +2384,13 @@ function renderBoardStage(room) {
               cls: isHalloween ? 'mod-bat' : 'mod-double',
               tileCls: isHalloween ? 'mod-tile-bat' : 'mod-tile-double',
             },
+            treasure_clue: { sprite: 'sprite-crown', shortLabel: 'TREASURE', title: 'Treasure Clue: hidden bonus on a correct answer', cls: 'mod-double', tileCls: 'mod-tile-double' },
+            risky_business: { sprite: 'sprite-dice', shortLabel: 'RISK', title: 'Risky Business: double value with a doubled miss penalty', cls: 'mod-steal', tileCls: 'mod-tile-steal' },
+            triple_threat: { sprite: 'sprite-anim-star', shortLabel: '3X', title: 'Triple Threat: triple clue value and penalty', cls: 'mod-blitz', tileCls: 'mod-tile-blitz' },
+            category_takeover: { sprite: 'sprite-crown', shortLabel: 'TAKEOVER', title: 'Category Takeover: claim the category for future bonuses', cls: 'mod-double', tileCls: 'mod-tile-double' },
+            last_chance: { sprite: 'sprite-rocket', shortLabel: 'LAST CHANCE', title: 'Last Chance: trailing contestants get a comeback bonus', cls: 'mod-blitz', tileCls: 'mod-tile-blitz' },
+            mystery_question: { sprite: 'sprite-help-q', shortLabel: 'MYSTERY', title: 'Mystery Question: reward is revealed after the clue', cls: 'mod-steal', tileCls: 'mod-tile-steal' },
+            reverse_jeoparty: { sprite: 'sprite-help-q', shortLabel: 'REVERSE', title: 'Reverse Jeoparty: read an answer and identify its clue', cls: 'mod-chaos', tileCls: 'mod-tile-chaos' },
           };
           const info = MOD_INFO[tile.modifier] || {
             sprite: 'sprite-sparkle',
@@ -2405,6 +2460,9 @@ function renderClueStage(room, amHost, phaseChanged) {
   const isChaosMode = room.phase === 'clue_chaos';
   const isSkribblMode = room.phase === 'clue_skribbl';
   const isResult = room.phase === 'clue_result';
+  const isJudgeMode = room.settings?.answerMode === 'judge';
+  const pendingJudgment = ac.pendingJudgment || null;
+  const iAmJudge = Boolean(ac.judgeId && ac.judgeId === state.playerId);
 
   const isHalloween = isHalloweenMode(room);
 
@@ -2432,6 +2490,13 @@ function renderClueStage(room, amHost, phaseChanged) {
         label: isHalloween ? 'CURSED CANDY (2X)' : 'DOUBLE TROUBLE (2X)',
         cls: isHalloween ? 'mod-bat' : 'mod-double',
       },
+      treasure_clue: { sprite: 'sprite-crown', label: 'TREASURE CLUE (HIDDEN BONUS)', cls: 'mod-double' },
+      risky_business: { sprite: 'sprite-dice', label: 'RISKY BUSINESS (2X REWARD / PENALTY)', cls: 'mod-steal' },
+      triple_threat: { sprite: 'sprite-anim-star', label: 'TRIPLE THREAT (3X POINTS)', cls: 'mod-blitz' },
+      category_takeover: { sprite: 'sprite-crown', label: 'CATEGORY TAKEOVER (CLAIM THE CATEGORY)', cls: 'mod-double' },
+      last_chance: { sprite: 'sprite-rocket', label: 'LAST CHANCE (COMEBACK CLUE)', cls: 'mod-blitz' },
+      mystery_question: { sprite: 'sprite-help-q', label: 'MYSTERY QUESTION (HIDDEN REWARD)', cls: 'mod-steal' },
+      reverse_jeoparty: { sprite: 'sprite-help-q', label: 'REVERSE JEOPARTY (IDENTIFY THE CLUE)', cls: 'mod-chaos' },
     };
     const m = MOD_INFO[ac.modifier] || { sprite: 'sprite-sparkle', label: 'PERK', cls: 'mod-blitz' };
     el.clueModifierBadge.className = `clue-modifier-badge ${m.cls}`;
@@ -2439,7 +2504,7 @@ function renderClueStage(room, amHost, phaseChanged) {
   } else if (room.settings?.gameMode === 'double_or_nothing') {
     el.clueModifierBadge.hidden = false;
     el.clueModifierBadge.className = 'clue-modifier-badge mod-double';
-    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-dice', '🎲 DOUBLE OR NOTHING (2X REWARD & PENALTY)');
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-dice', 'DOUBLE OR NOTHING (CHOOSE SAFE OR DOUBLE)');
   } else if (room.settings?.gameMode === 'hot_potato') {
     el.clueModifierBadge.hidden = false;
     el.clueModifierBadge.className = 'clue-modifier-badge mod-potato';
@@ -2452,6 +2517,10 @@ function renderClueStage(room, amHost, phaseChanged) {
     el.clueModifierBadge.hidden = false;
     el.clueModifierBadge.className = 'clue-modifier-badge mod-heart';
     setButtonSpriteAndText(el.clueModifierBadge, 'sprite-heart', '❤️ SURVIVAL (WRONG ANSWER LOSES 1 LIFE)');
+  } else if (room.settings?.gameMode === 'streak_race') {
+    el.clueModifierBadge.hidden = false;
+    el.clueModifierBadge.className = 'clue-modifier-badge mod-blitz';
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-fire', `STREAK RACE (${room.settings.streakRequirement || 3} CORRECT = BONUS)`);
   } else {
     el.clueModifierBadge.hidden = true;
   }
@@ -2509,10 +2578,42 @@ function renderClueStage(room, amHost, phaseChanged) {
   el.buzzerWrap.hidden = !isClueOpen;
   if (isClueOpen) {
     const alreadyTried = ac.attemptedIds?.includes(state.playerId);
-    el.buzzBtn.disabled = alreadyTried;
-    el.buzzEligibilityNote.textContent = alreadyTried
+    const isJudge = isJudgeMode && iAmJudge;
+    const me = findPlayer(room, state.playerId);
+    const waitingForTeamTurn = room.settings?.gameMode === 'teams' && me && !me.teamAnswererUp;
+    el.buzzBtn.disabled = alreadyTried || isJudge || waitingForTeamTurn;
+    el.buzzEligibilityNote.textContent = isJudge
+      ? 'You are the rotating judge for this clue.'
+      : alreadyTried
       ? 'You already buzzed on this clue — waiting for other players.'
+      : waitingForTeamTurn
+      ? 'Your teammate is up for this team turn.'
       : 'First to buzz gets 11 seconds to answer!';
+  }
+
+  el.riskChoiceWrap.hidden = room.settings?.gameMode !== 'double_or_nothing' || !isClueOpen;
+  if (phaseChanged && el.riskChoiceSelect) el.riskChoiceSelect.value = 'safe';
+
+  const potatoActive = room.settings?.gameMode === 'hot_potato' && isClueOpen;
+  el.hotPotatoControls.hidden = !potatoActive;
+  if (potatoActive) {
+    const holder = findPlayer(room, ac.hotPotatoHolderId);
+    el.passHotPotatoBtn.hidden = ac.hotPotatoHolderId !== state.playerId;
+    el.hotPotatoCountdown.textContent = holder ? `${holder.name} holds it` : 'Pass the potato!';
+  }
+
+  const showJudgeReview = isJudgeMode && (pendingJudgment || (isResult && ac.lastJudgeDecision));
+  el.judgeReviewPanel.hidden = !showJudgeReview;
+  if (showJudgeReview) {
+    if (pendingJudgment) {
+      const guessText = pendingJudgment.guess ? ` “${pendingJudgment.guess}”` : '';
+      el.judgeReviewMessage.textContent = `${pendingJudgment.answererName}${guessText} needs a ruling. ${pendingJudgment.judgeId === state.playerId ? 'You have a few seconds to decide.' : `${ac.judgeName || 'The judge'} has a few seconds to decide.`}`;
+      el.judgeDecisionActions.hidden = pendingJudgment.judgeId !== state.playerId;
+    } else {
+      const decision = ac.lastJudgeDecision;
+      el.judgeReviewMessage.textContent = `${decision.ruling === 'accepted' ? 'Accepted' : 'Rejected'} by ${decision.source === 'judge' ? ac.judgeName || 'the judge' : 'automatic fallback'}.`;
+      el.judgeDecisionActions.hidden = true;
+    }
   }
 
   // 5. Spectator Banner
@@ -2539,11 +2640,12 @@ function renderClueStage(room, amHost, phaseChanged) {
   }
 
   // 6. Answer Input Form
+  const waitingForJudge = Boolean(pendingJudgment);
   const waitingForHostOnMe =
     isClueBuzzed &&
-    room.settings.answerMode === 'host' &&
+    room.settings.answerMode === 'judge' &&
     Boolean(ac.buzzedGuessText);
-  el.clueAnswerForm.hidden = !iAmAnswering || waitingForHostOnMe;
+  el.clueAnswerForm.hidden = !iAmAnswering || waitingForHostOnMe || waitingForJudge;
   if (iAmAnswering && phaseChanged) {
     el.clueAnswerInput.value = '';
     setTimeout(() => el.clueAnswerInput.focus(), 30);
@@ -2902,6 +3004,19 @@ function startTimerLoop() {
 
     const remainingMs = Math.max(0, room.phaseEndsAt - serverNowEstimate);
     const secs = Math.ceil(remainingMs / 1000);
+
+    const activeClue = room.activeClue;
+    if (room.phase === 'clue_open' && room.settings?.gameMode === 'hot_potato' && activeClue?.hotPotatoExpiresAt) {
+      const fuse = Math.max(0, Math.ceil((activeClue.hotPotatoExpiresAt - serverNowEstimate) / 1000));
+      const holder = findPlayer(room, activeClue.hotPotatoHolderId);
+      if (el.hotPotatoCountdown) el.hotPotatoCountdown.textContent = `🥔 ${holder?.name || 'Contestant'} — ${fuse}s`;
+    }
+    if (activeClue?.pendingJudgment && el.judgeReviewMessage) {
+      const seconds = Math.max(0, Math.ceil((activeClue.pendingJudgment.deadline - serverNowEstimate) / 1000));
+      const guess = activeClue.pendingJudgment.guess ? ` “${activeClue.pendingJudgment.guess}”` : '';
+      const who = activeClue.pendingJudgment.judgeId === state.playerId ? 'You' : (activeClue.judgeName || 'The judge');
+      el.judgeReviewMessage.textContent = `${activeClue.pendingJudgment.answererName}${guess} needs a ruling. ${who} has ${seconds}s.`;
+    }
 
     el.timerBadge.hidden = false;
     el.timerSeconds.textContent = String(secs);
@@ -3320,6 +3435,24 @@ function bindEvents() {
   el.setSpecialFreq?.addEventListener('change', () =>
     pushSettingsPatch({ specialFrequency: el.setSpecialFreq.value })
   );
+  el.setSpecialSchedule?.addEventListener('change', () =>
+    pushSettingsPatch({ specialSchedule: el.setSpecialSchedule.value })
+  );
+  el.setSpecialBonus?.addEventListener('change', () =>
+    pushSettingsPatch({ specialBonusAmount: Number(el.setSpecialBonus.value) })
+  );
+  el.setSpecialPenalty?.addEventListener('change', () =>
+    pushSettingsPatch({ specialPenaltyMultiplier: Number(el.setSpecialPenalty.value) })
+  );
+  el.setStreakTarget?.addEventListener('change', () =>
+    pushSettingsPatch({ streakRequirement: Number(el.setStreakTarget.value) })
+  );
+  el.specialRoundChecks?.forEach((checkbox) => checkbox.addEventListener('change', () => {
+    const enabledSpecialRounds = Array.from(el.specialRoundChecks)
+      .filter((control) => control.checked)
+      .map((control) => control.dataset.specialRound);
+    pushSettingsPatch({ enabledSpecialRounds });
+  }));
   el.setDoubleJeopardy.addEventListener('change', () =>
     pushSettingsPatch({ doubleJeopardy: el.setDoubleJeopardy.checked })
   );
@@ -3432,8 +3565,13 @@ function bindEvents() {
 
   // Buzzer + Spacebar Shortcut
   el.buzzBtn.addEventListener('click', () => {
-    sendWs({ type: 'buzz' });
+    sendWs({ type: 'buzz', riskChoice: el.riskChoiceSelect?.value || 'safe' });
   });
+  el.passHotPotatoBtn?.addEventListener('click', () => {
+    sendWs({ type: 'pass_hot_potato' });
+  });
+  el.judgeAcceptBtn?.addEventListener('click', () => sendWs({ type: 'judge_decision', ruling: 'accept' }));
+  el.judgeRejectBtn?.addEventListener('click', () => sendWs({ type: 'judge_decision', ruling: 'reject' }));
 
   window.addEventListener('keydown', (e) => {
     if (e.isComposing || e.code !== 'Space') return;
@@ -3442,7 +3580,7 @@ function bindEvents() {
     if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button') return;
     e.preventDefault();
     if (!el.buzzBtn.disabled) {
-      sendWs({ type: 'buzz' });
+      sendWs({ type: 'buzz', riskChoice: el.riskChoiceSelect?.value || 'safe' });
     }
   });
 
@@ -3602,6 +3740,7 @@ function bindEvents() {
         if (el.activeGameModeIndicator) {
           el.activeGameModeIndicator.textContent = (MODE_NAMES[mode] || mode).toUpperCase();
         }
+        if (el.gameModeDescription) el.gameModeDescription.textContent = MODE_DESCRIPTIONS[mode] || MODE_DESCRIPTIONS.standard;
         pushSettingsPatch({ gameMode: mode });
       });
     });

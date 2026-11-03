@@ -296,6 +296,7 @@
           </button>
         </div>
 
+        <aside id="judge-stage" class="judge-stage" aria-label="Rotating judge position" hidden></aside>
 
         <!-- 15-SECOND TEAM SELECTION OVERLAY -->
         <div id="team-select-overlay" class="team-select-overlay" hidden>
@@ -405,12 +406,18 @@
                     <span class="pixel-sprite sprite-clock" aria-hidden="true"></span>
                     <span class="mode-name">Speed Blitz (8s)</span>
                   </button>
+                  <button type="button" class="mode-btn" data-mode="streak_race" role="radio" aria-checked="false" title="Build a configurable streak to bank a large bonus. A miss resets your run.">
+                    <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
+                    <span class="pixel-sprite sprite-fire" aria-hidden="true"></span>
+                    <span class="mode-name">Streak Race</span>
+                  </button>
                   <button type="button" class="mode-btn" data-mode="halloween" role="radio" aria-checked="false" title="Halloween Mayhem: Spooky monsters, candy currency, trick-or-treat tiles!">
                     <span class="mode-check"><span class="pixel-sprite sprite-check" aria-hidden="true"></span></span>
                     <span class="pixel-sprite sprite-pumpkin" aria-hidden="true"></span>
                     <span class="mode-name">Halloween Mayhem</span>
                   </button>
                 </div>
+                <p id="game-mode-description" class="game-mode-description" aria-live="polite">Classic board values, buzzer play, and the familiar Jeoparty rules.</p>
               </div>
 
               <!-- Cinematic Camera presentation setting -->
@@ -526,6 +533,7 @@
                   <select id="set-answer-mode" name="answerMode" class="skribbl-select">
                     <option value="buzzer">Classic Buzzer (Buzz + Type)</option>
                     <option value="skribbl">Everyone Answers (Speed Mode)</option>
+                    <option value="judge">Fair Rotating Judge</option>
                   </select>
                 </label>
 
@@ -656,6 +664,39 @@
                       <span>Wrong Answer Penalty</span>
                     </label>
                   </div>
+                  <div class="special-round-settings">
+                    <div class="settings-grid-primary">
+                      <label class="setting-field" for="set-special-schedule"><span>Round Placement</span>
+                        <select id="set-special-schedule" class="skribbl-select"><option value="random">Random tiles</option><option value="scheduled">Evenly scheduled</option></select>
+                      </label>
+                      <label class="setting-field" for="set-special-bonus"><span>Bonus / streak purse</span>
+                        <select id="set-special-bonus" class="skribbl-select"><option value="200">$200</option><option value="300" selected>$300</option><option value="500">$500</option><option value="750">$750</option><option value="1000">$1,000</option></select>
+                      </label>
+                      <label class="setting-field" for="set-special-penalty"><span>Special wrong penalty</span>
+                        <select id="set-special-penalty" class="skribbl-select"><option value="1">Normal</option><option value="2">Double</option></select>
+                      </label>
+                      <label class="setting-field" for="set-streak-target"><span>Streak Race target</span>
+                        <select id="set-streak-target" class="skribbl-select"><option value="2">2 correct</option><option value="3" selected>3 correct</option><option value="4">4 correct</option></select>
+                      </label>
+                    </div>
+                    <details class="special-round-list-details">
+                      <summary>Choose special tile types</summary>
+                      <div class="special-round-list">
+                        <label><input type="checkbox" data-special-round="speed_blitz" checked /> Speed Blitz</label>
+                        <label><input type="checkbox" data-special-round="steal" checked /> Steal Clue</label>
+                        <label><input type="checkbox" data-special-round="chaos_all_play" checked /> All-Play</label>
+                        <label><input type="checkbox" data-special-round="double_trouble" checked /> Double Trouble</label>
+                        <label><input type="checkbox" data-special-round="treasure_clue" checked /> Treasure Clue</label>
+                        <label><input type="checkbox" data-special-round="risky_business" checked /> Risky Business</label>
+                        <label><input type="checkbox" data-special-round="triple_threat" /> Triple Threat</label>
+                        <label><input type="checkbox" data-special-round="category_takeover" /> Category Takeover</label>
+                        <label><input type="checkbox" data-special-round="last_chance" /> Last Chance</label>
+                        <label><input type="checkbox" data-special-round="mystery_question" /> Mystery Question</label>
+                        <label><input type="checkbox" data-special-round="reverse_jeoparty" /> Reverse Jeoparty</label>
+                      </div>
+                      <p class="setting-hint">Choose none to turn special tiles off. The frequency setting controls how many appear.</p>
+                    </details>
+                  </div>
                 </div>
               </details>
             </section>
@@ -757,6 +798,19 @@
 
             <!-- Focused Action Zone -->
             <div class="clue-action-zone">
+              <div id="risk-choice-wrap" class="risk-choice-wrap" hidden>
+                <label for="risk-choice-select">Your wager:</label>
+                <select id="risk-choice-select" class="skribbl-select">
+                  <option value="safe">Play safe — standard points</option>
+                  <option value="double">Double it — 2× if right, lose clue value if wrong</option>
+                </select>
+              </div>
+
+              <div id="hot-potato-controls" class="hot-potato-controls" hidden>
+                <span id="hot-potato-countdown" class="hot-potato-countdown" aria-live="polite">POTATO: 7</span>
+                <button type="button" id="pass-hot-potato-btn" class="btn-skribbl btn-orange" hidden>Pass the Potato</button>
+              </div>
+
               <!-- Tactile MS Paint Buzzer -->
               <div id="buzzer-wrap" class="buzzer-wrap" hidden>
                 <button type="button" id="buzz-btn" class="buzz-giant-btn">
@@ -771,6 +825,15 @@
 
               <!-- Buzzed Status for Spectators -->
               <div id="buzzed-spectator-banner" class="buzzed-spectator-banner" hidden></div>
+
+              <section id="judge-review-panel" class="judge-review-panel" aria-live="polite" hidden>
+                <strong>Judge review</strong>
+                <p id="judge-review-message"></p>
+                <div id="judge-decision-actions" class="judge-decision-actions" hidden>
+                  <button type="button" id="judge-accept-btn" class="btn-skribbl btn-green">Accept answer</button>
+                  <button type="button" id="judge-reject-btn" class="btn-skribbl btn-gray">Reject answer</button>
+                </div>
+              </section>
 
               <!-- Answer Input Form -->
               <form id="clue-answer-form" class="clue-answer-form" hidden>

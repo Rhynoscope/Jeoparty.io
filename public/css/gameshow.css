@@ -319,9 +319,6 @@
   align-items: center;
   transform-origin: 50% 100%;
 }
-  align-items: center;
-  transform-origin: 50% 100%;
-}
 
 .podium-avatar-wrap {
   position: relative;
@@ -1265,6 +1262,173 @@
   }
 }
 
+/* Larger hand-drawn contestants, with extra rows instead of shrinking faces. */
+.contestant-stage {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow: visible;
+  gap: 18px 12px;
+  padding: 22px 14px 12px;
+  background-color: #1744a3;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 47px, rgba(255,255,255,.08) 47px 50px),
+    repeating-linear-gradient(0deg, #16347e 0 10px, #2753ae 10px 14px, #16347e 14px 28px);
+  border: 4px solid #080d1d;
+  box-shadow: inset 0 5px 0 rgba(255,255,255,.12), 0 5px 0 #080d1d;
+}
+
+.contestant-stage[data-density='wide'] .podium {
+  flex: 0 1 30%;
+  max-width: 220px;
+}
+
+.contestant-stage[data-density='medium'] .podium {
+  flex: 0 1 29%;
+  max-width: 190px;
+}
+
+.contestant-stage[data-density='compact'] .podium {
+  flex: 0 1 18%;
+  max-width: 150px;
+}
+
+.podium-body {
+  min-height: 82px;
+  border-radius: 2px;
+  box-shadow: 3px 4px 0 #090d22;
+}
+
+.podium-avatar-wrap {
+  margin-bottom: calc(var(--podium-av, 112px) * -0.18);
+}
+
+.judge-stage {
+  align-self: center;
+  width: min(100%, 760px);
+  margin: 4px auto 8px;
+}
+
+.judge-stage[hidden] { display: none !important; }
+
+.judge-stage-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 132px;
+  padding: 10px 18px;
+  color: #fff;
+  background: #17377f;
+  border: 4px solid #080d1d;
+  box-shadow: 4px 5px 0 #080d1d;
+}
+
+.judge-stage-art {
+  position: relative;
+  width: 154px;
+  height: 116px;
+  flex: 0 0 auto;
+}
+
+.judge-character {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 96px;
+  height: 114px;
+  image-rendering: pixelated;
+  filter: drop-shadow(3px 3px 0 #080d1d);
+}
+
+.judge-player-avatar {
+  position: absolute;
+  right: 0;
+  bottom: -8px;
+  image-rendering: pixelated;
+}
+
+.judge-stage-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-pixel, monospace);
+  text-shadow: 2px 2px 0 #080d1d;
+}
+
+.judge-stage-copy strong { font-size: clamp(1rem, 2vw, 1.45rem); }
+.judge-role-label { color: #ffe35b; font-size: .78rem; letter-spacing: .08em; }
+.judge-stage-status { color: #d5e4ff; font: 700 .9rem/1.3 var(--font-ui, sans-serif); text-shadow: 1px 1px #080d1d; }
+
+.judge-character .judge-raised-hand,
+.judge-character .judge-gavel { opacity: 0; }
+.judge-stage-card[data-mood='thinking'] .judge-character { animation: judgeThink .55s steps(2) infinite alternate; }
+.judge-stage-card[data-mood='accept'] .judge-raised-hand,
+.judge-stage-card[data-mood='announce'] .judge-raised-hand { opacity: 1; animation: judgeRaise .35s steps(3) 2 alternate; }
+.judge-stage-card[data-mood='reject'] .judge-gavel { opacity: 1; animation: judgeGavel .3s steps(2) 2 alternate; }
+
+@keyframes judgeThink { to { transform: translateY(-3px) rotate(-2deg); } }
+@keyframes judgeRaise { to { transform: translate(-2px, -5px); } }
+@keyframes judgeGavel { to { transform: rotate(18deg); } }
+
+.judge-review-panel,
+.hot-potato-controls,
+.risk-choice-wrap {
+  margin: 8px auto;
+  padding: 10px 12px;
+  color: #fff;
+  background: #19377d;
+  border: 3px solid #080d1d;
+  box-shadow: 3px 3px 0 #080d1d;
+}
+
+.judge-review-panel[hidden],
+.hot-potato-controls[hidden],
+.risk-choice-wrap[hidden] { display: none !important; }
+.judge-review-panel p { margin: 5px 0; }
+.judge-decision-actions,
+.hot-potato-controls,
+.risk-choice-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.judge-decision-actions[hidden] { display: none !important; }
+.hot-potato-countdown { color: #ffe35b; font: 700 1rem var(--font-pixel, monospace); }
+.risk-choice-wrap .skribbl-select { max-width: min(100%, 420px); }
+
+.game-mode-description {
+  margin: 9px 0 0;
+  padding: 9px 12px;
+  color: #fff;
+  background: #12347f;
+  border: 2px solid #080d1d;
+  font-size: .9rem;
+  line-height: 1.4;
+}
+
+.special-round-settings { display: grid; gap: 10px; margin-top: 12px; }
+.special-round-list-details { padding: 10px; background: rgba(10, 27, 81, .55); border: 2px solid #080d1d; }
+.special-round-list-details summary { cursor: pointer; font-weight: 700; }
+.special-round-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 12px; margin-top: 10px; }
+.special-round-list label { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: .9rem; }
+.special-round-list input { accent-color: #43d927; }
+
+@media (max-width: 768px) {
+  .host-figure { width: 88px; height: 98px; }
+  .host-figure .pixel-avatar.host-avatar { --av-size: 90px; }
+  .contestant-stage { gap: 14px 6px; padding: 16px 6px 10px; }
+  .contestant-stage[data-density] .podium { flex: 0 1 calc(33.333% - 7px); width: auto; min-width: 0; max-width: none; }
+  .contestant-stage[data-density='wide'] .podium { flex-basis: 31%; }
+  .contestant-stage[data-density='medium'] .podium { flex-basis: 31%; }
+  .contestant-stage[data-density='compact'] .podium { flex-basis: 31%; }
+  .podium-avatar .pixel-avatar { --av-size: clamp(56px, 18vw, 96px) !important; width: var(--av-size) !important; height: var(--av-size) !important; }
+  .podium-body { min-height: 74px; padding: 5px 3px; }
+  .judge-stage-art { width: 128px; height: 100px; }
+  .judge-character { width: 82px; height: 98px; }
+  .judge-player-avatar .pixel-avatar { --av-size: 62px !important; }
+  .judge-stage-card { gap: 8px; padding: 8px; }
+  .judge-stage-status { font-size: .78rem; }
+  .special-round-list { grid-template-columns: 1fr; }
+}
+
 @keyframes stageWipeIn {
   0% {
     opacity: 0.25;
@@ -1693,4 +1857,31 @@ body.reduce-motion .clue-prompt-text[data-typing='1']::after {
   .podium-streak-chip.is-bonus {
     animation: none !important;
   }
+}
+
+/* Final responsive stage overrides: preserve full size characters on every viewport. */
+.contestant-stage { flex-wrap: wrap; overflow: visible; }
+.contestant-stage[data-density='wide'] .podium { flex: 0 1 30%; }
+.contestant-stage[data-density='medium'] .podium { flex: 0 1 29%; }
+.contestant-stage[data-density='compact'] .podium { flex: 0 1 18%; }
+.podium-avatar-wrap { margin-bottom: calc(var(--podium-av, 112px) * -0.18); }
+.podium-body { min-height: 82px; }
+.judge-stage[hidden], .judge-review-panel[hidden], .hot-potato-controls[hidden], .risk-choice-wrap[hidden] { display: none !important; }
+
+@media (max-width: 768px) {
+  .host-figure { width: 88px; height: 98px; }
+  .host-figure .pixel-avatar.host-avatar { --av-size: 90px; }
+  .contestant-stage { gap: 14px 6px; padding: 16px 6px 10px; }
+  .contestant-stage[data-density] .podium { flex: 0 1 calc(33.333% - 7px); width: auto; min-width: 0; max-width: none; }
+  .contestant-stage[data-density='wide'] .podium,
+  .contestant-stage[data-density='medium'] .podium,
+  .contestant-stage[data-density='compact'] .podium { flex-basis: 31%; }
+  .podium-avatar .pixel-avatar { --av-size: clamp(56px, 18vw, 96px) !important; width: var(--av-size) !important; height: var(--av-size) !important; }
+  .podium-body { min-height: 74px; padding: 5px 3px; }
+  .judge-stage-art { width: 128px; height: 100px; }
+  .judge-character { width: 82px; height: 98px; }
+  .judge-player-avatar .pixel-avatar { --av-size: 62px !important; }
+  .judge-stage-card { gap: 8px; padding: 8px; }
+  .judge-stage-status { font-size: .78rem; }
+  .special-round-list { grid-template-columns: 1fr; }
 }
