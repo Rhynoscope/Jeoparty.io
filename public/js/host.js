@@ -31,16 +31,19 @@ const hostSpriteCache = new Map();
 export const HOST_MOODS = new Set([
   'idle',
   'talking',
-  'waving',
+  'smiling',
+  'blinking',
   'celebrating',
+  'introducing',
   'reacting',
   'winner',
+  'waving',
 ]);
 
 /**
  * Draws one 52x52 pixel-art frame of the Jeoparty Host on the exact same
  * pixel grid as the player avatars (bold black outlines, flat solid colors,
- * rounded head and bust silhouette).
+ * rounded head and bust silhouette, polished game-show host styling).
  */
 export function drawHostFrame(g, mood = 'idle', isHalloween = false, f = 0) {
   const safeMood = HOST_MOODS.has(mood) ? mood : 'idle';
@@ -49,6 +52,9 @@ export function drawHostFrame(g, mood = 'idle', isHalloween = false, f = 0) {
   let bobY = 0;
   if (safeMood === 'idle') bobY = [0, -1, 0, 0][f];
   else if (safeMood === 'talking') bobY = [0, -1, 0, -1][f];
+  else if (safeMood === 'smiling') bobY = [0, -1, 0, 0][f];
+  else if (safeMood === 'blinking') bobY = [0, 0, 0, 0][f];
+  else if (safeMood === 'introducing') bobY = [0, -1, 0, -1][f];
   else if (safeMood === 'waving') bobY = [0, -1, 0, -1][f];
   else if (safeMood === 'celebrating') bobY = [-1, -2, -1, -2][f];
   else if (safeMood === 'reacting') bobY = [0, 0, -1, 0][f];
@@ -62,7 +68,7 @@ export function drawHostFrame(g, mood = 'idle', isHalloween = false, f = 0) {
   const tieShade = hexToRgba(isHalloween ? '#cc5500' : '#cca600');
   const skinFill = hexToRgba('#ffd199'); // Peach skin from avatar sheet
   const skinShade = hexToRgba('#cca06e');
-  const hairFill = hexToRgba('#24150d'); // Espresso brown
+  const hairFill = hexToRgba('#22140c'); // Espresso brown
   const micHead = hexToRgba('#b8c2d6');
   const micHandle = BLACK;
 
@@ -130,88 +136,99 @@ export function drawHostFrame(g, mood = 'idle', isHalloween = false, f = 0) {
     [39, 17 + bobY],
     [39, 25 + bobY],
     [36, 21 + bobY],
-    [32, 17 + bobY],
-    [26, 16 + bobY],
-    [20, 18 + bobY],
+    [32, 16 + bobY],
+    [26, 15 + bobY],
+    [20, 17 + bobY],
     [16, 22 + bobY],
   ];
   g.poly(hairPts, 1.4, BLACK, true);
   g.floodFill(26, 14 + bobY, hairFill);
   g.poly(hairPts, 1.4, BLACK, true);
-  g.line(20, 14 + bobY, 28, 14 + bobY, 0.9, hexToRgba('#422619'));
+  g.line(19, 14 + bobY, 32, 14 + bobY, 1.0, hexToRgba('#4f2c1b'));
+  g.line(22, 15 + bobY, 29, 15 + bobY, 0.9, hexToRgba('#6b3d26'));
 
   // 6. Eyebrows
   if (safeMood === 'reacting') {
-    g.line(17, 19 + bobY, 22, 18 + bobY, 1.3, BLACK);
-    g.line(30, 16 + bobY, 35, 19 + bobY, 1.3, BLACK);
+    g.line(17, 18 + bobY, 22, 17 + bobY, 1.3, BLACK);
+    g.line(30, 15 + bobY, 35, 18 + bobY, 1.3, BLACK);
   } else {
-    g.line(18, 18 + bobY, 22, 17 + bobY, 1.2, BLACK);
-    g.line(30, 17 + bobY, 34, 18 + bobY, 1.2, BLACK);
+    g.line(18, 17 + bobY, 22, 16 + bobY, 1.2, BLACK);
+    g.line(30, 16 + bobY, 34, 17 + bobY, 1.2, BLACK);
   }
 
-  // 7. Eyes
-  const lookX = safeMood === 'winner' ? -1 : f === 2 ? 1 : 0;
-  if (safeMood === 'celebrating') {
-    g.poly([[17, 23 + bobY], [20, 21 + bobY], [23, 23 + bobY]], 1.3, BLACK);
-    g.poly([[29, 23 + bobY], [32, 21 + bobY], [35, 23 + bobY]], 1.3, BLACK);
-  } else if (safeMood === 'idle' && f === 1) {
-    g.line(18, 23 + bobY, 23, 23 + bobY, 1.2, BLACK);
-    g.line(29, 23 + bobY, 34, 23 + bobY, 1.2, BLACK);
-  } else if (safeMood === 'waving') {
-    g.oval(20, 22 + bobY, 3.2, 3.2, 1.1, BLACK);
-    g.floodFill(20, 22 + bobY, WHITE);
-    g.brush(20, 22 + bobY, 1.3, BLACK);
+  // 7. Expressive Game-Show Eyes with White Sclera & Shine
+  const isBlink = safeMood === 'blinking' || (safeMood === 'idle' && f === 2);
+  if (safeMood === 'celebrating' || safeMood === 'smiling') {
+    g.poly([[17, 23 + bobY], [20, 20 + bobY], [23, 23 + bobY]], 1.4, BLACK);
+    g.poly([[29, 23 + bobY], [32, 20 + bobY], [35, 23 + bobY]], 1.4, BLACK);
+  } else if (isBlink) {
+    g.line(18, 22 + bobY, 23, 22 + bobY, 1.3, BLACK);
     g.line(29, 22 + bobY, 34, 22 + bobY, 1.3, BLACK);
-    g.line(33, 21 + bobY, 35, 22 + bobY, 1.1, BLACK);
+  } else if (safeMood === 'introducing') {
+    g.oval(20, 21 + bobY, 3.2, 3.2, 1.1, BLACK);
+    g.floodFill(20, 21 + bobY, WHITE);
+    g.brush(20, 21 + bobY, 1.3, BLACK);
+    g.px(19, 20 + bobY, WHITE);
+    g.line(29, 21 + bobY, 34, 21 + bobY, 1.4, BLACK);
+    g.line(33, 20 + bobY, 35, 21 + bobY, 1.1, BLACK);
   } else if (safeMood === 'reacting') {
-    g.oval(20, 22 + bobY, 3.8, 3.8, 1.1, BLACK);
-    g.floodFill(20, 22 + bobY, WHITE);
-    g.oval(31, 22 + bobY, 3.2, 3.2, 1.1, BLACK);
-    g.floodFill(31, 22 + bobY, WHITE);
-    g.brush(19, 22 + bobY, 1.3, BLACK);
-    g.brush(33, 22 + bobY, 1.3, BLACK);
+    g.oval(20, 21 + bobY, 3.8, 3.8, 1.2, BLACK);
+    g.floodFill(20, 21 + bobY, WHITE);
+    g.oval(32, 21 + bobY, 3.8, 3.8, 1.2, BLACK);
+    g.floodFill(32, 21 + bobY, WHITE);
+    g.brush(20, 21 + bobY, 1.4, BLACK);
+    g.px(19, 20 + bobY, WHITE);
+    g.brush(32, 21 + bobY, 1.4, BLACK);
+    g.px(31, 20 + bobY, WHITE);
     g.brush(37, 18 + bobY, 1.5, CYAN);
     g.px(37, 16 + bobY, CYAN);
   } else {
-    g.oval(20, 22 + bobY, 3.2, 3.2, 1.1, BLACK);
-    g.floodFill(20, 22 + bobY, WHITE);
-    g.brush(20 + lookX, 22 + bobY, 1.3, BLACK);
-    g.oval(31, 22 + bobY, 3.2, 3.2, 1.1, BLACK);
-    g.floodFill(31, 22 + bobY, WHITE);
-    g.brush(31 + lookX, 22 + bobY, 1.3, BLACK);
+    const lookX = safeMood === 'winner' ? -1 : 0;
+    g.oval(20, 21 + bobY, 3.3, 3.3, 1.1, BLACK);
+    g.floodFill(20, 21 + bobY, WHITE);
+    g.brush(20 + lookX, 21 + bobY, 1.3, BLACK);
+    g.px(19 + lookX, 20 + bobY, WHITE);
+
+    g.oval(32, 21 + bobY, 3.3, 3.3, 1.1, BLACK);
+    g.floodFill(32, 21 + bobY, WHITE);
+    g.brush(32 + lookX, 21 + bobY, 1.3, BLACK);
+    g.px(31 + lookX, 20 + bobY, WHITE);
   }
 
-  // 8. Host Mustache
-  const stachePts = [
-    [19, 28 + bobY],
-    [23, 26 + bobY],
-    [26, 27 + bobY],
-    [29, 26 + bobY],
-    [33, 28 + bobY],
-    [26, 28 + bobY],
-  ];
-  g.poly(stachePts, 1.1, BLACK, true);
-  g.floodFill(26, 27 + bobY, hairFill);
-  g.poly(stachePts, 1.1, BLACK, true);
+  // 8. Defined Nose Bridge
+  g.line(26, 24 + bobY, 26, 27 + bobY, 1.1, BLACK);
+  g.px(27, 27 + bobY, BLACK);
+  g.px(25, 27 + bobY, skinShade);
 
-  // 9. Mouth (beneath mustache)
+  // 9. Clean Bright Game-Show Host Smile (No Mustache)
   if (safeMood === 'talking') {
-    if (f % 2 === 0) {
-      g.oval(26, 31 + bobY, 2.8, 2.2, 1.1, BLACK);
+    if (f === 0) {
+      g.oval(26, 31 + bobY, 3.2, 2.6, 1.2, BLACK);
       g.floodFill(26, 31 + bobY, hexToRgba('#80121e'));
-      g.line(24, 30 + bobY, 28, 30 + bobY, 0.9, WHITE);
-    } else {
-      g.oval(26, 30 + bobY, 1.8, 1.6, 1.1, BLACK);
+      g.line(24, 30 + bobY, 28, 30 + bobY, 1.1, WHITE);
+    } else if (f === 1) {
+      g.oval(26, 30 + bobY, 2.4, 2.0, 1.1, BLACK);
       g.floodFill(26, 30 + bobY, hexToRgba('#80121e'));
+      g.line(25, 29 + bobY, 27, 29 + bobY, 0.9, WHITE);
+    } else if (f === 2) {
+      g.oval(26, 31 + bobY, 2.0, 2.4, 1.1, BLACK);
+      g.floodFill(26, 31 + bobY, hexToRgba('#80121e'));
+    } else {
+      g.poly([[22, 29 + bobY], [30, 29 + bobY], [28, 32 + bobY], [24, 32 + bobY]], 1.1, BLACK, true);
+      g.floodFill(26, 30 + bobY, hexToRgba('#80121e'));
+      g.line(23, 29 + bobY, 29, 29 + bobY, 0.9, WHITE);
     }
   } else if (safeMood === 'celebrating' || safeMood === 'winner') {
-    g.poly([[21, 29 + bobY], [31, 29 + bobY], [29, 33 + bobY], [23, 33 + bobY]], 1.1, BLACK, true);
+    g.poly([[21, 29 + bobY], [31, 29 + bobY], [29, 34 + bobY], [23, 34 + bobY]], 1.2, BLACK, true);
     g.floodFill(26, 31 + bobY, hexToRgba('#80121e'));
-    g.line(22, 30 + bobY, 30, 30 + bobY, 1.0, WHITE);
+    g.line(22, 30 + bobY, 30, 30 + bobY, 1.2, WHITE);
   } else if (safeMood === 'reacting') {
-    g.poly([[21, 31 + bobY], [23, 30 + bobY], [26, 32 + bobY], [28, 30 + bobY], [31, 31 + bobY]], 1.2, BLACK);
+    g.oval(26, 31 + bobY, 2.2, 2.6, 1.2, BLACK);
+    g.floodFill(26, 31 + bobY, hexToRgba('#80121e'));
   } else {
-    g.line(22, 30 + bobY, 30, 30 + bobY, 1.1, BLACK);
+    g.poly([[22, 29 + bobY], [30, 29 + bobY], [28, 32 + bobY], [24, 32 + bobY]], 1.1, BLACK, true);
+    g.floodFill(26, 30 + bobY, hexToRgba('#80121e'));
+    g.line(23, 29 + bobY, 29, 29 + bobY, 0.9, WHITE);
   }
 
   // 10. Microphone in Hand (viewer's right)
@@ -224,7 +241,7 @@ export function drawHostFrame(g, mood = 'idle', isHalloween = false, f = 0) {
   g.line(40, 31 + bobY + micBob, 42, 31 + bobY + micBob, 0.8, BLACK);
 
   // 11. Left Hand / Gesture / Mood Effects
-  if (safeMood === 'waving') {
+  if (safeMood === 'waving' || safeMood === 'introducing') {
     const waveX = f % 2 === 0 ? -2 : 2;
     g.oval(8 + waveX, 26 + bobY, 3.4, 3.4, 1.2, BLACK);
     g.floodFill(8 + waveX, 26 + bobY, skinFill);
@@ -297,13 +314,17 @@ export function buildHostHTML(mood = 'idle', isHalloween = false, options = {}) 
     <polygon points="21,38 26,45 31,38" fill="#fff" stroke="#000" stroke-width="1.2" />
     <polygon points="25,41 27,41 28,49 26,51 24,49" fill="${tie}" stroke="#000" stroke-width="1" />
     <circle cx="26" cy="25" r="13" fill="#ffd199" stroke="#000" stroke-width="1.5" />
-    <path d="M 13,25 C 13,15 39,15 39,25 C 34,17 18,17 13,25 Z" fill="#24150d" stroke="#000" stroke-width="1.4" />
-    <circle cx="20" cy="22" r="3" fill="#fff" stroke="#000" stroke-width="1" />
+    <path d="M 13,25 C 13,15 39,15 39,25 C 34,17 18,17 13,25 Z" fill="#22140c" stroke="#000" stroke-width="1.4" />
+    <circle cx="20" cy="22" r="3.2" fill="#fff" stroke="#000" stroke-width="1" />
     <circle cx="20" cy="22" r="1.3" fill="#000" />
-    <circle cx="31" cy="22" r="3" fill="#fff" stroke="#000" stroke-width="1" />
+    <circle cx="19.3" cy="21.3" r="0.6" fill="#fff" />
+    <circle cx="31" cy="22" r="3.2" fill="#fff" stroke="#000" stroke-width="1" />
     <circle cx="31" cy="22" r="1.3" fill="#000" />
-    <path d="M 19,28 Q 23,26 26,27 Q 29,26 33,28 Z" fill="#24150d" stroke="#000" stroke-width="1" />
-    <line x1="22" y1="30" x2="30" y2="30" stroke="#000" stroke-width="1.1" />
+    <circle cx="30.3" cy="21.3" r="0.6" fill="#fff" />
+    <line x1="26" y1="24" x2="26" y2="27" stroke="#000" stroke-width="1.2" />
+    <circle cx="27" cy="27" r="0.6" fill="#000" />
+    <polygon points="22,29 30,29 28,32 24,32" fill="#80121e" stroke="#000" stroke-width="1.1" />
+    <line x1="23" y1="29" x2="29" y2="29" stroke="#fff" stroke-width="1" />
     <circle cx="41" cy="38" r="3" fill="#ffd199" stroke="#000" stroke-width="1.1" />
     <line x1="41" y1="35" x2="41" y2="46" stroke="#000" stroke-width="2.2" />
     <ellipse cx="41" cy="31" rx="3.2" ry="3.6" fill="#b8c2d6" stroke="#000" stroke-width="1.2" />

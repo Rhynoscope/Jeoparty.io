@@ -10,7 +10,6 @@
 import { buildAvatarHTML } from './avatar.js';
 import { sfx } from './audio.js';
 import { hostPresenter } from './host.js';
-import { judgePresenter } from './judge.js';
 import { cinematic } from './cinematic.js';
 
 const CLUE_PHASES = new Set([
@@ -116,12 +115,6 @@ class GameShow {
       hostCaption: elements.hostCaption || document.getElementById('host-speech-text'),
       hostName: elements.hostName || document.getElementById('host-name-text'),
       hostVoiceBtn: elements.hostVoiceBtn || document.getElementById('host-voice-btn'),
-      judgeStage: elements.judgeStage || document.getElementById('judge-stage'),
-      judgeFigure: elements.judgeFigure || document.getElementById('judge-figure'),
-      judgeName: elements.judgeName || document.getElementById('judge-name-text'),
-      judgeStatus: elements.judgeStatus || document.getElementById('judge-speech-text'),
-      judgeControls: elements.judgeControls || document.getElementById('judge-action-controls'),
-      judgeTimer: elements.judgeTimer || document.getElementById('judge-timer-fill'),
       contestantStage: elements.contestantStage || document.getElementById('contestant-stage'),
       wheelBox: elements.wheelBox || document.getElementById('final-wheel-box'),
       wheelEl: elements.wheelEl || document.getElementById('final-wheel'),
@@ -135,15 +128,6 @@ class GameShow {
       captionEl: this.elements.hostCaption,
       nameEl: this.elements.hostName,
       voiceBtnEl: this.elements.hostVoiceBtn,
-    });
-
-    judgePresenter.init({
-      stageEl: this.elements.judgeStage,
-      figureEl: this.elements.judgeFigure,
-      nameEl: this.elements.judgeName,
-      statusEl: this.elements.judgeStatus,
-      controlsEl: this.elements.judgeControls,
-      timerEl: this.elements.judgeTimer,
     });
 
     if (typeof window !== 'undefined') {
@@ -204,7 +188,6 @@ class GameShow {
     }
 
     this.updateHostStage(room);
-    this.updateJudgeStage(room);
     this.updateContestantStage(room);
     this.consumeAwards(room);
     this.updateWheelVisibility(room);
@@ -231,39 +214,6 @@ class GameShow {
     if (!visible) return;
     stage.dataset.mode = this.ctx.isHalloween ? 'halloween' : 'classic';
     stage.dataset.phase = room.phase;
-  }
-
-  updateJudgeStage(room) {
-    const stage = this.elements.judgeStage;
-    if (!stage) return;
-    const isHostJudgeMode = room.settings?.answerMode === 'host';
-    const ac = room.activeClue;
-    const isClueBuzzed = room.phase === 'clue_buzzed';
-    if (!isHostJudgeMode || !ac || !isClueBuzzed) {
-      judgePresenter.hideJudgeStage();
-      return;
-    }
-
-    if (ac.isAmbiguous && ac.judgePlayerId) {
-      const isViewerJudge = ac.judgePlayerId === this.ctx.playerId;
-      const judgePlayer = room.players?.find((p) => p.id === ac.judgePlayerId);
-      const judgeName = judgePlayer ? judgePlayer.name : 'Contestant';
-      judgePresenter.showRulingPrompt(
-        ac.judgeGuessText || ac.buzzedGuessText || '',
-        ac.judgeOfficialAnswer || ac.answer || '',
-        isViewerJudge,
-        ac.judgeAlternatives || []
-      );
-      if (this.elements.judgeName) {
-        this.elements.judgeName.textContent = `ROUND JUDGE: ${judgeName.toUpperCase()}`;
-      }
-      const officialEl = document.getElementById('judge-official-answer-text');
-      if (officialEl) {
-        officialEl.textContent = ac.judgeOfficialAnswer || ac.answer || '(verifying...)';
-      }
-    } else {
-      judgePresenter.showJudgeStage();
-    }
   }
 
   /* ----------------------------- PODIUMS ------------------------------- */
@@ -320,9 +270,6 @@ class GameShow {
       pod.root.classList.toggle('is-winner', winnerId === p.id);
       pod.root.classList.toggle('is-bot', Boolean(p.isBot));
 
-      const isJudging = Boolean(p.isJudging || (room.activeClue?.judgePlayerId === p.id));
-      pod.root.classList.toggle('is-judging', isJudging);
-
       const isEliminated = Boolean(p.isEliminated || (room.settings?.gameMode === 'survival' && p.lives <= 0));
       pod.root.classList.toggle('is-eliminated', isEliminated);
 
@@ -340,10 +287,22 @@ class GameShow {
 
       if (room.settings?.gameMode === 'teams') {
         pod.teamEl.hidden = false;
-        pod.teamEl.className = `podium-team-badge team-${p.team || 'red'}`;
-        pod.teamEl.innerHTML = `<span class="pixel-team-dot dot-${p.team || 'red'}" aria-hidden="true"></span> ${p.team === 'red' ? 'RED' : 'BLUE'}`;
+        const safeTeam = p.team || 'red';
+        pod.teamEl.className = `podium-team-badge team-${safeTeam}`;
+        const icons = { red: '🚩', blue: '🛡️', green: '⚔️', yellow: '⚡' };
+        const labels = { red: 'RED', blue: 'BLUE', green: 'GREEN', yellow: 'YELLOW' };
+        pod.teamEl.innerHTML = `<span class="pixel-team-dot dot-${safeTeam}" aria-hidden="true">${icons[safeTeam] || '🚩'}</span> ${labels[safeTeam] || 'RED'}`;
       } else {
         pod.teamEl.hidden = true;
+      }
+
+      const isPotatoHolder = Boolean(
+        room.settings?.gameMode === 'hot_potato' &&
+        room.activeClue?.hotPotatoHolderId === p.id
+      );
+      pod.root.classList.toggle('has-hot-potato', isPotatoHolder);
+      if (pod.potatoEl) {
+        pod.potatoEl.hidden = !isPotatoHolder;
       }
 
       pod.nameEl.textContent = p.name;
@@ -407,6 +366,12 @@ class GameShow {
       crownEl.setAttribute('aria-hidden', 'true');
       crownEl.hidden = true;
 
+      const potatoEl = document.createElement('div');
+      potatoEl.className = 'podium-hot-potato';
+      potatoEl.hidden = true;
+      potatoEl.setAttribute('aria-hidden', 'true');
+      potatoEl.innerHTML = '<span class="pixel-potato-sprite">🥔</span><span class="pixel-potato-fuse">🔥</span><span class="potato-ticker">HOT POTATO!</span>';
+
       const avatarEl = document.createElement('div');
       avatarEl.className = 'podium-avatar';
       avatarEl.innerHTML = buildAvatarHTML(p.avatar, {
@@ -416,7 +381,7 @@ class GameShow {
         delaySec: (idx % 4) * 0.16,
       });
 
-      avatarWrap.append(flames, crownEl, avatarEl);
+      avatarWrap.append(flames, crownEl, potatoEl, avatarEl);
 
       const body = document.createElement('div');
       body.className = 'podium-body';
@@ -474,6 +439,7 @@ class GameShow {
         avatarSize,
         avatarKey: '',
         crownEl,
+        potatoEl,
         teamEl,
         nameEl,
         numberEl,

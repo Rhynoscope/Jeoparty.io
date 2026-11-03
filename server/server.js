@@ -325,7 +325,7 @@ function createDefaultSettings(gameMode = 'standard') {
     matchPace: 'auto', // 'auto' | 'shorter' | 'standard' | 'extended' | 'custom'
     specialFrequency: safeMode === 'chaos' ? 'high' : 'normal', // 'low' | 'normal' | 'high'
     botDifficulty: 'medium', // 'easy' | 'medium' | 'hard' | 'champion'
-    answerMode: 'buzzer', // 'buzzer' | 'skribbl' | 'host'
+    answerMode: 'buzzer', // 'buzzer' | 'skribbl'
     cinematicCamera: 'on', // 'on' | 'reduced' | 'off' — game-show intro + camera moves
     boardCols: 4, // 3..8 (auto-updated for active roster when autoScaleMatch is true)
     cluesPerCat: 4, // 3..6 ($200..$1200)
@@ -418,7 +418,7 @@ function applySettingsPatch(room, patch) {
     s.cinematicCamera = patch.cinematicCamera;
   }
 
-  if (['buzzer', 'skribbl', 'host'].includes(patch.answerMode)) {
+  if (['buzzer', 'skribbl'].includes(patch.answerMode)) {
     s.answerMode = patch.answerMode;
   }
 
@@ -665,14 +665,7 @@ function serializeRoomForPlayer(room, viewerId) {
   let activeClueView = null;
   if (room.activeClue) {
     const ac = room.activeClue;
-    const isJudge = Boolean(ac.judgePlayerId && ac.judgePlayerId === viewerId);
-    const revealAnswer =
-      room.phase === 'clue_result' ||
-      isJudge ||
-      (room.settings.answerMode === 'host' &&
-        room.phase === 'clue_buzzed' &&
-        (isHost || isJudge) &&
-        ac.buzzedPlayerId !== viewerId);
+    const revealAnswer = room.phase === 'clue_result';
 
     const hideClueTextYet = room.phase === 'daily_double_wager';
 
@@ -705,13 +698,8 @@ function serializeRoomForPlayer(room, viewerId) {
       lastWrongText: ac.lastWrongText || null,
       reveal: serializeReveal(ac.reveal),
       answer: revealAnswer ? ac.clueObj.answer : null,
-      judgePlayerId: ac.judgePlayerId || null,
-      judgeGuessText: ac.judgeGuessText || null,
-      judgeOfficialAnswer: revealAnswer ? ac.clueObj.answer : null,
-      judgeAlternatives: revealAnswer ? (ac.clueObj.acceptedAlternatives || []) : [],
-      isAmbiguous: Boolean(ac.isAmbiguous),
-      judgeCanRule: Boolean(isJudge && room.phase === 'clue_buzzed' && ac.judgePlayerId === viewerId),
       hotPotatoHolderId: ac.hotPotatoHolderId || null,
+      hotPotatoExpiresAt: ac.hotPotatoExpiresAt || null,
     };
   }
 
@@ -792,14 +780,13 @@ function serializeRoomForPlayer(room, viewerId) {
         lives,
         isEliminated,
         team: p.team || null,
-        isJudging: Boolean(room.activeClue && room.activeClue.judgePlayerId === p.id),
+        teamContribution: p.teamContribution || 0,
         inVoice: room.voiceMembers ? room.voiceMembers.has(p.id) : false,
         voiceMuted: room.voiceMembers?.get(p.id)?.muted ?? false,
         voiceSpeaking: room.voiceMembers?.get(p.id)?.speaking ?? false,
       };
     }),
-    teamScores: room.teamScores || { red: 0, blue: 0 },
-    activeJudgeId: room.activeClue?.judgePlayerId || null,
+    teamScores: room.teamScores || { red: 0, blue: 0, green: 0, yellow: 0 },
     board: boardView,
     activeClue: activeClueView,
     finalState: finalView,
@@ -1406,7 +1393,11 @@ function buildRoundBoard(room, roundNumber, excludedUsedIds = new Set()) {
       tiles: selectedClues.map((clueObj, rowIdx) => ({
         row: rowIdx,
         col: colIdx,
-        value: (rowIdx + 1) * 200 * multiplier,
+        value:
+          (rowIdx + 1) *
+          200 *
+          multiplier *
+          (room.settings.gameMode === 'double_or_nothing' ? 2 : 1),
         used: false,
         dailyDouble: false,
         clueObj,
@@ -1545,8 +1536,7 @@ function startNewGame(room) {
       reactionsSent: 0,
     };
   }
-  room.teamScores = { red: 0, blue: 0 };
-  room.lastJudgeId = null;
+  room.teamScores = { red: 0, blue: 0, green: 0, yellow: 0 };
   room.round = 1;
   room.usedCategoryIds = new Set();
   room.boardCategoryHistory = [];
@@ -1577,6 +1567,11 @@ function startNewGame(room) {
     color: 'success',
     text: `New match started! (${activePlayers.length} Players • ${room.settings.boardCols}x${room.settings.cluesPerCat} = ${totalClues} Clues) — Round 1!`,
   });
+  if (room.settings.gameMode === 'teams') {
+    enterTeamSelectPhase(room);
+    return;
+  }
+
   // Cinematic Camera: on/reduced opens with the televised intro; off goes
   // straight to the interactive board.
   const cameraMode = room.settings.cinematicCamera || 'on';
@@ -1587,6 +1582,63 @@ function startNewGame(room) {
     enterBoardPhase(room);
   } else {
     // No bot reaction particles over the cinematic stage; the intro is the show.
+    enterIntroPhase(room);
+  }
+}
+
+function enterTeamSelectPhase(room) {
+  if (!room || room.terminated) return;
+  clearRoomTimers(room);
+  room.phase = 'team_select';
+  const durationMs = 15000;
+  room.phaseEndsAt = Date.now() + durationMs;
+  room.teamScores = { red: 0, blue: 0, green: 0, yellow: 0 };
+
+  sendChat(room, {
+    color: 'gold',
+    text: '⚔️ TEAM JEOPARDY! Choose your team (Red, Blue, Green, or Yellow) in the next 15 seconds!',
+  });
+  broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
+  broadcastRoomState(room);
+
+  scheduleRoomTimer(room, () => {
+    finishTeamSelect(room);
+  }, durationMs);
+}
+
+function finishTeamSelect(room) {
+  if (!room || room.phase !== 'team_select') return;
+  clearRoomTimers(room);
+
+  const teams = ['red', 'blue', 'green', 'yellow'];
+  const teamCounts = { red: 0, blue: 0, green: 0, yellow: 0 };
+  for (const p of room.players) {
+    if (p.team && teams.includes(p.team)) {
+      teamCounts[p.team]++;
+    }
+  }
+
+  for (const p of room.players) {
+    if (!p.team || !teams.includes(p.team)) {
+      const leastTeam = teams.slice().sort((a, b) => teamCounts[a] - teamCounts[b])[0];
+      p.team = leastTeam;
+      teamCounts[leastTeam]++;
+    }
+    p.teamContribution = 0;
+  }
+
+  sendChat(room, {
+    color: 'success',
+    text: `Teams locked! 🚩 Red: ${teamCounts.red} | 🛡️ Blue: ${teamCounts.blue} | ⚔️ Green: ${teamCounts.green} | ⚡ Yellow: ${teamCounts.yellow}`,
+  });
+
+  const cameraMode = room.settings.cinematicCamera || 'on';
+  if (cameraMode === 'off') {
+    broadcastRoomEvent(room, { type: 'sfx', sound: 'round_start' });
+    hostSay(room, 'round_start');
+    maybeSpawnBotReaction(room, 'match_start');
+    enterBoardPhase(room);
+  } else {
     enterIntroPhase(room);
   }
 }
@@ -2038,7 +2090,7 @@ function handleSelectTile(room, player, col, row) {
   }
 
   if (room.settings.gameMode === 'double_or_nothing') {
-    room.activeClue.value = tile.value * 2;
+    // Value already doubled from board definition ($400, $800, etc.)
   }
 
   if (room.settings.answerMode === 'skribbl') {
@@ -2232,7 +2284,7 @@ function handleSubmitDailyDoubleAnswer(room, player, text) {
   enterClueResultPhase(room);
 }
 
-/* ---------------- Classic Buzzer & Host-Judge Modes ---------------- */
+/* ---------------- Classic Buzzer Clue Phase ---------------- */
 
 function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
   if (!room || room.terminated) return;
@@ -2352,7 +2404,6 @@ function handlePlayerBuzz(room, player) {
   const ac = room.activeClue;
   if (!ac || ac.attemptedIds.has(player.id)) return;
   if (room.settings.gameMode === 'survival' && (player.lives ?? 3) <= 0) return;
-  if (ac.judgePlayerId && ac.judgePlayerId === player.id) return;
 
   const remainingMain = Math.max(6000, room.phaseEndsAt - Date.now());
   clearRoomTimers(room);
@@ -2402,9 +2453,6 @@ function handlePlayerBuzz(room, player) {
   } else {
     scheduleRoomTimer(room, () => {
       if (room.phase !== 'clue_buzzed' || ac.buzzedPlayerId !== player.id) return;
-      if (room.settings.answerMode === 'host' && ac.buzzedGuessText) {
-        return;
-      }
       applyWrongBuzz(room, player, '(ran out of time)', { hostEvent: 'answer_timeout' });
     }, buzzAnswerMs);
   }
@@ -2445,6 +2493,21 @@ function applyCorrectBuzz(room, player) {
 
   if (room.settings.gameMode === 'teams' && player.team) {
     room.teamScores[player.team] = (room.teamScores[player.team] || 0) + totalPoints;
+    player.teamContribution = (player.teamContribution || 0) + totalPoints;
+  }
+
+  if (room.settings.gameMode === 'hot_potato') {
+    const candidates = room.players.filter(
+      (p) => p.connected && p.id !== player.id && !p.isEliminated
+    );
+    if (candidates.length > 0) {
+      const nextP = candidates[Math.floor(Math.random() * candidates.length)];
+      ac.hotPotatoHolderId = nextP.id;
+      sendChat(room, {
+        color: 'warn',
+        text: `🥔 ${player.name} passed the Hot Potato to ${nextP.name}!`,
+      });
+    }
   }
 
   if (room.settings.gameMode === 'speed') {
@@ -2546,18 +2609,35 @@ function applyWrongBuzz(room, player, displayGuess, { hostEvent = 'wrong' } = {}
       player.isEliminated = true;
       sendChat(room, {
         color: 'danger',
-        text: `💀 ${player.name} has lost all lives and is ELIMINATED from buzzing!`,
+        text: `💀 ${player.name} has lost all 3 lives and is ELIMINATED!`,
       });
+      broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
+      const survivors = room.players.filter(
+        (p) => p.connected && !p.isEliminated && (p.lives ?? 3) > 0
+      );
+      if (survivors.length <= 1 && room.players.filter((p) => p.connected).length > 1) {
+        const lastSurvivor = survivors[0];
+        sendChat(room, {
+          color: 'gold',
+          icon: 'crown',
+          text: `👑 SOLE SURVIVOR! ${lastSurvivor ? lastSurvivor.name : 'Nobody'} is the last contestant standing!`,
+        });
+        scheduleRoomTimer(room, () => {
+          enterGameOverPhase(room);
+        }, 3000);
+        return;
+      }
     } else {
       sendChat(room, {
         color: 'warn',
-        text: `❤️ ${player.name} lost a life! (${player.lives} remaining)`,
+        text: `❤️ ${player.name} lost a life! (${player.lives}/3 remaining)`,
       });
     }
   }
 
   if (room.settings.gameMode === 'teams' && player.team && penalty > 0) {
     room.teamScores[player.team] = (room.teamScores[player.team] || 0) - penalty;
+    player.teamContribution = (player.teamContribution || 0) - penalty;
   }
 
   if (room.settings.gameMode === 'hot_potato') {
@@ -2609,55 +2689,12 @@ function handleBuzzedAnswerSubmit(room, player, rawGuess) {
   // 1. Authoritative Server Check First
   const evaluation = evaluateAnswer(guess, ac.clueObj);
 
-  // 2. Clearly Correct: Automatically Award Immediately! Judge CANNOT deny!
+  // 2. Clearly Correct: Award Immediately!
   if (evaluation.status === 'correct') {
     applyCorrectBuzz(room, player);
     return;
   }
 
-  // 3. Fair Random Judge Mode: Only Genuinely Ambiguous ('close') answers go to the Judge!
-  if (room.settings.answerMode === 'host') {
-    if (evaluation.status === 'close') {
-      const eligibleJudges = room.players.filter(
-        (p) => p.connected && !p.isBot && p.id !== player.id
-      );
-
-      let judge = null;
-      if (eligibleJudges.length > 0) {
-        const lastJudgeIndex = eligibleJudges.findIndex((p) => p.id === room.lastJudgeId);
-        judge = eligibleJudges[(lastJudgeIndex + 1) % eligibleJudges.length];
-        room.lastJudgeId = judge.id;
-      }
-
-      if (judge) {
-        ac.judgePlayerId = judge.id;
-        ac.judgeGuessText = guess;
-        ac.judgeOfficialAnswer = ac.clueObj.answer;
-        ac.isAmbiguous = true;
-        clearRoomTimers(room);
-        room.phaseEndsAt = Date.now() + 12000;
-        sendChat(room, {
-          color: 'warn',
-          text: `[JUDGE] Ambiguous answer from ${player.name}: "${guess}" — Round Judge ${judge.name} is ruling!`,
-        });
-        broadcastRoomState(room);
-        scheduleRoomTimer(room, () => {
-          if (room.phase !== 'clue_buzzed' || ac.buzzedPlayerId !== player.id) return;
-          sendChat(room, {
-            color: 'info',
-            text: `Judge ${judge.name} timed out. Auto-ruling accepted "${guess}"!`,
-          });
-          applyCorrectBuzz(room, player);
-        }, 12000);
-        return;
-      }
-    }
-    // If clearly wrong or no eligible human judge, auto-reject
-    applyWrongBuzz(room, player, guess);
-    return;
-  }
-
-  // Standard non-judge buzzer mode:
   if (evaluation.status === 'close' && !player.isBot) {
     sendPrivateChat(player, {
       color: 'warn',
@@ -2665,46 +2702,6 @@ function handleBuzzedAnswerSubmit(room, player, rawGuess) {
     });
   } else {
     applyWrongBuzz(room, player, guess);
-  }
-}
-
-function handleHostJudge(room, judgePlayer, ruling) {
-  if (!room || room.terminated) return;
-  if (room.phase !== 'clue_buzzed') return;
-  const ac = room.activeClue;
-  if (!ac) return;
-
-  // Caller must be assigned judge or room host fallback
-  const isAssignedJudge = ac.judgePlayerId && judgePlayer.id === ac.judgePlayerId;
-  const isHostFallback = judgePlayer.id === room.hostId;
-  if (!isAssignedJudge && !isHostFallback) return;
-
-  const buzzed = room.players.find((p) => p.id === ac?.buzzedPlayerId);
-  if (!buzzed) return;
-
-  // Anti-griefing: cannot judge self
-  if (judgePlayer.id === buzzed.id) return;
-
-  // Anti-griefing: cannot reject an answer that server already found correct
-  const auto = evaluateAnswer(ac.judgeGuessText || '', ac.clueObj);
-  if (auto.status === 'correct') {
-    applyCorrectBuzz(room, buzzed);
-    return;
-  }
-
-  clearRoomTimers(room);
-  if (ruling === 'correct' || ruling === 'accept') {
-    sendChat(room, {
-      color: 'success',
-      text: `[JUDGE] Judge ${judgePlayer.name} ACCEPTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
-    });
-    applyCorrectBuzz(room, buzzed);
-  } else {
-    sendChat(room, {
-      color: 'danger',
-      text: `[JUDGE] Judge ${judgePlayer.name} REJECTED ${buzzed.name}'s answer: "${ac.judgeGuessText || ''}"!`,
-    });
-    applyWrongBuzz(room, buzzed, ac.judgeGuessText || '(judge ruled incorrect)');
   }
 }
 
@@ -3549,6 +3546,21 @@ function enterGameOverPhase(room) {
       color: 'gold',
       icon: isHalloween ? 'pumpkin' : 'celebrate',
       text: `GAME OVER! ${winner.name} wins with ${formatCurrency(winner.score, room)}!`,
+    });
+  }
+  if (room.settings.gameMode === 'teams') {
+    const teams = ['red', 'blue', 'green', 'yellow'];
+    const sortedTeams = teams
+      .map((t) => ({ team: t, score: room.teamScores[t] || 0 }))
+      .sort((a, b) => b.score - a.score);
+    const topTeam = sortedTeams[0];
+    const topMember = room.players
+      .filter((p) => p.team === topTeam.team)
+      .sort((a, b) => (b.teamContribution || b.score) - (a.teamContribution || a.score))[0];
+    sendChat(room, {
+      color: 'gold',
+      icon: 'trophy',
+      text: `🏆 ${topTeam.team.toUpperCase()} TEAM WINS WITH ${formatCurrency(topTeam.score, room)}! Team MVP: ${topMember?.name || 'Everyone'}!`,
     });
   }
   broadcastRoomEvent(room, { type: 'sfx', sound: isHalloween ? 'halloween_victory' : 'victory' });
@@ -4447,6 +4459,20 @@ attachWebSocketServer(server, (ws) => {
         break;
       }
 
+      case 'select_team': {
+        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
+        const validTeams = ['red', 'blue', 'green', 'yellow'];
+        if (validTeams.includes(msg.team)) {
+          currentPlayer.team = msg.team;
+          sendChat(currentRoom, {
+            color: 'info',
+            text: `${currentPlayer.name} joined the ${msg.team.toUpperCase()} team!`,
+          });
+          broadcastRoomState(currentRoom);
+        }
+        break;
+      }
+
       case 'select_tile': {
         if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
         handleSelectTile(
@@ -4539,12 +4565,6 @@ attachWebSocketServer(server, (ws) => {
           emoji: reactionId,
           avatarConfig: currentPlayer.avatar,
         });
-        break;
-      }
-
-      case 'host_judge': {
-        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
-        handleHostJudge(currentRoom, currentPlayer, msg.ruling);
         break;
       }
 

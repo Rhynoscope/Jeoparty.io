@@ -268,216 +268,6 @@
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(157, 26, 255, 0.45);
 }
 
-/* ==========================================================================
-   1B. FAIR HOST-JUDGE BOOTH (Dedicated Judge Position on Stage)
-   ========================================================================== */
-.judge-stage {
-  --judge-robe: #1e222a;
-  --judge-robe-shade: #11141a;
-  --judge-shirt: #ffffff;
-  --judge-tie: #b81424;
-  --judge-wood: #8a4c1c;
-
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 6px 12px;
-  margin-bottom: 6px;
-  background:
-    linear-gradient(180deg, rgba(30, 34, 42, 0.95), rgba(17, 20, 26, 0.95));
-  border: 3px solid #000;
-  border-radius: 6px;
-  box-shadow: 0 4px 0 #000, 0 0 16px rgba(0, 0, 0, 0.5);
-  z-index: 4;
-}
-
-.judge-stage[hidden] {
-  display: none !important;
-}
-
-.judge-figure {
-  position: relative;
-  width: 124px;
-  height: 124px;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  image-rendering: pixelated;
-  animation: judgeBob 3.2s steps(2) infinite;
-}
-
-@media (min-width: 860px) {
-  .judge-figure {
-    width: 160px;
-    height: 160px;
-  }
-  .judge-figure .judge-avatar {
-    --av-size: 156px !important;
-  }
-}
-
-@keyframes judgeBob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-}
-
-.judge-speech {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  background: #ffffff;
-  color: #000000;
-  border: 3px solid #000;
-  border-radius: 6px;
-  padding: 8px 12px;
-  box-shadow: 0 3px 0 #000;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.judge-speech-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.judge-nameplate {
-  font-family: var(--font-pixel, monospace);
-  font-size: 0.85rem;
-  font-weight: bold;
-  color: #11141a;
-  letter-spacing: 0.5px;
-}
-
-.judge-live-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #ffd900;
-  color: #000;
-  border: 2px solid #000;
-  border-radius: 3px;
-  padding: 2px 6px;
-  font-size: 0.7rem;
-  font-weight: 900;
-  font-family: var(--font-pixel, monospace);
-}
-
-.judge-action-controls {
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.judge-ruling-head {
-  font-family: var(--font-pixel, monospace);
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #11141a;
-}
-
-.judge-compare-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-@media (max-width: 600px) {
-  .judge-compare-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.judge-compare-card {
-  padding: 6px 10px;
-  border: 2px solid #000;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.judge-compare-card.guess-card {
-  background: #fff8e6;
-  border-color: #d4a017;
-}
-
-.judge-compare-card.official-card {
-  background: #eef7ee;
-  border-color: #2e8b57;
-}
-
-.compare-tag {
-  font-family: var(--font-pixel, monospace);
-  font-size: 0.65rem;
-  font-weight: 900;
-  color: #444;
-  letter-spacing: 0.5px;
-}
-
-.compare-text {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #000;
-  word-break: break-word;
-}
-
-.judge-alt-row {
-  font-size: 0.78rem;
-  color: #333;
-  padding: 3px 6px;
-  background: #f0f4f8;
-  border: 1px dashed #777;
-  border-radius: 3px;
-}
-
-.judge-alt-tag {
-  font-weight: bold;
-}
-
-.judge-clue-recap {
-  font-size: 0.85rem;
-  padding: 4px 8px;
-  background: #f0f4f8;
-  border: 2px dashed #000;
-  border-radius: 4px;
-  color: #222;
-}
-
-.judge-buttons-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.judge-decision-btn {
-  flex: 1 1 0;
-  font-weight: 800;
-  font-size: 0.82rem;
-  padding: 6px 10px;
-}
-
-.judge-timer-bar {
-  width: 100%;
-  height: 6px;
-  background: #ddd;
-  border: 1px solid #000;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.judge-timer-fill {
-  height: 100%;
-  background: #ff8800;
-  width: 100%;
-  transition: width 0.1s linear;
-}
 
 /* ==========================================================================
    2. CONTESTANT PODIUMS
@@ -653,12 +443,47 @@
   box-shadow: 0 1px 0 #004080;
 }
 
-.podium.is-judging .podium-body {
-  --podium-front-a: #5a2e8a;
-  --podium-front-b: #2f124d;
-  --podium-accent: #ffd900;
-  border-color: #ffd900;
-  box-shadow: 0 0 12px rgba(255, 217, 0, 0.6);
+.podium-team-badge.team-green {
+  background: #19b83b;
+  color: #fff;
+  box-shadow: 0 1px 0 #0d6e22;
+}
+
+.podium-team-badge.team-yellow {
+  background: #e6b800;
+  color: #000;
+  box-shadow: 0 1px 0 #997a00;
+}
+
+.podium-hot-potato {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffcc00;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 1px 6px;
+  box-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 120, 0, 0.8);
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: #000;
+  z-index: 10;
+  animation: potatoHover 0.6s infinite alternate ease-in-out;
+}
+
+@keyframes potatoHover {
+  0% { transform: translateX(-50%) translateY(0); }
+  100% { transform: translateX(-50%) translateY(-6px); }
+}
+
+.podium.has-hot-potato .podium-body {
+  border-color: #ff5500 !important;
+  box-shadow: 0 0 16px rgba(255, 85, 0, 0.8) !important;
 }
 
 .podium.is-eliminated {

@@ -7,9 +7,9 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=4.4.0" />
-  <link rel="stylesheet" href="/css/gameshow.css?v=4.4.0" />
-  <link rel="stylesheet" href="/css/cinematic.css?v=4.4.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=4.5.0" />
+  <link rel="stylesheet" href="/css/gameshow.css?v=4.5.0" />
+  <link rel="stylesheet" href="/css/cinematic.css?v=4.5.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -162,7 +162,7 @@
           <ul>
             <li><strong>Fair Bot Buzz:</strong> Bots wait for humans to read questions!</li>
             <li><strong>Full Questions:</strong> Complete clues appear instantly.</li>
-            <li><strong>Judge Mode:</strong> Host can accept or reject answers.</li>
+            <li><strong>Hot Potato:</strong> Pass the bomb before it detonates!</li>
             <li><strong>New Modes:</strong> Classic, Halloween, Survival &amp; Teams!</li>
           </ul>
         </div>
@@ -200,9 +200,10 @@
 
       <div class="topbar-center">
         <div id="team-scoreboard-bar" class="team-scoreboard-bar" hidden>
-          <span class="team-red-pill">RED: <strong id="team-red-score">$0</strong></span>
-          <span class="team-vs-pill">VS</span>
-          <span class="team-blue-pill">BLUE: <strong id="team-blue-score">$0</strong></span>
+          <span class="team-pill team-red-pill">🚩 RED: <strong id="team-red-score">$0</strong></span>
+          <span class="team-pill team-blue-pill">🛡️ BLUE: <strong id="team-blue-score">$0</strong></span>
+          <span class="team-pill team-green-pill">⚔️ GREEN: <strong id="team-green-score">$0</strong></span>
+          <span class="team-pill team-yellow-pill">⚡ YELLOW: <strong id="team-yellow-score">$0</strong></span>
         </div>
         <div id="timer-badge" class="timer-badge" hidden>
           <span class="pixel-sprite sprite-clock" aria-hidden="true"></span>
@@ -295,36 +296,36 @@
           </button>
         </div>
 
-        <!-- FAIR HOST-JUDGE BOOTH (Dedicated Judge Position on Stage) -->
-        <div id="judge-stage" class="judge-stage" data-tone="neutral" hidden>
-          <div id="judge-figure" class="judge-figure" aria-hidden="true"></div>
-          <div class="judge-speech" role="status" aria-live="polite">
-            <div class="judge-speech-head">
-              <span id="judge-name-text" class="judge-nameplate">Judge's Bench</span>
-              <span class="judge-live-badge">
-                <span class="pixel-sprite sprite-gavel" aria-hidden="true"></span>
-                <span id="judge-badge-text">COURT IN SESSION</span>
-              </span>
+
+        <!-- 15-SECOND TEAM SELECTION OVERLAY -->
+        <div id="team-select-overlay" class="team-select-overlay" hidden>
+          <div class="team-select-modal">
+            <div class="team-select-header">
+              <h2>CHOOSE YOUR TEAM</h2>
+              <div class="team-select-timer">Time Left: <strong id="team-select-timer-sec">15</strong>s</div>
             </div>
-            <p id="judge-speech-text">The court is ready to rule on ambiguous answers.</p>
-            <div id="judge-action-controls" class="judge-action-controls" hidden>
-              <div class="judge-clue-recap">
-                <span class="judge-recap-label">Official Answer: </span>
-                <strong id="judge-official-answer-text">...</strong>
-              </div>
-              <div class="judge-buttons-row">
-                <button type="button" id="judge-accept-btn" class="btn-skribbl btn-green judge-decision-btn">
-                  <span class="pixel-sprite sprite-check-sm" aria-hidden="true"></span>
-                  <span>ACCEPT (CORRECT)</span>
-                </button>
-                <button type="button" id="judge-reject-btn" class="btn-skribbl btn-red judge-decision-btn">
-                  <span class="pixel-sprite sprite-cross-sm" aria-hidden="true"></span>
-                  <span>REJECT (INCORRECT)</span>
-                </button>
-              </div>
-              <div class="judge-timer-bar">
-                <div id="judge-timer-fill" class="judge-timer-fill"></div>
-              </div>
+            <p class="team-select-subtitle">Select a team to compete together! Unassigned contestants are auto-balanced.</p>
+            <div class="team-select-cards">
+              <button type="button" class="team-pick-btn team-card-red" data-team="red">
+                <span class="team-flag-icon">🚩</span>
+                <span class="team-card-title">RED TEAM</span>
+                <span class="team-member-count" id="team-red-count">0 Players</span>
+              </button>
+              <button type="button" class="team-pick-btn team-card-blue" data-team="blue">
+                <span class="team-flag-icon">🛡️</span>
+                <span class="team-card-title">BLUE TEAM</span>
+                <span class="team-member-count" id="team-blue-count">0 Players</span>
+              </button>
+              <button type="button" class="team-pick-btn team-card-green" data-team="green">
+                <span class="team-flag-icon">⚔️</span>
+                <span class="team-card-title">GREEN TEAM</span>
+                <span class="team-member-count" id="team-green-count">0 Players</span>
+              </button>
+              <button type="button" class="team-pick-btn team-card-yellow" data-team="yellow">
+                <span class="team-flag-icon">⚡</span>
+                <span class="team-card-title">YELLOW TEAM</span>
+                <span class="team-member-count" id="team-yellow-count">0 Players</span>
+              </button>
             </div>
           </div>
         </div>
@@ -524,7 +525,6 @@
                   <span>Answering Style</span>
                   <select id="set-answer-mode" name="answerMode" class="skribbl-select">
                     <option value="buzzer">Classic Buzzer (Buzz + Type)</option>
-                    <option value="host">Fair Judge Mode (Random Player Judge)</option>
                     <option value="skribbl">Everyone Answers (Speed Mode)</option>
                   </select>
                 </label>
@@ -809,20 +809,6 @@
                 <p id="chaos-status-msg" class="chaos-status-msg"></p>
               </form>
 
-              <!-- Host Ruling Controls (Host-Judge Mode) -->
-              <div id="host-judge-box" class="host-judge-box" hidden>
-                <p class="host-ref-answer">Answer Key: <strong id="host-ref-answer-text"></strong></p>
-                <div class="host-judge-btns">
-                  <button type="button" id="host-rule-correct-btn" class="btn-skribbl btn-green">
-                    <span class="pixel-sprite sprite-check-sm" aria-hidden="true"></span>
-                    <span>Accept (Correct)</span>
-                  </button>
-                  <button type="button" id="host-rule-wrong-btn" class="btn-skribbl btn-red">
-                    <span class="pixel-sprite sprite-cross-sm" aria-hidden="true"></span>
-                    <span>Reject (Incorrect)</span>
-                  </button>
-                </div>
-              </div>
 
               <!-- Post-Clue Result Reveal with Animated Pixel Check / Cross -->
               <div id="clue-result-box" class="clue-result-box" hidden>
@@ -1352,6 +1338,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=4.4.0"></script>
+  <script type="module" src="/js/app.js?v=4.5.0"></script>
 </body>
 </html>

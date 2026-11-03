@@ -363,14 +363,20 @@ const el = {
   teamScoreboardBar: document.getElementById('team-scoreboard-bar'),
   teamRedScore: document.getElementById('team-red-score'),
   teamBlueScore: document.getElementById('team-blue-score'),
+  teamGreenScore: document.getElementById('team-green-score'),
+  teamYellowScore: document.getElementById('team-yellow-score'),
+  teamSelectOverlay: document.getElementById('team-select-overlay'),
+  teamSelectTimerSec: document.getElementById('team-select-timer-sec'),
+  teamRedCount: document.getElementById('team-red-count'),
+  teamBlueCount: document.getElementById('team-blue-count'),
+  teamGreenCount: document.getElementById('team-green-count'),
+  teamYellowCount: document.getElementById('team-yellow-count'),
   timerBadge: document.getElementById('timer-badge'),
   timerSeconds: document.getElementById('timer-seconds'),
   topbarStatusText: document.getElementById('topbar-status-text'),
   soundToggleBtn: document.getElementById('sound-toggle-btn'),
   motionToggleBtn: document.getElementById('motion-toggle-btn'),
   leaveRoomBtn: document.getElementById('leave-room-btn'),
-  judgeAcceptBtn: document.getElementById('judge-accept-btn'),
-  judgeRejectBtn: document.getElementById('judge-reject-btn'),
 
   // Players sidebar
   playersList: document.getElementById('players-list'),
@@ -487,10 +493,6 @@ const el = {
   chaosAnswerForm: document.getElementById('chaos-answer-form'),
   chaosAnswerInput: document.getElementById('chaos-answer-input'),
   chaosStatusMsg: document.getElementById('chaos-status-msg'),
-  hostJudgeBox: document.getElementById('host-judge-box'),
-  hostRefAnswerText: document.getElementById('host-ref-answer-text'),
-  hostRuleCorrectBtn: document.getElementById('host-rule-correct-btn'),
-  hostRuleWrongBtn: document.getElementById('host-rule-wrong-btn'),
   clueResultBox: document.getElementById('clue-result-box'),
   resultBadgeSprite: document.getElementById('result-badge-sprite'),
   officialAnswerText: document.getElementById('official-answer-text'),
@@ -830,6 +832,8 @@ function syncHalloweenAtmosphere(room = state.room) {
       el.teamScoreboardBar.hidden = false;
       if (el.teamRedScore) el.teamRedScore.textContent = formatCash(room.teamScores.red || 0);
       if (el.teamBlueScore) el.teamBlueScore.textContent = formatCash(room.teamScores.blue || 0);
+      if (el.teamGreenScore) el.teamGreenScore.textContent = formatCash(room.teamScores.green || 0);
+      if (el.teamYellowScore) el.teamYellowScore.textContent = formatCash(room.teamScores.yellow || 0);
     } else {
       el.teamScoreboardBar.hidden = true;
     }
@@ -1547,6 +1551,7 @@ function renderRoomState() {
     room.phase === 'final_wager' ||
     room.phase === 'final_clue';
   const showGameover = room.phase === 'game_over';
+  const showTeamSelect = room.phase === 'team_select';
 
   el.stageLobby.hidden = !showLobby;
   el.stageBoard.hidden = !showBoard;
@@ -1554,9 +1559,31 @@ function renderRoomState() {
   if (el.stageIntermission) el.stageIntermission.hidden = !showIntermission;
   el.stageFinal.hidden = !showFinal;
   el.stageGameover.hidden = !showGameover;
+  if (el.teamSelectOverlay) el.teamSelectOverlay.hidden = !showTeamSelect;
+
+  if (showTeamSelect) {
+    const secLeft = Math.max(0, Math.ceil((room.phaseEndsAt - Date.now()) / 1000));
+    if (el.teamSelectTimerSec) el.teamSelectTimerSec.textContent = secLeft;
+
+    const me = findPlayer(room, state.playerId);
+    const myTeam = me?.team || null;
+    document.querySelectorAll('.team-pick-btn').forEach((btn) => {
+      btn.classList.toggle('is-selected', btn.dataset.team === myTeam);
+    });
+
+    const counts = { red: 0, blue: 0, green: 0, yellow: 0 };
+    for (const p of room.players || []) {
+      if (p.team && counts[p.team] !== undefined) counts[p.team]++;
+    }
+    if (el.teamRedCount) el.teamRedCount.textContent = `${counts.red} Player${counts.red === 1 ? '' : 's'}`;
+    if (el.teamBlueCount) el.teamBlueCount.textContent = `${counts.blue} Player${counts.blue === 1 ? '' : 's'}`;
+    if (el.teamGreenCount) el.teamGreenCount.textContent = `${counts.green} Player${counts.green === 1 ? '' : 's'}`;
+    if (el.teamYellowCount) el.teamYellowCount.textContent = `${counts.yellow} Player${counts.yellow === 1 ? '' : 's'}`;
+  }
 
   if (el.centerStage) {
     el.centerStage.classList.toggle('is-intro', showIntro);
+    el.centerStage.classList.toggle('is-team-select', showTeamSelect);
   }
 
   if (showLobby) renderLobbyStage(room, amHost);
@@ -2409,6 +2436,22 @@ function renderClueStage(room, amHost, phaseChanged) {
     const m = MOD_INFO[ac.modifier] || { sprite: 'sprite-sparkle', label: 'PERK', cls: 'mod-blitz' };
     el.clueModifierBadge.className = `clue-modifier-badge ${m.cls}`;
     setButtonSpriteAndText(el.clueModifierBadge, m.sprite, m.label);
+  } else if (room.settings?.gameMode === 'double_or_nothing') {
+    el.clueModifierBadge.hidden = false;
+    el.clueModifierBadge.className = 'clue-modifier-badge mod-double';
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-dice', '🎲 DOUBLE OR NOTHING (2X REWARD & PENALTY)');
+  } else if (room.settings?.gameMode === 'hot_potato') {
+    el.clueModifierBadge.hidden = false;
+    el.clueModifierBadge.className = 'clue-modifier-badge mod-potato';
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-potato', '🥔 HOT POTATO (PASS IT BEFORE IT DETONATES!)');
+  } else if (room.settings?.gameMode === 'speed') {
+    el.clueModifierBadge.hidden = false;
+    el.clueModifierBadge.className = 'clue-modifier-badge mod-blitz';
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-mod-blitz', '⚡ SPEED BLITZ (8s CLUE • +50% BONUS < 3.5s)');
+  } else if (room.settings?.gameMode === 'survival') {
+    el.clueModifierBadge.hidden = false;
+    el.clueModifierBadge.className = 'clue-modifier-badge mod-heart';
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-heart', '❤️ SURVIVAL (WRONG ANSWER LOSES 1 LIFE)');
   } else {
     el.clueModifierBadge.hidden = true;
   }
@@ -2531,18 +2574,6 @@ function renderClueStage(room, amHost, phaseChanged) {
         setTimeout(() => el.chaosAnswerInput.focus(), 40);
       }
     }
-  }
-
-  // 7. Host / Fair Round Judge Controls
-  const isAssignedJudge = Boolean(ac.judgePlayerId && ac.judgePlayerId === state.playerId);
-  const showHostJudge =
-    isClueBuzzed &&
-    room.settings.answerMode === 'host' &&
-    (isAssignedJudge || (amHost && !ac.judgePlayerId)) &&
-    ac.buzzedPlayerId !== state.playerId;
-  el.hostJudgeBox.hidden = !showHostJudge;
-  if (showHostJudge) {
-    el.hostRefAnswerText.textContent = ac.judgeOfficialAnswer || ac.answer || '(hidden)';
   }
 
   // 8. Post-Clue Result Reveal with Animated Pixel Check / Cross
@@ -3424,18 +3455,16 @@ function bindEvents() {
     el.clueAnswerInput.value = '';
   });
 
-  // Host & Round Judge Ruling Buttons
-  const handleJudgeDecision = (ruling) => {
-    sfx.play('click');
-    sendWs({ type: 'host_judge', ruling });
-  };
-  el.hostRuleCorrectBtn?.addEventListener('click', () => handleJudgeDecision('correct'));
-  el.hostRuleWrongBtn?.addEventListener('click', () => handleJudgeDecision('wrong'));
-  el.judgeAcceptBtn?.addEventListener('click', () => handleJudgeDecision('correct'));
-  el.judgeRejectBtn?.addEventListener('click', () => handleJudgeDecision('wrong'));
-
   el.nextClueBtn.addEventListener('click', () => {
     sendWs({ type: 'next_clue' });
+  });
+
+  // Team Selection Buttons
+  document.querySelectorAll('.team-pick-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      sfx.play('click');
+      sendWs({ type: 'select_team', team: btn.dataset.team });
+    });
   });
 
   // Final Jeopardy Controls

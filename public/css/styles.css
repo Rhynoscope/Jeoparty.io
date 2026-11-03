@@ -5238,9 +5238,173 @@ body.theme-halloween .mode-active-label {
   text-shadow: 1px 1px 0 #000;
 }
 
+.team-green-pill {
+  color: #38e05c;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.team-yellow-pill {
+  color: #ffe633;
+  text-shadow: 1px 1px 0 #000;
+}
+
 .team-vs-pill {
   color: #ffd900;
   font-size: 0.65rem;
+}
+
+/* =========================================================================
+   TEAM SELECTION OVERLAY (15s pre-match modal)
+   ========================================================================= */
+.team-select-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.team-select-overlay[hidden] {
+  display: none !important;
+}
+
+.team-select-modal {
+  background: #ffffff;
+  border: 4px solid #000;
+  border-radius: 8px;
+  box-shadow: 0 8px 0 #000, 0 0 24px rgba(0, 0, 0, 0.7);
+  max-width: 640px;
+  width: 100%;
+  padding: 24px;
+  text-align: center;
+}
+
+.team-select-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 3px solid #000;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.team-select-header h2 {
+  font-family: var(--font-pixel, monospace);
+  font-size: 1.4rem;
+  margin: 0;
+  color: #000;
+}
+
+.team-select-timer {
+  background: #ffd900;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: var(--font-pixel, monospace);
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: #000;
+}
+
+.team-select-subtitle {
+  font-size: 0.9rem;
+  color: #444;
+  margin-bottom: 16px;
+}
+
+.team-select-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 500px) {
+  .team-select-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.team-pick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border: 3px solid #000;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  box-shadow: 0 4px 0 #000;
+}
+
+.team-pick-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #000;
+}
+
+.team-pick-btn:active,
+.team-pick-btn.is-selected {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #000, 0 0 12px rgba(255, 255, 255, 0.9) inset;
+  outline: 3px solid #ffd900;
+}
+
+.team-card-red {
+  background: #ff2b2b;
+  color: #fff;
+}
+
+.team-card-blue {
+  background: #2b6eff;
+  color: #fff;
+}
+
+.team-card-green {
+  background: #19b83b;
+  color: #fff;
+}
+
+.team-card-yellow {
+  background: #e6b800;
+  color: #000;
+}
+
+.team-flag-icon {
+  font-size: 2rem;
+}
+
+.team-card-title {
+  font-family: var(--font-pixel, monospace);
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+}
+
+.team-member-count {
+  font-size: 0.8rem;
+  opacity: 0.9;
+  font-weight: bold;
+}
+
+.mod-potato {
+  background: #ff8800;
+  color: #fff;
+  border-color: #000;
+}
+
+.mod-heart {
+  background: #e6194b;
+  color: #fff;
+  border-color: #000;
+}
+
+.mod-double {
+  background: #911eb4;
+  color: #fff;
+  border-color: #000;
 }
 
 /* =========================================================================
