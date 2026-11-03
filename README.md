@@ -10,15 +10,15 @@ An online multiplayer **Jeopardy** party web game crafted in an animated **MS Pa
   - Hand-drawn pixel-art category icons (`public/assets/cat-icons-sheet.png`) and looping 2–3 frame pixel sprites for crowns, trophies, buzzers, Daily Double stars, correct/incorrect indicators, confetti, loading dots, dice, and timer clocks (`scripts/generate-pixel-assets.js`).
   - Built-in **Sound** and **Animations** toggles plus automatic support for `prefers-reduced-motion: reduce`.
 - **Clean, Immediately Understandable Interface**:
-  - **Main Menu**: Logo, 8 animated mascots, player name, 4-row `<`/`>` avatar customizer + dice button, **Play!**, **Create Private Room**, and **Join Room**, with secondary controls tucked into a compact top-right utility bar.
+  - **Main Menu**: Logo, 8 animated mascots, player name, 4-row `<`/`>` avatar customizer + dice button, **Play!**, **Create Private Room**, and **Join Room**, with secondary controls tucked into a compact top-right utility bar. **Play!** opens the Public Rooms browser, where players can refresh, inspect match modes and open seats, join, or create a public room.
   - **Private-Room Lobby**: Organized into **ROOM** (code + one-click invite link), **GAME SETTINGS** (3 core selects, prominent category picker with search/presets/custom categories, and a collapsible `<details>` section for optional special rounds), and **ACTIONS** (**Leave Room** and **Start Game**).
 - **Strict Host-Owned Room Lifecycle**:
   - When the host intentionally leaves an active match or waiting lobby, the server immediately terminates the match, cancels all timers, tombstones the room code so stale links/history cannot resurrect it, and notifies remaining players via a clear **Match Ended** dialog.
-  - Pressing **Play!** or **Create Private Room** from the main menu always creates a brand-new room (`roomId`, `roomCode`, `gameId`) with reset scores (`$0`), reset timers, and a fresh board while remembering your preferred rules/category choices.
+  - Creating a public or private room always starts a brand-new room (`roomId`, `roomCode`, `gameId`) with reset scores (`$0`), reset timers, and a fresh board while remembering your preferred rules/category choices. **Play!** only opens public room discovery.
   - Unexpected host network drops allow a short, configurable reconnection grace window (`HOST_RECONNECT_GRACE_MS`, default `12000` ms) before terminating the match if the host does not return.
 - **Full Jeopardy Gameplay**:
   - **24 Built-in Fun Categories** (`120+` clues) + **Custom 5-Clue Categories**.
-  - **3 Game Modes**: Classic Buzzer (`Spacebar` or click + typo-tolerant fuzzy auto-judging), Everyone Answers (Skribbl speed guessing with progressive `_ _ _ _` hints), and Host Judges (party/voice mode).
+  - **9 Game Modes**: Classic Jeoparty, Survival, Double or Nothing, Hot Potato, Team Jeopardy, Chaos, Speed Blitz, Streak Race, and Halloween Mayhem. Hot Potato has a server-timed fuse, pixel-art animation, and host-configurable fuse and penalty.
   - Optional **Double Jeoparty** (Round 2), **Hidden Daily Doubles**, **Final Jeoparty** secret wagering finale, **Wrong Answer Penalties**, and **Play Again** rematch support.
 
 ## Game-Show Presentation Update (v4.0)

@@ -339,9 +339,6 @@ const DEFAULT_SPECIAL_ROUNDS = Object.freeze([
   'risky_business',
 ]);
 
-const JUDGE_DECISION_MS = 8000;
-const JUDGE_LOG_LIMIT = 100;
-
 function pickMysteryReward(settings) {
   const base = Number(settings?.specialBonusAmount) || 300;
   const multiplier = [0.5, 1, 1.5, 2][Math.floor(Math.random() * 4)];
@@ -362,8 +359,10 @@ function createDefaultSettings(gameMode = 'standard') {
     specialBonusAmount: 300,
     specialPenaltyMultiplier: 1,
     streakRequirement: 3,
+    hotPotatoFuseSec: 6,
+    hotPotatoPenalty: 200,
     botDifficulty: 'medium', // 'easy' | 'medium' | 'hard' | 'champion'
-    answerMode: 'buzzer', // 'buzzer' | 'skribbl' | 'judge'
+    answerMode: 'buzzer', // 'buzzer' | 'skribbl'
     cinematicCamera: 'on', // 'on' | 'reduced' | 'off' — game-show intro + camera moves
     boardCols: 4, // 3..8 (auto-updated for active roster when autoScaleMatch is true)
     cluesPerCat: 4, // 3..6 ($200..$1200)
@@ -456,9 +455,8 @@ function applySettingsPatch(room, patch) {
     s.cinematicCamera = patch.cinematicCamera;
   }
 
-  if (['buzzer', 'skribbl', 'judge', 'host'].includes(patch.answerMode)) {
-    // Legacy Host Judges preference now uses the fair rotating judge flow.
-    s.answerMode = patch.answerMode === 'host' ? 'judge' : patch.answerMode;
+  if (['buzzer', 'skribbl'].includes(patch.answerMode)) {
+    s.answerMode = patch.answerMode;
   }
 
   if (Array.isArray(patch.enabledSpecialRounds)) {
@@ -476,6 +474,12 @@ function applySettingsPatch(room, patch) {
   }
   if ([2, 3, 4].includes(Number(patch.streakRequirement))) {
     s.streakRequirement = Number(patch.streakRequirement);
+  }
+  if ([4, 6, 8, 10].includes(Number(patch.hotPotatoFuseSec))) {
+    s.hotPotatoFuseSec = Number(patch.hotPotatoFuseSec);
+  }
+  if ([100, 200, 300, 500].includes(Number(patch.hotPotatoPenalty))) {
+    s.hotPotatoPenalty = Number(patch.hotPotatoPenalty);
   }
 
   const manualOverride =
@@ -561,12 +565,10 @@ function createRoom({ isPrivate, gameMode = 'standard', preferredSettings = null
     phaseEndsAt: 0,
     mainTimerRemainingMs: 0,
     timers: new Set(),
-    judgeAssignmentCounts: Object.create(null),
-    judgeLog: [],
-    lastJudgeId: null,
     teamScoreLedger: Object.create(null),
     teamNextAnswerer: Object.create(null),
     categoryOwners: Object.create(null),
+    hotPotatoNextHolderId: null,
     hostDisconnectTimer: null,
     hostDisconnectedAt: 0,
     voiceMembers: new Map(),
@@ -728,14 +730,6 @@ function serializeRoomForPlayer(room, viewerId) {
   if (room.activeClue) {
     const ac = room.activeClue;
     const revealAnswer = room.phase === 'clue_result';
-    const judgeAssignmentActive =
-      room.settings.answerMode === 'judge' &&
-      ['clue_open', 'clue_buzzed', 'clue_result'].includes(room.phase) &&
-      Boolean(ac.judgeId);
-    const pendingJudgment = ac.pendingJudgment || null;
-    const viewerCanSeeJudgment =
-      pendingJudgment &&
-      (viewerId === pendingJudgment.judgeId || viewerId === pendingJudgment.answererId);
 
     const hideClueTextYet = room.phase === 'daily_double_wager';
 
@@ -754,9 +748,7 @@ function serializeRoomForPlayer(room, viewerId) {
       clueText: hideClueTextYet ? null : ac.clueObj.clue,
       hintMask: ac.hintMask || null,
       buzzedPlayerId: ac.buzzedPlayerId || null,
-      buzzedGuessText: ac.pendingJudgment && viewerId !== ac.pendingJudgment.judgeId && viewerId !== ac.pendingJudgment.answererId
-        ? null
-        : ac.buzzedGuessText || null,
+      buzzedGuessText: ac.buzzedGuessText || null,
       attemptedIds: Array.from(ac.attemptedIds || []),
       solvedIds: Array.from(ac.solvedIds || []),
       chaosSolvedIds: ac.chaosSolvedList ? ac.chaosSolvedList.map((s) => s.playerId) : [],
@@ -775,21 +767,6 @@ function serializeRoomForPlayer(room, viewerId) {
       riskChoice: ac.riskChoices?.[viewerId] || 'safe',
       mysteryReward: revealAnswer ? ac.mysteryReward || null : null,
       categoryOwnerId: room.categoryOwners?.[ac.categoryId] || null,
-      judgeId: judgeAssignmentActive ? ac.judgeId : null,
-      judgeName: judgeAssignmentActive
-        ? room.players.find((p) => p.id === ac.judgeId)?.name || 'Guest Judge'
-        : null,
-      judgeMood: judgeAssignmentActive ? ac.judgeMood || 'thinking' : null,
-      pendingJudgment: pendingJudgment
-        ? {
-            answererId: pendingJudgment.answererId,
-            answererName: room.players.find((p) => p.id === pendingJudgment.answererId)?.name || 'Contestant',
-            judgeId: pendingJudgment.judgeId,
-            deadline: pendingJudgment.deadline,
-            guess: viewerCanSeeJudgment ? pendingJudgment.guess : null,
-          }
-        : null,
-      lastJudgeDecision: ac.lastJudgeDecision || null,
     };
   }
 
@@ -879,15 +856,6 @@ function serializeRoomForPlayer(room, viewerId) {
         voiceSpeaking: room.voiceMembers?.get(p.id)?.speaking ?? false,
       };
     }),
-    judgeLog: (room.judgeLog || []).slice(-12).map((entry) => ({
-      at: entry.at,
-      judgeName: room.players.find((p) => p.id === entry.judgeId)?.name || null,
-      answererName: room.players.find((p) => p.id === entry.answererId)?.name || 'Contestant',
-    clue: entry.clue,
-    guess: entry.guess,
-      ruling: entry.ruling,
-      source: entry.source,
-    })),
     teamScores: room.teamScores || { red: 0, blue: 0, green: 0, yellow: 0 },
     board: boardView,
     activeClue: activeClueView,
@@ -1728,7 +1696,7 @@ function enterTeamSelectPhase(room) {
 
   sendChat(room, {
     color: 'gold',
-    text: '⚔️ TEAM JEOPARDY! Choose your team (Red, Blue, Green, or Yellow) in the next 15 seconds!',
+    text: 'TEAM JEOPARDY! Choose your team (Red, Blue, Green, or Yellow) in the next 15 seconds!',
   });
   broadcastRoomEvent(room, { type: 'sfx', sound: 'daily_double' });
   broadcastRoomState(room);
@@ -1762,7 +1730,7 @@ function finishTeamSelect(room) {
 
   sendChat(room, {
     color: 'success',
-    text: `Teams locked! 🚩 Red: ${teamCounts.red} | 🛡️ Blue: ${teamCounts.blue} | ⚔️ Green: ${teamCounts.green} | ⚡ Yellow: ${teamCounts.yellow}`,
+    text: `Teams locked! Red: ${teamCounts.red} | Blue: ${teamCounts.blue} | Green: ${teamCounts.green} | Yellow: ${teamCounts.yellow}`,
   });
 
   const cameraMode = room.settings.cinematicCamera || 'on';
@@ -2085,9 +2053,6 @@ function handleSelectTile(room, player, col, row) {
     mysteryReward: modifier === 'mystery_question' ? pickMysteryReward(room.settings) : null,
   };
 
-  if (room.settings.answerMode === 'judge') {
-    assignJudgeForClue(room, { excludePlayerId: tile.dailyDouble ? player.id : null });
-  }
   if (room.settings.gameMode === 'teams' && tile.dailyDouble && player.team) {
     room.teamNextAnswerer[player.team] = player.id;
   }
@@ -2229,7 +2194,7 @@ function handleSelectTile(room, player, col, row) {
     return;
   }
 
-  if (modifier === 'chaos_all_play' && room.settings.answerMode !== 'judge') {
+  if (modifier === 'chaos_all_play') {
     enterChaosAllPlayPhase(room);
     return;
   }
@@ -2240,223 +2205,6 @@ function handleSelectTile(room, player, col, row) {
     const finalDuration = room.settings.gameMode === 'speed' ? 8000 : clueDurationMs;
     enterBuzzerClueOpenPhase(room, finalDuration, true);
   }
-}
-
-function hasJudgePair(room, judgeId, answererId) {
-  return (room.judgeLog || []).some(
-    (entry) => entry.judgeId === judgeId && entry.answererId === answererId
-  );
-}
-
-function pickRotatingJudge(room, { answererId = null, previousJudgeId = null, excludePlayerId = null } = {}) {
-  if (!room) return null;
-  let candidates = room.players.filter((candidate) =>
-    candidate.connected &&
-    !candidate.isBot &&
-    !candidate.isEliminated &&
-    candidate.id !== answererId &&
-    candidate.id !== excludePlayerId
-  );
-  if (candidates.length === 0) return null;
-  if (room.settings.gameMode === 'teams' && candidates.length > 1) {
-    const availableOutsideTeamTurns = candidates.filter((candidate) =>
-      room.teamNextAnswerer?.[candidate.team] !== candidate.id
-    );
-    if (availableOutsideTeamTurns.length > 0) candidates = availableOutsideTeamTurns;
-  }
-
-  let eligible = answererId
-    ? candidates.filter((candidate) => !hasJudgePair(room, candidate.id, answererId))
-    : candidates;
-  if (eligible.length === 0) return null;
-  if (eligible.length > 1 && previousJudgeId) {
-    const withoutPrevious = eligible.filter((candidate) => candidate.id !== previousJudgeId);
-    if (withoutPrevious.length > 0) eligible = withoutPrevious;
-  }
-
-  const minAssignments = Math.min(
-    ...eligible.map((candidate) => Number(room.judgeAssignmentCounts?.[candidate.id]) || 0)
-  );
-  const leastUsed = eligible.filter(
-    (candidate) => (Number(room.judgeAssignmentCounts?.[candidate.id]) || 0) === minAssignments
-  );
-  return leastUsed[Math.floor(Math.random() * leastUsed.length)] || null;
-}
-
-function assignJudgeForClue(room, options = {}) {
-  if (!room?.activeClue || room.settings.answerMode !== 'judge') return null;
-  const previousJudgeId = options.previousJudgeId || room.lastJudgeId || null;
-  const judge = pickRotatingJudge(room, { ...options, previousJudgeId });
-  room.activeClue.judgeId = judge?.id || null;
-  room.activeClue.judgeMood = 'thinking';
-  if (judge) {
-    room.judgeAssignmentCounts[judge.id] = (room.judgeAssignmentCounts[judge.id] || 0) + 1;
-    room.lastJudgeId = judge.id;
-  }
-  return judge;
-}
-
-function appendJudgeLog(room, { judgeId = null, answerer, guess, ruling, source }) {
-  if (!room) return null;
-  const entry = {
-    at: Date.now(),
-    clue: room.activeClue?.clueObj?.clue || '',
-    judgeId,
-    answererId: answerer?.id || null,
-    guess: String(guess || '').slice(0, 100),
-    ruling,
-    source,
-  };
-  room.judgeLog = Array.isArray(room.judgeLog) ? room.judgeLog : [];
-  room.judgeLog.push(entry);
-  if (room.judgeLog.length > JUDGE_LOG_LIMIT) {
-    room.judgeLog.splice(0, room.judgeLog.length - JUDGE_LOG_LIMIT);
-  }
-  return entry;
-}
-
-function resolvePendingJudgment(room, ruling, source = 'judge') {
-  const ac = room?.activeClue;
-  const pending = ac?.pendingJudgment;
-  if (!room || room.terminated || room.phase !== 'clue_buzzed' || !pending) return false;
-  const answerer = room.players.find((candidate) => candidate.id === pending.answererId);
-  if (!answerer) return false;
-
-  const accepted = ruling === 'accept' || (ruling === 'auto' && pending.evaluationStatus === 'close');
-  const resolvedRuling = accepted ? 'accepted' : 'rejected';
-  const judge = room.players.find((candidate) => candidate.id === pending.judgeId);
-  const logEntry = appendJudgeLog(room, {
-    judgeId: source === 'judge' ? judge?.id || null : null,
-    answerer,
-    guess: pending.guess,
-    ruling: resolvedRuling,
-    source,
-  });
-  ac.pendingJudgment = null;
-  ac.judgeMood = accepted ? 'accept' : 'reject';
-  ac.lastJudgeDecision = {
-    judgeId: logEntry.judgeId,
-    answererId: answerer.id,
-    ruling: resolvedRuling,
-    source,
-    at: logEntry.at,
-  };
-  if (source === 'judge') {
-    sendChat(room, {
-      color: accepted ? 'success' : 'danger',
-      icon: accepted ? 'check' : 'wrong',
-      text: `${judge?.name || 'The judge'} ${accepted ? 'accepted' : 'rejected'} ${answerer.name}'s ambiguous answer.`,
-    });
-  } else {
-    sendChat(room, {
-      color: accepted ? 'success' : 'warn',
-      text: `No judge was available; automatic review ${accepted ? 'accepted' : 'rejected'} ${answerer.name}'s ambiguous answer.`,
-    });
-  }
-  broadcastRoomEvent(room, {
-    type: 'judge_decision',
-    decision: {
-      judgeName: judge?.name || null,
-      answererName: answerer.name,
-      ruling: resolvedRuling,
-      source,
-      at: logEntry.at,
-    },
-  });
-
-  if (accepted) applyCorrectBuzz(room, answerer);
-  else applyWrongBuzz(room, answerer, pending.guess);
-  return true;
-}
-
-function sendAmbiguousAnswerToJudge(room, player, guess, evaluation) {
-  const ac = room?.activeClue;
-  if (!room || !ac) return false;
-  const currentJudge = room.players.find(
-    (candidate) => candidate.id === ac.judgeId && candidate.connected && !candidate.isBot
-  );
-  let judge = currentJudge;
-  if (!judge || judge.id === player.id || hasJudgePair(room, judge.id, player.id)) {
-    judge = assignJudgeForClue(room, {
-      answererId: player.id,
-      previousJudgeId: ac.judgeId || room.lastJudgeId,
-    });
-  }
-  if (!judge) {
-    ac.pendingJudgment = {
-      answererId: player.id,
-      guess,
-      evaluationStatus: evaluation.status,
-      judgeId: null,
-      startedAt: Date.now(),
-      deadline: Date.now(),
-    };
-    return resolvePendingJudgment(room, 'auto', 'no_judge_fallback');
-  }
-
-  clearRoomTimers(room);
-  const startedAt = Date.now();
-  ac.judgeId = judge.id;
-  ac.buzzedGuessText = guess;
-  ac.pendingJudgment = {
-    answererId: player.id,
-    guess,
-    evaluationStatus: evaluation.status,
-    judgeId: judge.id,
-    startedAt,
-    deadline: startedAt + JUDGE_DECISION_MS,
-  };
-  room.phaseEndsAt = ac.pendingJudgment.deadline;
-  sendChat(room, {
-    color: 'info',
-    icon: 'help',
-    text: `${player.name}'s answer is ambiguous. ${judge.name} has 8 seconds to review it.`,
-  });
-  broadcastRoomState(room);
-  scheduleRoomTimer(room, () => {
-    if (room.activeClue === ac && ac.pendingJudgment) {
-      resolvePendingJudgment(room, 'auto', 'judge_timeout_fallback');
-    }
-  }, JUDGE_DECISION_MS);
-  return true;
-}
-
-function handleJudgeDecision(room, judge, ruling) {
-  const ac = room?.activeClue;
-  const pending = ac?.pendingJudgment;
-  if (
-    !room || room.terminated || room.phase !== 'clue_buzzed' ||
-    room.settings.answerMode !== 'judge' || !pending ||
-    !judge || judge.isBot || !judge.connected || judge.id !== ac.judgeId ||
-    judge.id === pending.answererId || !['accept', 'reject'].includes(ruling)
-  ) return false;
-  return resolvePendingJudgment(room, ruling, 'judge');
-}
-
-function handleJudgeDisconnect(room, playerId) {
-  const ac = room?.activeClue;
-  if (
-    !room || room.settings.answerMode !== 'judge' || !ac ||
-    ac.judgeId !== playerId || !['clue_open', 'clue_buzzed'].includes(room.phase)
-  ) return;
-  const pending = ac.pendingJudgment;
-  const replacement = assignJudgeForClue(room, {
-    answererId: pending?.answererId || null,
-    previousJudgeId: playerId,
-  });
-  if (replacement && pending) {
-    pending.judgeId = replacement.id;
-    ac.judgeMood = 'thinking';
-    sendChat(room, {
-      color: 'info',
-      icon: 'help',
-      text: `${replacement.name} is taking over the open ruling.`,
-    });
-  } else if (pending) {
-    resolvePendingJudgment(room, 'auto', 'judge_disconnect_fallback');
-    return;
-  }
-  broadcastRoomState(room);
 }
 
 /* ---------------- Daily Double ---------------- */
@@ -2671,14 +2419,16 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
   if (isFirstOpen) {
     if (room.settings.gameMode === 'hot_potato') {
       const activeCandidates = room.players.filter((p) =>
-        p.connected && !p.isEliminated && p.id !== ac.judgeId
+        p.connected && !p.isEliminated
       );
-      const startingHolder = activeCandidates.find((p) => p.id === room.pickerId) || activeCandidates[0];
+      const startingHolder = activeCandidates.find((p) => p.id === room.hotPotatoNextHolderId) ||
+        activeCandidates[Math.floor(Math.random() * activeCandidates.length)];
+      room.hotPotatoNextHolderId = null;
       if (startingHolder) {
         ac.hotPotatoHolderId = startingHolder.id;
         sendChat(room, {
           color: 'warn',
-          text: `🥔 HOT POTATO! ${startingHolder.name} is holding the potato! Buzz in before it explodes!`,
+          text: `HOT POTATO! ${startingHolder.name} has the potato. Answer correctly to carry it forward, or pass it before the fuse ends!`,
         });
       }
     }
@@ -2742,12 +2492,13 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
     if (room.settings.gameMode === 'hot_potato' && ac.hotPotatoHolderId) {
       const holder = room.players.find((p) => p.id === ac.hotPotatoHolderId);
       if (holder) {
-        const boomPenalty = Math.min(200, ac.value || 200);
+        const boomPenalty = Number(room.settings.hotPotatoPenalty) || 200;
         holder.score -= boomPenalty;
         sendChat(room, {
           color: 'danger',
-          text: `💥 HOT POTATO EXPLODED! ${holder.name} was caught holding it (-${formatCurrency(boomPenalty, room)})!`,
+          text: `HOT POTATO EXPLODED! ${holder.name} was caught holding it (-${formatCurrency(boomPenalty, room)})!`,
         });
+        broadcastRoomEvent(room, { type: 'hot_potato_explosion', playerId: holder.id });
         broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
       }
     }
@@ -2763,7 +2514,7 @@ function enterBuzzerClueOpenPhase(room, durationMs, isFirstOpen) {
 
 function moveHotPotato(room, ac, previousId, { announce = true } = {}) {
   const candidates = room.players.filter((p) =>
-    p.connected && !p.isEliminated && p.id !== previousId && p.id !== ac.judgeId &&
+    p.connected && !p.isEliminated && p.id !== previousId &&
     !ac.attemptedIds.has(p.id)
   );
   if (candidates.length === 0) {
@@ -2777,7 +2528,7 @@ function moveHotPotato(room, ac, previousId, { announce = true } = {}) {
   ac.hotPotatoExpiresAt = null;
   ac.hotPotatoTurnId = (ac.hotPotatoTurnId || 0) + 1;
   if (announce) {
-    sendChat(room, { color: 'warn', text: `🥔 The Hot Potato passed to ${next.name}!` });
+    sendChat(room, { color: 'warn', text: `The Hot Potato passed to ${next.name}!` });
   }
   return next;
 }
@@ -2785,26 +2536,28 @@ function moveHotPotato(room, ac, previousId, { announce = true } = {}) {
 function startHotPotatoFuse(room, ac) {
   if (room.settings.gameMode !== 'hot_potato' || room.phase !== 'clue_open' || !ac.hotPotatoHolderId) return;
   const eligible = room.players.filter((p) =>
-    p.connected && !p.isEliminated && p.id !== ac.judgeId && !ac.attemptedIds.has(p.id)
+    p.connected && !p.isEliminated && !ac.attemptedIds.has(p.id)
   );
   if (eligible.length < 2) return;
   const turnId = (ac.hotPotatoTurnId || 0) + 1;
   ac.hotPotatoTurnId = turnId;
-  ac.hotPotatoExpiresAt = Date.now() + 6500;
+  const fuseMs = (Number(room.settings.hotPotatoFuseSec) || 6) * 1000;
+  ac.hotPotatoExpiresAt = Date.now() + fuseMs;
   broadcastRoomState(room);
   scheduleRoomTimer(room, () => {
     if (room.phase !== 'clue_open' || room.activeClue !== ac || ac.hotPotatoTurnId !== turnId) return;
     const holder = room.players.find((p) => p.id === ac.hotPotatoHolderId);
     if (holder) {
-      const penalty = Math.min(200, ac.value || 200);
+      const penalty = Number(room.settings.hotPotatoPenalty) || 200;
       holder.score -= penalty;
-      sendChat(room, { color: 'danger', text: `💥 ${holder.name} held the potato too long (−${formatCurrency(penalty, room)})!` });
+      sendChat(room, { color: 'danger', text: `${holder.name} held the potato too long (−${formatCurrency(penalty, room)})!` });
+      broadcastRoomEvent(room, { type: 'hot_potato_explosion', playerId: holder.id });
       broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
     }
     const next = moveHotPotato(room, ac, holder?.id, { announce: true });
     if (next) startHotPotatoFuse(room, ac);
     broadcastRoomState(room);
-  }, 6500);
+  }, fuseMs);
 }
 
 function handleHotPotatoPass(room, player) {
@@ -2822,7 +2575,6 @@ function handlePlayerBuzz(room, player, riskChoice = 'safe') {
   if (room.phase !== 'clue_open') return;
   const ac = room.activeClue;
   if (!ac || ac.attemptedIds.has(player.id)) return;
-  if (room.settings.answerMode === 'judge' && ac.judgeId === player.id) return;
   if (room.settings.gameMode === 'survival' && (player.lives ?? 3) <= 0) return;
   if (room.settings.gameMode === 'teams' && player.team) {
     const currentTurn = room.teamNextAnswerer?.[player.team];
@@ -2894,6 +2646,7 @@ function applyCorrectBuzz(room, player) {
   if (!room || room.terminated) return;
   clearRoomTimers(room);
   const ac = room.activeClue;
+  if (room.settings.gameMode === 'hot_potato') room.hotPotatoNextHolderId = player.id;
   const scoreBefore = player.score;
 
   // Check Underdog Comeback Boost
@@ -2921,7 +2674,7 @@ function applyCorrectBuzz(room, player) {
       player.lives = Math.min(3, (player.lives ?? 3) + 1);
       sendChat(room, {
         color: 'success',
-        text: `❤️ ${player.name} restored a life! (${player.lives}/3 lives)`,
+        text: `${player.name} restored a life! (${player.lives}/3 lives)`,
       });
     }
   }
@@ -2933,7 +2686,7 @@ function applyCorrectBuzz(room, player) {
       totalPoints += speedBonus;
       sendChat(room, {
         color: 'gold',
-        text: `⚡ SPEED BLITZ BONUS! ${player.name} answered in under 3.5s (+${formatCurrency(speedBonus, room)})!`,
+        text: `SPEED BLITZ BONUS! ${player.name} answered in under 3.5s (+${formatCurrency(speedBonus, room)})!`,
       });
     }
   }
@@ -2946,7 +2699,7 @@ function applyCorrectBuzz(room, player) {
     sendChat(room, {
       color: 'gold',
       icon: 'crown',
-      text: `👑 CATEGORY TAKEOVER! ${player.name} dominated the category (+${formatCurrency(takeoverBonus, room)})!`,
+      text: `CATEGORY TAKEOVER! ${player.name} dominated the category (+${formatCurrency(takeoverBonus, room)})!`,
     });
   }
 
@@ -3046,7 +2799,7 @@ function applyWrongBuzz(room, player, displayGuess, { hostEvent = 'wrong' } = {}
       player.isEliminated = true;
       sendChat(room, {
         color: 'danger',
-        text: `💀 ${player.name} has lost all 3 lives and is ELIMINATED!`,
+        text: `${player.name} has lost all 3 lives and is ELIMINATED!`,
       });
       broadcastRoomEvent(room, { type: 'sfx', sound: 'wrong' });
       const survivors = room.players.filter(
@@ -3057,7 +2810,7 @@ function applyWrongBuzz(room, player, displayGuess, { hostEvent = 'wrong' } = {}
         sendChat(room, {
           color: 'gold',
           icon: 'crown',
-          text: `👑 SOLE SURVIVOR! ${lastSurvivor ? lastSurvivor.name : 'Nobody'} is the last contestant standing!`,
+          text: `SOLE SURVIVOR! ${lastSurvivor ? lastSurvivor.name : 'Nobody'} is the last contestant standing!`,
         });
         scheduleRoomTimer(room, () => {
           enterGameOverPhase(room);
@@ -3067,7 +2820,7 @@ function applyWrongBuzz(room, player, displayGuess, { hostEvent = 'wrong' } = {}
     } else {
       sendChat(room, {
         color: 'warn',
-        text: `❤️ ${player.name} lost a life! (${player.lives}/3 remaining)`,
+        text: `${player.name} lost a life! (${player.lives}/3 remaining)`,
       });
     }
   }
@@ -3104,7 +2857,6 @@ function handleBuzzedAnswerSubmit(room, player, rawGuess) {
   if (room.phase !== 'clue_buzzed') return;
   const ac = room.activeClue;
   if (!ac || ac.buzzedPlayerId !== player.id) return;
-  if (ac.pendingJudgment) return;
 
   const guess = String(rawGuess || '').trim().slice(0, 100);
   if (!guess) return;
@@ -3118,9 +2870,7 @@ function handleBuzzedAnswerSubmit(room, player, rawGuess) {
     return;
   }
 
-  if (evaluation.status === 'close' && !player.isBot && room.settings.answerMode === 'judge') {
-    sendAmbiguousAnswerToJudge(room, player, guess, evaluation);
-  } else if (evaluation.status === 'close' && !player.isBot) {
+  if (evaluation.status === 'close' && !player.isBot) {
     sendPrivateChat(player, {
       color: 'warn',
       text: `"${guess}" is super close! Keep typing before your timer ends!`,
@@ -4007,7 +3757,7 @@ function enterGameOverPhase(room) {
     }
     sendChat(room, {
       color: 'gold', icon: 'trophy',
-      text: topTeam ? `🏆 ${isTie ? 'TIE GAME!' : `${topTeam.team.toUpperCase()} TEAM WINS`} with ${formatCurrency(topTeam.score, room)}!` : 'The team match ended without a score.',
+      text: topTeam ? `${isTie ? 'TIE GAME!' : `${topTeam.team.toUpperCase()} TEAM WINS`} with ${formatCurrency(topTeam.score, room)}!` : 'The team match ended without a score.',
     });
   } else if (winner) {
     sendChat(room, {
@@ -4238,7 +3988,6 @@ attachWebSocketServer(server, (ws) => {
     player.connected = false;
     player.ws = null;
     player.clearConnectionRoomRef = null;
-    handleJudgeDisconnect(room, player.id);
     handleVoiceLeave(room, player);
 
     if (room.terminated) {
@@ -4309,8 +4058,6 @@ attachWebSocketServer(server, (ws) => {
     player.connected = false;
     player.ws = null;
     player.clearConnectionRoomRef = null;
-    handleJudgeDisconnect(room, player.id);
-
     if (room.terminated || !rooms.has(room.code)) return;
 
     if (room.hostId === player.id) {
@@ -4523,47 +4270,6 @@ attachWebSocketServer(server, (ws) => {
         break;
       }
 
-      case 'quick_play': {
-        terminateAbandonedHostRoomIfOwned(msg.abandonedRoomCode, msg.abandonedToken);
-        if (currentRoom) leaveCurrentRoomIntentionally();
-
-        const requestedGameMode =
-          msg.gameMode === 'halloween' || msg.preferredSettings?.gameMode === 'halloween'
-            ? 'halloween'
-            : 'standard';
-
-        let targetRoom = null;
-        if (msg.matchExisting === true) {
-          targetRoom = Array.from(rooms.values()).find(
-            (r) =>
-              !r.isPrivate &&
-              !r.terminated &&
-              r.phase === 'lobby' &&
-              r.gameMode === requestedGameMode &&
-              r.players.filter((p) => p.connected).length < MAX_ROOM_PLAYERS
-          );
-        }
-
-        if (targetRoom) {
-          joinRoomInstance(targetRoom, msg, {
-            autoAddBots: false,
-            allowTokenReconnect: false,
-          });
-        } else {
-          // Always create a brand-new room & session (never rejoin a stale or mid-game room)
-          const room = createRoom({
-            isPrivate: false,
-            gameMode: requestedGameMode,
-            preferredSettings: msg.preferredSettings || null,
-          });
-          joinRoomInstance(room, msg, {
-            autoAddBots: true,
-            allowTokenReconnect: false,
-          });
-        }
-        break;
-      }
-
       case 'create_public': {
         terminateAbandonedHostRoomIfOwned(msg.abandonedRoomCode, msg.abandonedToken);
         if (currentRoom) leaveCurrentRoomIntentionally();
@@ -4577,7 +4283,7 @@ attachWebSocketServer(server, (ws) => {
           preferredSettings: msg.preferredSettings || null,
         });
         joinRoomInstance(room, msg, {
-          autoAddBots: true,
+          autoAddBots: false,
           allowTokenReconnect: false,
         });
         break;
@@ -4960,12 +4666,6 @@ attachWebSocketServer(server, (ws) => {
       case 'pass_hot_potato': {
         if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
         handleHotPotatoPass(currentRoom, currentPlayer);
-        break;
-      }
-
-      case 'judge_decision': {
-        if (!currentRoom || !currentPlayer || currentRoom.terminated) return;
-        handleJudgeDecision(currentRoom, currentPlayer, msg.ruling);
         break;
       }
 

@@ -7,9 +7,9 @@
   <link rel="preload" as="image" href="/assets/sprites/interface/logo-sheet.png" fetchpriority="high" />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/PixelifySans-Variable.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/Silkscreen-Bold.woff2" crossorigin />
-  <link rel="stylesheet" href="/css/styles.css?v=4.5.0" />
-  <link rel="stylesheet" href="/css/gameshow.css?v=4.5.0" />
-  <link rel="stylesheet" href="/css/cinematic.css?v=4.5.0" />
+  <link rel="stylesheet" href="/css/styles.css?v=4.6.0" />
+  <link rel="stylesheet" href="/css/gameshow.css?v=4.6.0" />
+  <link rel="stylesheet" href="/css/cinematic.css?v=4.6.0" />
 </head>
 <body>
   <!-- Toast Banner for quick feedback -->
@@ -48,9 +48,12 @@
       <div class="login-card">
         <div id="invite-room-banner" class="invite-room-banner" hidden>
           <span>Invited to Room <strong id="invite-room-code-label"></strong></span>
-          <button type="button" id="cancel-invite-btn" class="tiny-link-btn" aria-label="Clear room invite">
-            <span class="pixel-sprite sprite-close-x" aria-hidden="true"></span>
-          </button>
+          <div class="invite-room-actions">
+            <button type="button" id="join-invite-room-btn" class="btn-skribbl btn-green btn-sm">Join Invite</button>
+            <button type="button" id="cancel-invite-btn" class="tiny-link-btn" aria-label="Clear room invite">
+              <span class="pixel-sprite sprite-close-x" aria-hidden="true"></span>
+            </button>
+          </div>
         </div>
 
         <input
@@ -123,10 +126,6 @@
               <span class="pixel-sprite sprite-key" aria-hidden="true"></span>
               <span>Join Room</span>
             </button>
-            <button type="button" id="open-public-browser-btn" class="btn-skribbl btn-purple home-public-browser-btn">
-              <span class="pixel-sprite sprite-globe" aria-hidden="true"></span>
-              <span>Browse Public Rooms</span>
-            </button>
           </div>
         </div>
 
@@ -168,10 +167,10 @@
 
       <div class="topbar-center">
         <div id="team-scoreboard-bar" class="team-scoreboard-bar" hidden>
-          <span class="team-pill team-red-pill">🚩 RED: <strong id="team-red-score">$0</strong></span>
-          <span class="team-pill team-blue-pill">🛡️ BLUE: <strong id="team-blue-score">$0</strong></span>
-          <span class="team-pill team-green-pill">⚔️ GREEN: <strong id="team-green-score">$0</strong></span>
-          <span class="team-pill team-yellow-pill">⚡ YELLOW: <strong id="team-yellow-score">$0</strong></span>
+          <span class="team-pill team-red-pill">RED: <strong id="team-red-score">$0</strong></span>
+          <span class="team-pill team-blue-pill">BLUE: <strong id="team-blue-score">$0</strong></span>
+          <span class="team-pill team-green-pill">GREEN: <strong id="team-green-score">$0</strong></span>
+          <span class="team-pill team-yellow-pill">YELLOW: <strong id="team-yellow-score">$0</strong></span>
         </div>
         <div id="timer-badge" class="timer-badge" hidden>
           <span class="pixel-sprite sprite-clock" aria-hidden="true"></span>
@@ -264,8 +263,6 @@
           </button>
         </div>
 
-        <aside id="judge-stage" class="judge-stage" aria-label="Rotating judge position" hidden></aside>
-
         <!-- 15-SECOND TEAM SELECTION OVERLAY -->
         <div id="team-select-overlay" class="team-select-overlay" hidden>
           <div class="team-select-modal">
@@ -276,22 +273,22 @@
             <p class="team-select-subtitle">Select a team to compete together! Unassigned contestants are auto-balanced.</p>
             <div class="team-select-cards">
               <button type="button" class="team-pick-btn team-card-red" data-team="red">
-                <span class="team-flag-icon">🚩</span>
+                <span class="team-flag-icon" aria-hidden="true"></span>
                 <span class="team-card-title">RED TEAM</span>
                 <span class="team-member-count" id="team-red-count">0 Players</span>
               </button>
               <button type="button" class="team-pick-btn team-card-blue" data-team="blue">
-                <span class="team-flag-icon">🛡️</span>
+                <span class="team-flag-icon" aria-hidden="true"></span>
                 <span class="team-card-title">BLUE TEAM</span>
                 <span class="team-member-count" id="team-blue-count">0 Players</span>
               </button>
               <button type="button" class="team-pick-btn team-card-green" data-team="green">
-                <span class="team-flag-icon">⚔️</span>
+                <span class="team-flag-icon" aria-hidden="true"></span>
                 <span class="team-card-title">GREEN TEAM</span>
                 <span class="team-member-count" id="team-green-count">0 Players</span>
               </button>
               <button type="button" class="team-pick-btn team-card-yellow" data-team="yellow">
-                <span class="team-flag-icon">⚡</span>
+                <span class="team-flag-icon" aria-hidden="true"></span>
                 <span class="team-card-title">YELLOW TEAM</span>
                 <span class="team-member-count" id="team-yellow-count">0 Players</span>
               </button>
@@ -386,6 +383,27 @@
                   </button>
                 </div>
                 <p id="game-mode-description" class="game-mode-description" aria-live="polite">Classic board values, buzzer play, and the familiar Jeoparty rules.</p>
+                <div id="hot-potato-settings" class="hot-potato-settings" hidden>
+                  <span class="hot-potato-settings-title"><span class="pixel-sprite sprite-potato" aria-hidden="true"></span> HOT POTATO RULES</span>
+                  <label class="setting-field" for="set-hot-potato-fuse">
+                    <span>Fuse countdown</span>
+                    <select id="set-hot-potato-fuse" class="skribbl-select">
+                      <option value="4">4 seconds</option>
+                      <option value="6" selected>6 seconds</option>
+                      <option value="8">8 seconds</option>
+                      <option value="10">10 seconds</option>
+                    </select>
+                  </label>
+                  <label class="setting-field" for="set-hot-potato-penalty">
+                    <span>Explosion penalty</span>
+                    <select id="set-hot-potato-penalty" class="skribbl-select">
+                      <option value="100">$100</option>
+                      <option value="200" selected>$200</option>
+                      <option value="300">$300</option>
+                      <option value="500">$500</option>
+                    </select>
+                  </label>
+                </div>
               </div>
 
               <!-- Cinematic Camera presentation setting -->
@@ -501,7 +519,6 @@
                   <select id="set-answer-mode" name="answerMode" class="skribbl-select">
                     <option value="buzzer">Classic Buzzer (Buzz + Type)</option>
                     <option value="skribbl">Everyone Answers (Speed Mode)</option>
-                    <option value="judge">Fair Rotating Judge</option>
                   </select>
                 </label>
 
@@ -794,15 +811,6 @@
               <!-- Buzzed Status for Spectators -->
               <div id="buzzed-spectator-banner" class="buzzed-spectator-banner" hidden></div>
 
-              <section id="judge-review-panel" class="judge-review-panel" aria-live="polite" hidden>
-                <strong>Judge review</strong>
-                <p id="judge-review-message"></p>
-                <div id="judge-decision-actions" class="judge-decision-actions" hidden>
-                  <button type="button" id="judge-accept-btn" class="btn-skribbl btn-green">Accept answer</button>
-                  <button type="button" id="judge-reject-btn" class="btn-skribbl btn-gray">Reject answer</button>
-                </div>
-              </section>
-
               <!-- Answer Input Form -->
               <form id="clue-answer-form" class="clue-answer-form" hidden>
                 <input
@@ -1064,12 +1072,12 @@
     <div class="dialog-header-row">
       <h2 id="public-rooms-dialog-title">
         <span class="pixel-sprite sprite-globe" aria-hidden="true"></span>
-        <span>Public Matchmaking</span>
+        <span>Public Rooms</span>
       </h2>
       <div class="dialog-header-actions">
-        <button type="button" id="create-public-from-header-btn" class="btn-skribbl btn-green btn-sm">
+        <button type="button" id="create-public-room-btn" class="btn-skribbl btn-green btn-sm">
           <span class="pixel-sprite sprite-plus" aria-hidden="true"></span>
-          <span>Host Public Room</span>
+          <span>Create Public Room</span>
         </button>
         <button type="button" id="refresh-public-rooms-btn" class="btn-skribbl btn-blue btn-sm">
           <span class="pixel-sprite sprite-refresh" aria-hidden="true"></span>
@@ -1077,11 +1085,10 @@
         </button>
       </div>
     </div>
-    <p class="dialog-sub">Join an active public game waiting for players around the world, or host your own:</p>
+    <p class="dialog-sub">Browse waiting matches, compare modes and open seats, or host a public room:</p>
     <div id="public-rooms-container" class="public-rooms-container">
       <div id="public-rooms-empty" class="public-rooms-empty">
         <p>No open public rooms waiting right now.</p>
-        <button type="button" id="create-public-from-dialog-btn" class="btn-skribbl btn-green">Create a Public Room</button>
       </div>
       <div id="public-rooms-list" class="public-rooms-list" hidden></div>
     </div>
@@ -1199,7 +1206,7 @@
     <h2 id="howto-dialog-title">How to Play jeoparty.io</h2>
     <ol class="howto-steps-list">
       <li>
-        <strong>Start or Join:</strong> Click <strong>Play!</strong> for an instant match with bots, or <strong>Create Private Room</strong> to share a code/link with friends.
+        <strong>Start or Join:</strong> Click <strong>Play!</strong> to browse public rooms, or create a private room to share a code/link with friends.
       </li>
       <li>
         <strong>Pick Categories:</strong> In the lobby, check any of the 53 built-in trivia categories (or write your own custom category!).
@@ -1212,8 +1219,8 @@
       </li>
     </ol>
     <p class="dialog-sub">
-      <strong>🔥 Streaks:</strong> three correct answers in a row unlocks an extra
-      <strong>+$100</strong> on every correct answer after that. <strong>🎡 Final Jeoparty</strong>
+      <strong>Streaks:</strong> three correct answers in a row unlocks an extra
+      <strong>+$100</strong> on every correct answer after that. <strong>Final Jeoparty</strong>
       spins a category wheel built from the categories on your board.
     </p>
     <form method="dialog" class="dialog-actions">
@@ -1369,6 +1376,6 @@
   <!-- Fullscreen Animated Floating Pixel Reaction Particles -->
   <div id="reaction-particles-container" class="reaction-particles-container" aria-hidden="true"></div>
 
-  <script type="module" src="/js/app.js?v=4.5.0"></script>
+  <script type="module" src="/js/app.js?v=4.6.0"></script>
 </body>
 </html>

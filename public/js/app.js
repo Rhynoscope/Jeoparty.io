@@ -329,6 +329,7 @@ const state = {
   lastRenderedPhase: null,
   lastRenderedStage: null,
   lastTickSecond: -1,
+  lastPotatoWarningKey: '',
 };
 
 /* =========================================================================
@@ -347,6 +348,7 @@ const el = {
   mascotRow: document.getElementById('home-mascot-row'),
   inviteBanner: document.getElementById('invite-room-banner'),
   inviteCodeLabel: document.getElementById('invite-room-code-label'),
+  joinInviteRoomBtn: document.getElementById('join-invite-room-btn'),
   cancelInviteBtn: document.getElementById('cancel-invite-btn'),
   nameInput: document.getElementById('player-name-input'),
   avatarPreview: document.getElementById('home-avatar-preview'),
@@ -354,7 +356,6 @@ const el = {
   avatarRandomBtn: document.getElementById('avatar-random-btn'),
   playBtn: document.getElementById('play-btn'),
   createPrivateBtn: document.getElementById('create-private-btn'),
-  openPublicBrowserBtn: document.getElementById('open-public-browser-btn'),
   openJoinDialogBtn: document.getElementById('open-join-dialog-btn'),
   homeLanBanner: document.getElementById('home-lan-banner'),
   homeLanUrlText: document.getElementById('home-lan-url-text'),
@@ -430,7 +431,7 @@ const el = {
   micHelpCloseBtn: document.getElementById('mic-help-close-btn'),
 
   // Public matchmaking header button
-  createPublicFromHeaderBtn: document.getElementById('create-public-from-header-btn'),
+  createPublicRoomBtn: document.getElementById('create-public-room-btn'),
 
   // Stages
   stageLobby: document.getElementById('stage-lobby'),
@@ -457,6 +458,9 @@ const el = {
   setSpecialBonus: document.getElementById('set-special-bonus'),
   setSpecialPenalty: document.getElementById('set-special-penalty'),
   setStreakTarget: document.getElementById('set-streak-target'),
+  hotPotatoSettings: document.getElementById('hot-potato-settings'),
+  setHotPotatoFuse: document.getElementById('set-hot-potato-fuse'),
+  setHotPotatoPenalty: document.getElementById('set-hot-potato-penalty'),
   specialRoundChecks: document.querySelectorAll('[data-special-round]'),
   gameModeDescription: document.getElementById('game-mode-description'),
   setDoubleJeopardy: document.getElementById('set-double-jeopardy'),
@@ -486,11 +490,6 @@ const el = {
   hotPotatoControls: document.getElementById('hot-potato-controls'),
   hotPotatoCountdown: document.getElementById('hot-potato-countdown'),
   passHotPotatoBtn: document.getElementById('pass-hot-potato-btn'),
-  judgeReviewPanel: document.getElementById('judge-review-panel'),
-  judgeReviewMessage: document.getElementById('judge-review-message'),
-  judgeDecisionActions: document.getElementById('judge-decision-actions'),
-  judgeAcceptBtn: document.getElementById('judge-accept-btn'),
-  judgeRejectBtn: document.getElementById('judge-reject-btn'),
   clueValuePill: document.getElementById('clue-value-pill'),
   clueTimerFill: document.getElementById('clue-timer-fill'),
   ddWagerBox: document.getElementById('dd-wager-box'),
@@ -576,7 +575,6 @@ const el = {
   publicRoomsDialog: document.getElementById('public-rooms-dialog'),
   refreshPublicRoomsBtn: document.getElementById('refresh-public-rooms-btn'),
   closePublicRoomsBtn: document.getElementById('close-public-rooms-btn'),
-  createPublicFromDialogBtn: document.getElementById('create-public-from-dialog-btn'),
   publicRoomsContainer: document.getElementById('public-rooms-container'),
   publicRoomsEmpty: document.getElementById('public-rooms-empty'),
   publicRoomsList: document.getElementById('public-rooms-list'),
@@ -830,7 +828,7 @@ const MODE_DESCRIPTIONS = {
   standard: 'Classic board values, buzzer play, and the familiar Jeoparty rules.',
   survival: 'Three lives each. Wrong answers cost a life, correct answers can restore one, and eliminated players sit out.',
   double_or_nothing: 'Choose safe or double at the buzzer. A double answer pays 2×, but a miss costs the clue value.',
-  hot_potato: 'A six-second fuse moves the potato between contestants. Pass it or take a small hit; the holder at clue timeout takes the bigger penalty.',
+  hot_potato: 'A pixel potato starts with a randomly selected contestant. Pass it directly, or answer correctly to carry it into the next clue. The holder when the fuse ends takes the configured penalty.',
   teams: 'Pick a color team. Teammates share a live score bank and the highest-scoring team wins.',
   chaos: 'More special tiles and all-play rounds put the whole board into surprise mode.',
   speed: 'Eight-second clues and a quick-answer bonus keep each round moving.',
@@ -922,11 +920,9 @@ function checkUrlInviteParam() {
     state.invitedRoomCode = code;
     el.inviteBanner.hidden = false;
     el.inviteCodeLabel.textContent = `#${code}`;
-    el.playBtn.textContent = `Join Room #${code}`;
   } else {
     state.invitedRoomCode = null;
     el.inviteBanner.hidden = true;
-    el.playBtn.textContent = 'Play!';
   }
 }
 
@@ -989,27 +985,33 @@ function renderPublicRooms(roomList) {
     metaRow.className = 'public-room-meta';
 
     const countSpan = document.createElement('span');
+    const maxPlayers = Math.max(1, Number(r.maxPlayers) || 10);
+    const playerCount = Math.max(0, Number(r.playerCount) || 0);
     setButtonSpriteAndText(
       countSpan,
       'sprite-users',
-      `${r.playerCount} / ${r.maxPlayers || 10} Players`
+      `${playerCount} / ${maxPlayers} Players`
     );
 
+    const modeSpan = document.createElement('span');
+    setButtonSpriteAndText(modeSpan, 'sprite-globe', MODE_NAMES[r.gameMode] || 'Classic Jeoparty');
+
+    const spacesSpan = document.createElement('span');
+    setButtonSpriteAndText(spacesSpan, 'sprite-plus', `${Math.max(0, maxPlayers - playerCount)} spaces open`);
+
     const statusSpan = document.createElement('span');
-    setButtonSpriteAndText(
-      statusSpan,
-      'sprite-mod-blitz',
-      r.status || 'Waiting in Lobby'
-    );
+    setButtonSpriteAndText(statusSpan, 'sprite-clock', r.status || 'Waiting in Lobby');
 
     const catSpan = document.createElement('span');
     setButtonSpriteAndText(
       catSpan,
       'sprite-books',
-      `${r.categoryCount || 5} Categories`
+      `${Math.max(1, Number(r.categoryCount) || 5)} Categories`
     );
 
     metaRow.appendChild(countSpan);
+    metaRow.appendChild(modeSpan);
+    metaRow.appendChild(spacesSpan);
     metaRow.appendChild(statusSpan);
     metaRow.appendChild(catSpan);
 
@@ -1136,7 +1138,7 @@ function sendActionWithProfile(actionObj, { roomCodeForToken = null } = {}) {
 }
 
 /**
- * Starts a brand-new room session (Quick Play or Private Room).
+ * Starts a brand-new public or private room session.
  * Clears any previous room tokens, closes any abandoned room if applicable,
  * and forwards only preferred settings (never old scores, boards, or tokens).
  */
@@ -1155,7 +1157,7 @@ function startFreshRoomSession(actionType, extraPayload = {}) {
   state.invitedRoomCode = null;
 
   sendActionWithProfile({
-    type: actionType, // 'quick_play' | 'create_private'
+    type: actionType, // 'create_public' | 'create_private'
     preferredSettings: state.preferredSettings || null,
     gameMode: 'standard',
     abandonedRoomCode: abandoned ? abandoned.roomCode : null,
@@ -1296,6 +1298,11 @@ function handleServerMessage(msg) {
       if ((msg.sound === 'correct' || msg.sound === 'candy_collect') && isHalloweenMode()) {
         spawnCandyBurst();
       }
+      break;
+    }
+
+    case 'hot_potato_explosion': {
+      gameShow.onHotPotatoExplosion(msg.playerId);
       break;
     }
 
@@ -2020,6 +2027,8 @@ function renderLobbyStage(room, amHost) {
 
   // Sync settings controls
   el.setAnswerMode.value = s.answerMode;
+  if (el.setHotPotatoFuse) el.setHotPotatoFuse.value = String(s.hotPotatoFuseSec || 6);
+  if (el.setHotPotatoPenalty) el.setHotPotatoPenalty.value = String(s.hotPotatoPenalty || 200);
   el.setBoardCols.value = String(s.boardCols);
   el.setCluesPerCat.value = String(s.cluesPerCat);
   el.setClueTime.value = String(s.clueTimeSec);
@@ -2105,6 +2114,7 @@ function renderLobbyStage(room, amHost) {
     el.activeGameModeIndicator.textContent = (MODE_NAMES[curMode] || curMode).toUpperCase();
   }
   if (el.gameModeDescription) el.gameModeDescription.textContent = MODE_DESCRIPTIONS[curMode] || MODE_DESCRIPTIONS.standard;
+  if (el.hotPotatoSettings) el.hotPotatoSettings.hidden = curMode !== 'hot_potato';
 
   // Sync Cinematic Camera setting (intro + broadcast camera)
   const cameraMode = ['on', 'reduced', 'off'].includes(s.cinematicCamera)
@@ -2138,6 +2148,8 @@ function renderLobbyStage(room, amHost) {
     el.setSpecialBonus,
     el.setSpecialPenalty,
     el.setStreakTarget,
+    el.setHotPotatoFuse,
+    el.setHotPotatoPenalty,
     el.setDoubleJeopardy,
     el.setDailyDoubles,
     el.setFinalJeopardy,
@@ -2460,10 +2472,6 @@ function renderClueStage(room, amHost, phaseChanged) {
   const isChaosMode = room.phase === 'clue_chaos';
   const isSkribblMode = room.phase === 'clue_skribbl';
   const isResult = room.phase === 'clue_result';
-  const isJudgeMode = room.settings?.answerMode === 'judge';
-  const pendingJudgment = ac.pendingJudgment || null;
-  const iAmJudge = Boolean(ac.judgeId && ac.judgeId === state.playerId);
-
   const isHalloween = isHalloweenMode(room);
 
   // 0. Modifier Badge on Clue Card Top
@@ -2508,15 +2516,15 @@ function renderClueStage(room, amHost, phaseChanged) {
   } else if (room.settings?.gameMode === 'hot_potato') {
     el.clueModifierBadge.hidden = false;
     el.clueModifierBadge.className = 'clue-modifier-badge mod-potato';
-    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-potato', '🥔 HOT POTATO (PASS IT BEFORE IT DETONATES!)');
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-potato', 'HOT POTATO (PASS IT BEFORE THE FUSE ENDS!)');
   } else if (room.settings?.gameMode === 'speed') {
     el.clueModifierBadge.hidden = false;
     el.clueModifierBadge.className = 'clue-modifier-badge mod-blitz';
-    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-mod-blitz', '⚡ SPEED BLITZ (8s CLUE • +50% BONUS < 3.5s)');
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-mod-blitz', 'SPEED BLITZ (8s CLUE • +50% BONUS < 3.5s)');
   } else if (room.settings?.gameMode === 'survival') {
     el.clueModifierBadge.hidden = false;
     el.clueModifierBadge.className = 'clue-modifier-badge mod-heart';
-    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-heart', '❤️ SURVIVAL (WRONG ANSWER LOSES 1 LIFE)');
+    setButtonSpriteAndText(el.clueModifierBadge, 'sprite-heart', 'SURVIVAL (WRONG ANSWER LOSES 1 LIFE)');
   } else if (room.settings?.gameMode === 'streak_race') {
     el.clueModifierBadge.hidden = false;
     el.clueModifierBadge.className = 'clue-modifier-badge mod-blitz';
@@ -2578,13 +2586,10 @@ function renderClueStage(room, amHost, phaseChanged) {
   el.buzzerWrap.hidden = !isClueOpen;
   if (isClueOpen) {
     const alreadyTried = ac.attemptedIds?.includes(state.playerId);
-    const isJudge = isJudgeMode && iAmJudge;
     const me = findPlayer(room, state.playerId);
     const waitingForTeamTurn = room.settings?.gameMode === 'teams' && me && !me.teamAnswererUp;
-    el.buzzBtn.disabled = alreadyTried || isJudge || waitingForTeamTurn;
-    el.buzzEligibilityNote.textContent = isJudge
-      ? 'You are the rotating judge for this clue.'
-      : alreadyTried
+    el.buzzBtn.disabled = alreadyTried || waitingForTeamTurn;
+    el.buzzEligibilityNote.textContent = alreadyTried
       ? 'You already buzzed on this clue — waiting for other players.'
       : waitingForTeamTurn
       ? 'Your teammate is up for this team turn.'
@@ -2600,20 +2605,6 @@ function renderClueStage(room, amHost, phaseChanged) {
     const holder = findPlayer(room, ac.hotPotatoHolderId);
     el.passHotPotatoBtn.hidden = ac.hotPotatoHolderId !== state.playerId;
     el.hotPotatoCountdown.textContent = holder ? `${holder.name} holds it` : 'Pass the potato!';
-  }
-
-  const showJudgeReview = isJudgeMode && (pendingJudgment || (isResult && ac.lastJudgeDecision));
-  el.judgeReviewPanel.hidden = !showJudgeReview;
-  if (showJudgeReview) {
-    if (pendingJudgment) {
-      const guessText = pendingJudgment.guess ? ` “${pendingJudgment.guess}”` : '';
-      el.judgeReviewMessage.textContent = `${pendingJudgment.answererName}${guessText} needs a ruling. ${pendingJudgment.judgeId === state.playerId ? 'You have a few seconds to decide.' : `${ac.judgeName || 'The judge'} has a few seconds to decide.`}`;
-      el.judgeDecisionActions.hidden = pendingJudgment.judgeId !== state.playerId;
-    } else {
-      const decision = ac.lastJudgeDecision;
-      el.judgeReviewMessage.textContent = `${decision.ruling === 'accepted' ? 'Accepted' : 'Rejected'} by ${decision.source === 'judge' ? ac.judgeName || 'the judge' : 'automatic fallback'}.`;
-      el.judgeDecisionActions.hidden = true;
-    }
   }
 
   // 5. Spectator Banner
@@ -2640,12 +2631,7 @@ function renderClueStage(room, amHost, phaseChanged) {
   }
 
   // 6. Answer Input Form
-  const waitingForJudge = Boolean(pendingJudgment);
-  const waitingForHostOnMe =
-    isClueBuzzed &&
-    room.settings.answerMode === 'judge' &&
-    Boolean(ac.buzzedGuessText);
-  el.clueAnswerForm.hidden = !iAmAnswering || waitingForHostOnMe || waitingForJudge;
+  el.clueAnswerForm.hidden = !iAmAnswering;
   if (iAmAnswering && phaseChanged) {
     el.clueAnswerInput.value = '';
     setTimeout(() => el.clueAnswerInput.focus(), 30);
@@ -2688,7 +2674,7 @@ function renderClueStage(room, amHost, phaseChanged) {
     el.officialAnswerText.textContent = ac.answer || '';
     const streakBonusNote =
       someoneWon && Number(ac.winnerStreakBonus) > 0
-        ? ` 🔥 ON FIRE — +${formatCash(ac.winnerStreakBonus)} streak bonus!`
+        ? ` ON FIRE — +${formatCash(ac.winnerStreakBonus)} streak bonus!`
         : '';
     el.clueWinnerLine.textContent = someoneWon
       ? `${ac.winnerName} earned +${formatCash(ac.winnerDelta)}!${streakBonusNote}`
@@ -3009,13 +2995,12 @@ function startTimerLoop() {
     if (room.phase === 'clue_open' && room.settings?.gameMode === 'hot_potato' && activeClue?.hotPotatoExpiresAt) {
       const fuse = Math.max(0, Math.ceil((activeClue.hotPotatoExpiresAt - serverNowEstimate) / 1000));
       const holder = findPlayer(room, activeClue.hotPotatoHolderId);
-      if (el.hotPotatoCountdown) el.hotPotatoCountdown.textContent = `🥔 ${holder?.name || 'Contestant'} — ${fuse}s`;
-    }
-    if (activeClue?.pendingJudgment && el.judgeReviewMessage) {
-      const seconds = Math.max(0, Math.ceil((activeClue.pendingJudgment.deadline - serverNowEstimate) / 1000));
-      const guess = activeClue.pendingJudgment.guess ? ` “${activeClue.pendingJudgment.guess}”` : '';
-      const who = activeClue.pendingJudgment.judgeId === state.playerId ? 'You' : (activeClue.judgeName || 'The judge');
-      el.judgeReviewMessage.textContent = `${activeClue.pendingJudgment.answererName}${guess} needs a ruling. ${who} has ${seconds}s.`;
+      if (el.hotPotatoCountdown) el.hotPotatoCountdown.textContent = `${holder?.name || 'Contestant'} — ${fuse}s`;
+      const warningKey = `${activeClue.hotPotatoHolderId}:${fuse}`;
+      if (fuse > 0 && fuse <= 3 && warningKey !== state.lastPotatoWarningKey) sfx.play('tick');
+      state.lastPotatoWarningKey = warningKey;
+    } else {
+      state.lastPotatoWarningKey = '';
     }
 
     el.timerBadge.hidden = false;
@@ -3115,22 +3100,11 @@ function bindEvents() {
     el.howtoDialog.showModal();
   });
 
-  // Home Primary Actions: 1. PLAY (Quick play matchmaking or room creation!)
+  // Public Room browser is the single public-play entry point.
   el.playBtn.addEventListener('click', () => {
     sfx.play('click');
-    if (state.invitedRoomCode) {
-      state.intentionalLeave = false;
-      sendActionWithProfile(
-        {
-          type: 'join_room',
-          code: state.invitedRoomCode,
-        },
-        { roomCodeForToken: state.invitedRoomCode }
-      );
-    } else {
-      showToast('Finding public game or creating room...', 'info');
-      startFreshRoomSession('quick_play', { matchExisting: true });
-    }
+    if (el.publicRoomsDialog && !el.publicRoomsDialog.open) el.publicRoomsDialog.showModal();
+    fetchAndRenderPublicRooms();
   });
 
   el.createPrivateBtn.addEventListener('click', () => {
@@ -3138,13 +3112,16 @@ function bindEvents() {
     startFreshRoomSession('create_private');
   });
 
-  if (el.openPublicBrowserBtn && el.publicRoomsDialog) {
-    el.openPublicBrowserBtn.addEventListener('click', () => {
-      sfx.play('click');
-      el.publicRoomsDialog.showModal();
-      fetchAndRenderPublicRooms();
-    });
-  }
+  el.joinInviteRoomBtn?.addEventListener('click', () => {
+    if (!state.invitedRoomCode) return;
+    sfx.play('click');
+    const invitedCode = state.invitedRoomCode;
+    state.intentionalLeave = false;
+    sendActionWithProfile(
+      { type: 'join_room', code: invitedCode },
+      { roomCodeForToken: invitedCode }
+    );
+  });
 
   if (el.refreshPublicRoomsBtn) {
     el.refreshPublicRoomsBtn.addEventListener('click', () => {
@@ -3161,8 +3138,8 @@ function bindEvents() {
   }
 
   // Public Matchmaking Header "Create Public Room" Button
-  if (el.createPublicFromHeaderBtn) {
-    el.createPublicFromHeaderBtn.addEventListener('click', () => {
+  if (el.createPublicRoomBtn) {
+    el.createPublicRoomBtn.addEventListener('click', () => {
       sfx.play('click');
       if (el.publicRoomsDialog && typeof el.publicRoomsDialog.close === 'function') {
         el.publicRoomsDialog.close();
@@ -3332,16 +3309,6 @@ function bindEvents() {
   }
 
 
-  if (el.createPublicFromDialogBtn) {
-    el.createPublicFromDialogBtn.addEventListener('click', () => {
-      sfx.play('click');
-      if (el.publicRoomsDialog && typeof el.publicRoomsDialog.close === 'function') {
-        el.publicRoomsDialog.close();
-      }
-      startFreshRoomSession('quick_play', { matchExisting: false, createOnly: true });
-    });
-  }
-
   if (el.homeLanCopyBtn) {
     el.homeLanCopyBtn.addEventListener('click', () => {
       if (state.lanUrls.length > 0) {
@@ -3446,6 +3413,12 @@ function bindEvents() {
   );
   el.setStreakTarget?.addEventListener('change', () =>
     pushSettingsPatch({ streakRequirement: Number(el.setStreakTarget.value) })
+  );
+  el.setHotPotatoFuse?.addEventListener('change', () =>
+    pushSettingsPatch({ hotPotatoFuseSec: Number(el.setHotPotatoFuse.value) })
+  );
+  el.setHotPotatoPenalty?.addEventListener('change', () =>
+    pushSettingsPatch({ hotPotatoPenalty: Number(el.setHotPotatoPenalty.value) })
   );
   el.specialRoundChecks?.forEach((checkbox) => checkbox.addEventListener('change', () => {
     const enabledSpecialRounds = Array.from(el.specialRoundChecks)
@@ -3570,8 +3543,6 @@ function bindEvents() {
   el.passHotPotatoBtn?.addEventListener('click', () => {
     sendWs({ type: 'pass_hot_potato' });
   });
-  el.judgeAcceptBtn?.addEventListener('click', () => sendWs({ type: 'judge_decision', ruling: 'accept' }));
-  el.judgeRejectBtn?.addEventListener('click', () => sendWs({ type: 'judge_decision', ruling: 'reject' }));
 
   window.addEventListener('keydown', (e) => {
     if (e.isComposing || e.code !== 'Space') return;

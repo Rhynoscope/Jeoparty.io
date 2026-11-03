@@ -625,6 +625,12 @@ summary:focus-visible {
   font-weight: 700;
 }
 
+.invite-room-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .tiny-link-btn {
   background: transparent;
   border: none;
@@ -735,10 +741,6 @@ summary:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-}
-
-.home-public-browser-btn {
-  grid-column: 1 / -1;
 }
 
 /* ==========================================================================
@@ -1950,26 +1952,6 @@ summary:focus-visible {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-}
-
-.host-judge-box {
-  background: rgba(0, 0, 0, 0.35);
-  border: 2.5px solid var(--jeopardy-gold);
-  border-radius: 8px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.host-ref-answer {
-  margin: 0;
-}
-
-.host-judge-btns {
-  display: flex;
-  gap: 10px;
 }
 
 /* Post-Clue Result Box with Animated Pixel Badge */
@@ -4094,7 +4076,7 @@ button:hover .sprite-gear {
   image-rendering: pixelated;
 }
 
-/* Authentic MS Paint Pixel Icons for Game Modes and Judge */
+/* Pixel Mode and Special Round Icons */
 .sprite-heart {
   width: 18px;
   height: 18px;
@@ -4107,28 +4089,36 @@ button:hover .sprite-gear {
 }
 
 .sprite-potato {
-  width: 20px;
-  height: 16px;
-  background: #c88836;
-  border: 2px solid #000;
-  border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
-  box-shadow: inset 2px -2px 0 #8c531b;
+  width: 22px;
+  height: 22px;
+  background-image: url('/assets/sprites/effects/potato-strip.png');
+  background-size: 400% 100%;
+  animation: sprite4Frame 0.64s steps(1) infinite;
   display: inline-block;
   vertical-align: middle;
   image-rendering: pixelated;
-  position: relative;
 }
 
-.sprite-potato::after {
-  content: '';
-  position: absolute;
-  top: -3px;
-  right: 2px;
-  width: 4px;
-  height: 4px;
-  background: #ffcc00;
-  border-radius: 50%;
-  box-shadow: 0 0 3px #ff4400;
+.hot-potato-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  background: #102d73;
+  border: 2px solid #080d1d;
+}
+.hot-potato-settings[hidden] { display: none !important; }
+.hot-potato-settings-title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ffe35b;
+  font: 700 .82rem var(--font-pixel, monospace);
+}
+@media (max-width: 540px) {
+  .hot-potato-settings { grid-template-columns: 1fr; }
 }
 
 .sprite-teams {
@@ -5320,8 +5310,30 @@ body.theme-halloween .mode-active-label {
 }
 
 .team-flag-icon {
-  font-size: 2rem;
+  display: block;
+  width: 32px;
+  height: 24px;
+  border: 3px solid #000;
+  box-shadow: 2px 2px 0 #000;
+  image-rendering: pixelated;
 }
+.team-card-red .team-flag-icon { background: #ff3434; }
+.team-card-blue .team-flag-icon { background: #3288ff; }
+.team-card-green .team-flag-icon { background: #28c64a; }
+.team-card-yellow .team-flag-icon { background: #ffe230; }
+.team-scoreboard-bar .team-pill::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border: 2px solid #000;
+  vertical-align: middle;
+}
+.team-red-pill::before { background: #ff3434; }
+.team-blue-pill::before { background: #3288ff; }
+.team-green-pill::before { background: #28c64a; }
+.team-yellow-pill::before { background: #ffe230; }
 
 .team-card-title {
   font-family: var(--font-pixel, monospace);

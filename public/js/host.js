@@ -470,11 +470,12 @@ class HostPresenter {
     // Speak with direct speech-synthesis start/end synchronization
     const speechStarted = this.speak(line, activeMood);
 
-    // Safety fallback timer if speech synthesis is disabled, muted, or doesn't fire onend
+    // Let the speech end event control mouth motion; this longer cap only recovers
+    // from browsers whose speech engine never emits an end/error event.
     const durationMs = Math.min(4500, Math.max(1200, line.length * 28));
     this.talkingTimer = setTimeout(() => {
       this.setMood('idle');
-    }, speechStarted ? 8000 : durationMs);
+    }, speechStarted ? 22000 : durationMs);
   }
 
   speak(text, activeMood = 'talking') {

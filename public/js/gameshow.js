@@ -11,7 +11,6 @@ import { buildAvatarHTML } from './avatar.js';
 import { sfx } from './audio.js';
 import { hostPresenter } from './host.js';
 import { cinematic } from './cinematic.js';
-import { judgeCharacterHTML } from './judge.js';
 
 const CLUE_PHASES = new Set([
   'clue_open',
@@ -60,6 +59,7 @@ function moodForPlayer(room, p, index, topScore) {
     if (room.phase === 'clue_result' && ac.winnerName === p.name) return 'victory';
     if (ac.attemptedIds?.includes(p.id)) return 'sad';
   }
+  if (room.phase === 'clue_open') return 'thinking';
   if (room.phase === 'final_clue') return 'idle';
   if (room.phase === 'final_wager') return 'idle';
   if ((p.streak || 0) >= 3) return 'excited';
@@ -117,7 +117,6 @@ class GameShow {
       hostName: elements.hostName || document.getElementById('host-name-text'),
       hostVoiceBtn: elements.hostVoiceBtn || document.getElementById('host-voice-btn'),
       contestantStage: elements.contestantStage || document.getElementById('contestant-stage'),
-      judgeStage: elements.judgeStage || document.getElementById('judge-stage'),
       wheelBox: elements.wheelBox || document.getElementById('final-wheel-box'),
       wheelEl: elements.wheelEl || document.getElementById('final-wheel'),
       wheelSectors: elements.wheelSectors || document.getElementById('final-wheel-sectors'),
@@ -190,7 +189,6 @@ class GameShow {
     }
 
     this.updateHostStage(room);
-    this.updateJudgeStage(room);
     this.updateContestantStage(room);
     this.consumeAwards(room);
     this.updateWheelVisibility(room);
@@ -207,6 +205,18 @@ class GameShow {
     hostPresenter.showLine(msg.line, msg.tone, msg.id ?? null);
   }
 
+  onHotPotatoExplosion(playerId) {
+    const podium = this.podiums.get(playerId);
+    if (!podium?.root) return;
+    podium.root.querySelector('.hot-potato-burst')?.remove();
+    const burst = document.createElement('span');
+    burst.className = 'hot-potato-burst';
+    burst.setAttribute('aria-hidden', 'true');
+    burst.innerHTML = '<span class="pixel-sprite sprite-mod-chaos"></span>';
+    podium.root.appendChild(burst);
+    window.setTimeout(() => burst.remove(), 760);
+  }
+
   /* ------------------------------ HOST BAR ------------------------------ */
 
   updateHostStage(room) {
@@ -219,27 +229,6 @@ class GameShow {
     stage.dataset.phase = room.phase;
   }
 
-  updateJudgeStage(room) {
-    const stage = this.elements.judgeStage;
-    const ac = room.activeClue;
-    const show = room.settings?.answerMode === 'judge' && Boolean(ac?.judgeId) &&
-      ['clue_open', 'clue_buzzed', 'clue_result'].includes(room.phase);
-    if (!stage) return;
-    stage.hidden = !show;
-    if (!show) return;
-
-    const judge = room.players.find((player) => player.id === ac.judgeId);
-    if (!judge) return;
-    const mood = ac.judgeMood || (ac.pendingJudgment ? 'thinking' : 'announce');
-    const safeName = String(judge.name || 'Contestant').replace(/[&<>"']/g, (char) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-    }[char]));
-    stage.innerHTML = `<div class="judge-stage-card" data-mood="${mood}">
-      <div class="judge-stage-art">${judgeCharacterHTML(mood)}<div class="judge-player-avatar">${buildAvatarHTML(judge.avatar, { size: 76, mood: mood === 'accept' ? 'happy' : mood === 'reject' ? 'sad' : 'idle' })}</div></div>
-      <div class="judge-stage-copy"><span class="judge-role-label">ROTATING JUDGE</span><strong>${safeName}</strong><span class="judge-stage-status">${ac.pendingJudgment ? 'Reviewing an ambiguous answer' : 'Temporarily off the contestant board'}</span></div>
-    </div>`;
-  }
-
   /* ----------------------------- PODIUMS ------------------------------- */
 
   updateContestantStage(room) {
@@ -249,11 +238,7 @@ class GameShow {
     stage.hidden = !visible;
     if (!visible) return;
 
-    const judgeIsActive = room.settings?.answerMode === 'judge' && Boolean(room.activeClue?.judgeId) &&
-      ['clue_open', 'clue_buzzed', 'clue_result'].includes(room.phase);
-    const players = room.players
-      .filter((player) => !judgeIsActive || player.id !== room.activeClue.judgeId)
-      .slice(0, 10);
+    const players = room.players.slice(0, 10);
     const signature = players
       .map(
         (p) =>
@@ -398,7 +383,7 @@ class GameShow {
       potatoEl.className = 'podium-hot-potato';
       potatoEl.hidden = true;
       potatoEl.setAttribute('aria-hidden', 'true');
-      potatoEl.innerHTML = '<span class="pixel-potato-sprite">🥔</span><span class="pixel-potato-fuse">🔥</span><span class="potato-ticker">HOT POTATO!</span>';
+      potatoEl.innerHTML = '<span class="pixel-potato-sprite pixel-sprite sprite-potato"></span><span class="pixel-potato-fuse pixel-sprite sprite-fire"></span><span class="potato-ticker">HOT POTATO!</span>';
 
       const avatarEl = document.createElement('div');
       avatarEl.className = 'podium-avatar';

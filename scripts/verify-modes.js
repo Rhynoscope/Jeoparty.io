@@ -1,14 +1,13 @@
 'use strict';
 
 /**
- * Verifies the live server contracts for modes, rotating judge, bots, and
- * multiplayer scoring. Run with: node scripts/verify-modes-and-judge.js
+ * Verifies the live server contracts for game modes, bots, and multiplayer scoring.
+ * Run with: node scripts/verify-modes.js
  */
 const assert = require('node:assert/strict');
 const { spawn, execFileSync } = require('node:child_process');
 const path = require('node:path');
 const { BUILTIN_CATEGORIES, HALLOWEEN_CATEGORIES } = require('../server/categoriesData.js');
-const { evaluateAnswer, normalizeAnswer } = require('../server/answerMatcher.js');
 
 const PORT = Number(process.env.JEOPARTY_TEST_PORT) || 3417;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -19,7 +18,6 @@ const HTML_SOURCE = require('node:fs').readFileSync(path.resolve(__dirname, '../
 const APP_SOURCE = require('node:fs').readFileSync(path.resolve(__dirname, '../public/js/app.js'), 'utf8');
 const SHOW_SOURCE = require('node:fs').readFileSync(path.resolve(__dirname, '../public/js/gameshow.js'), 'utf8');
 const SHOW_CSS = require('node:fs').readFileSync(path.resolve(__dirname, '../public/css/gameshow.css'), 'utf8');
-const JUDGE_SOURCE = require('node:fs').readFileSync(path.resolve(__dirname, '../public/js/judge.js'), 'utf8');
 const ANSWERS = new Map();
 for (const category of [...BUILTIN_CATEGORIES, ...HALLOWEEN_CATEGORIES]) {
   for (const clue of category.clues || []) if (clue?.clue && clue.answer) ANSWERS.set(clue.clue, clue.answer);
@@ -40,19 +38,12 @@ function staticChecks() {
     assert(HTML_SOURCE.includes(`data-special-round="${id}"`), `special tile ${id} has no host control`);
   }
   assert(HTML_SOURCE.includes('id="game-mode-description"'), 'mode description is missing');
-  assert(HTML_SOURCE.includes('value="judge"'), 'rotating judge is not selectable');
-  assert(HTML_SOURCE.includes('id="judge-stage"') && HTML_SOURCE.includes('id="judge-accept-btn"') && HTML_SOURCE.includes('id="judge-reject-btn"'), 'judge role or decision UI is missing');
-  for (const token of ['pickRotatingJudge', 'handleJudgeDecision', 'resolvePendingJudgment', 'handleJudgeDisconnect', 'JUDGE_DECISION_MS']) {
-    assert(SERVER_SOURCE.includes(token), `server is missing ${token}`);
-  }
-  assert(SERVER_SOURCE.includes("evaluation.status === 'correct'"), 'automatic exact-answer verification is missing');
-  assert(SERVER_SOURCE.includes('judge_disconnect_fallback') && SERVER_SOURCE.includes('judge_timeout_fallback'), 'judge fallback paths are missing');
   assert(SERVER_SOURCE.includes('teamScoreLedger') && SERVER_SOURCE.includes('teamNextAnswerer'), 'shared team bank or alternating turns are missing');
   assert(SERVER_SOURCE.includes('startHotPotatoFuse') && SERVER_SOURCE.includes('pass_hot_potato'), 'timed potato pass flow is missing');
+  assert(SERVER_SOURCE.includes('hotPotatoFuseSec') && SERVER_SOURCE.includes('hotPotatoPenalty'), 'Hot Potato room settings are missing');
+  assert(HTML_SOURCE.includes('id="set-hot-potato-fuse"') && HTML_SOURCE.includes('id="set-hot-potato-penalty"'), 'host Hot Potato controls are missing');
   assert(SERVER_SOURCE.includes("ac.riskChoices?.[player.id] === 'double'"), 'Double or Nothing choice is not scored');
   assert(SHOW_SOURCE.includes("const avatarSize = count <= 3 ? 172 : count <= 6 ? 142 : 116"), 'large responsive podium avatar sizes are missing');
-  assert(SHOW_SOURCE.includes('judgeIsActive') && SHOW_SOURCE.includes('updateJudgeStage'), 'judge is not temporarily separated from contestant podiums');
-  assert(JUDGE_SOURCE.includes('judge-gavel') && JUDGE_SOURCE.includes('judge-raised-hand'), 'judge character animations are missing');
   assert(SHOW_CSS.includes('.contestant-stage[data-density=\'compact\']') && SHOW_CSS.includes('grid-template-columns'), 'large contestant and responsive special settings styles are missing');
 
   const baseline = execFileSync('git', ['show', 'HEAD:server/server.js'], { encoding: 'utf8' });
@@ -62,7 +53,8 @@ function staticChecks() {
   for (const marker of ['baseAccuracy = 0.52;', 'baseAccuracy = 0.74;', 'baseAccuracy = 0.88;', 'minHesitationMs = 550;', 'maxHesitationMs = 1150;']) {
     assert(SERVER_SOURCE.includes(marker), `expected stronger non-Champion profile marker ${marker}`);
   }
-  pass('static gameplay, UI, fairness, and art contracts');
+  assert(!HTML_SOURCE.toLowerCase().includes('judge-stage') && !APP_SOURCE.toLowerCase().includes('judge_decision'), 'removed judge UI still has a client reference');
+  pass('static gameplay, UI, and art contracts');
 }
 
 class Client {
@@ -178,120 +170,6 @@ async function waitClueResult(clients) {
   await Promise.all(clients.map((client) => client.waitFor((c) => c.room?.phase === 'clue_result', 'clue result', 9000)));
 }
 
-function ambiguousGuess(answer) {
-  const base = normalizeAnswer(answer);
-  const letterIndexes = [...base].flatMap((char, index) => /[a-z0-9]/.test(char) ? [index] : []);
-  for (let a = 0; a < letterIndexes.length; a++) for (let b = a + 1; b < letterIndexes.length; b++) for (let c = b + 1; c < letterIndexes.length; c++) {
-    const guess = [...base];
-    for (const [idx, replacement] of [[letterIndexes[a], 'q'], [letterIndexes[b], 'x'], [letterIndexes[c], 'z']]) {
-      guess[idx] = guess[idx] === replacement ? 'w' : replacement;
-    }
-    const text = guess.join('');
-    if (evaluateAnswer(text, { answer }).status === 'close') return text;
-  }
-  return null;
-}
-
-async function runJudgeScenario() {
-  const clients = [new Client('JudgeHost', 2), new Client('JudgeGuestA', 5), new Client('JudgeGuestB', 7)];
-  try {
-    await createRoom(clients, 'standard', { answerMode: 'judge', wrongPenalty: true, clueTimeSec: 20 });
-    await startGame(clients[0], clients);
-    const judgeIds = [];
-
-    // Exact answer: judge is visible and excluded; an exact correct answer bypasses judging.
-    let clue = await selectClue(clients);
-    let judge = locateClient(clients, clue.judgeId);
-    assert(judge, 'server must assign an eligible human judge');
-    judgeIds.push(clue.judgeId);
-    judge.send({ type: 'buzz' });
-    await sleep(120);
-    assert.equal(clients[0].room.phase, 'clue_open', 'judge must not buzz');
-    let answerer = clients.find((candidate) => candidate.playerId !== clue.judgeId);
-    let answer = findAnswer(clue.clue);
-    assert(answer, `official answer not found for test clue: ${clue.clue}`);
-    await answerClue(clients, answerer, answer);
-    await waitClueResult(clients);
-    const exactScore = clients[0].room.players.find((p) => p.id === answerer.playerId).score;
-    assert(exactScore > 0, 'verified correct answer should receive score automatically');
-    assert.equal(clients[0].room.judgeLog.length, 0, 'verified correct answers must never be judgeable');
-    judge.send({ type: 'judge_decision', ruling: 'reject' });
-    await sleep(100);
-    assert.equal(clients[0].room.players.find((p) => p.id === answerer.playerId).score, exactScore, 'judge cannot undo a verified correct answer');
-    pass('judge exclusion and automatic verified-correct scoring');
-
-    // Find a clue with a real close answer, then let the judge accept it.
-    let accepted = false;
-    for (let attempt = 0; attempt < 8 && !accepted; attempt++) {
-      await clients[0].waitFor((c) => c.room?.phase === 'board', 'board after result', 8000);
-      clue = await selectClue(clients);
-      judge = locateClient(clients, clue.judgeId);
-      answerer = clients.find((candidate) => candidate.playerId !== clue.judgeId);
-      answer = findAnswer(clue.clue);
-      const closeGuess = answer && ambiguousGuess(answer);
-      judgeIds.push(clue.judgeId);
-      if (!closeGuess) {
-        assert(answer, `official answer missing: ${clue.clue}`);
-        await answerClue(clients, answerer, answer);
-        await waitClueResult(clients);
-        continue;
-      }
-      await answerClue(clients, answerer, closeGuess);
-      await judge.waitFor((client) => client.room?.activeClue?.pendingJudgment?.guess === closeGuess, 'judge sees ambiguous answer');
-      const observer = clients.find((client) => client.playerId !== judge.playerId && client.playerId !== answerer.playerId);
-      assert.equal(observer.room.activeClue.pendingJudgment.guess, null, 'ambiguous text is private to judge and answerer');
-      assert.equal(observer.room.activeClue.judgeId, judge.playerId, 'judge is exposed as a distinct role');
-      judge.send({ type: 'judge_decision', ruling: 'accept' });
-      await waitClueResult(clients);
-      const entry = clients[0].room.judgeLog.at(-1);
-      assert.equal(entry.ruling, 'accepted');
-      assert.equal(entry.source, 'judge');
-      accepted = true;
-    }
-    assert(accepted, 'expected at least one board clue with an answer that enters ambiguous review');
-    pass('ambiguous answer privacy, accept control, and decision audit log');
-
-    // Test both replacement assignment and automatic fallback when the replacement disconnects.
-    await clients[0].waitFor((c) => c.room?.phase === 'board', 'board for disconnect test', 8000);
-    let pending = false;
-    for (let attempt = 0; attempt < 8 && !pending; attempt++) {
-      clue = await selectClue(clients);
-      judge = locateClient(clients, clue.judgeId);
-      answerer = clients.find((candidate) => candidate.playerId !== clue.judgeId);
-      answer = findAnswer(clue.clue);
-      const closeGuess = answer && ambiguousGuess(answer);
-      if (closeGuess) {
-        await answerClue(clients, answerer, closeGuess);
-        await judge.waitFor((client) => client.room?.activeClue?.pendingJudgment?.guess === closeGuess, 'open judgment');
-        pending = true;
-        break;
-      }
-      await answerClue(clients, answerer, answer);
-      await waitClueResult(clients);
-      await clients[0].waitFor((c) => c.room?.phase === 'board', 'next board', 8000);
-    }
-    assert(pending, 'expected an ambiguous clue for disconnect fallback test');
-    const originalJudgeId = judge.playerId;
-    judge.close();
-    await answerer.waitFor((client) => client.room?.activeClue?.judgeId && client.room.activeClue.judgeId !== originalJudgeId, 'judge replacement');
-    const replacementId = answerer.room.activeClue.judgeId;
-    const replacement = locateClient(clients, replacementId);
-    assert(replacement, 'replacement judge must be a connected player');
-    pass('judge disconnection selects another eligible player');
-    replacement.close();
-    await answerer.waitFor((client) => client.room?.phase === 'clue_result', 'automatic fallback resolution', 4000);
-    assert.equal(answerer.room.judgeLog.at(-1).source, 'judge_disconnect_fallback');
-    pass('no-judge fallback resolves the answer and logs the fallback');
-
-    assert(new Set(judgeIds).size >= 2, 'multiple eligible humans should rotate into judging');
-    for (let i = 1; i < judgeIds.length; i++) assert.notEqual(judgeIds[i], judgeIds[i - 1], 'the same judge should not be selected on consecutive clues');
-    pass('judge rotation avoids repeating the last judge');
-  } finally {
-    for (const client of clients) client.close();
-    await sleep(180);
-  }
-}
-
 async function runDoubleOrNothingScenario() {
   const clients = [new Client('RiskHost', 1), new Client('RiskGuest', 4)];
   try {
@@ -325,20 +203,31 @@ async function runDoubleOrNothingScenario() {
 async function runHotPotatoScenario() {
   const clients = [new Client('PotatoHost', 2), new Client('PotatoGuest', 6)];
   try {
-    await createRoom(clients, 'hot_potato', { clueTimeSec: 20 });
+    await createRoom(clients, 'hot_potato', { clueTimeSec: 20, hotPotatoFuseSec: 4, hotPotatoPenalty: 500 });
     await startGame(clients[0], clients);
     const clue = await selectClue(clients);
     const initialHolderId = clue.hotPotatoHolderId;
-    assert(initialHolderId, 'potato must begin with a contestant');
+    assert(initialHolderId, 'potato must begin with a randomly selected contestant');
+    assert.equal(clients[0].room.settings.hotPotatoFuseSec, 4, 'host fuse selection reaches every player');
+    assert.equal(clients[0].room.settings.hotPotatoPenalty, 500, 'host penalty selection reaches every player');
     const initialHolder = locateClient(clients, initialHolderId);
     initialHolder.send({ type: 'pass_hot_potato' });
     await Promise.all(clients.map((client) => client.waitFor((c) => c.room?.activeClue?.hotPotatoHolderId && c.room.activeClue.hotPotatoHolderId !== initialHolderId, 'potato pass')));
     const holderAfterPass = clients[0].room.activeClue.hotPotatoHolderId;
     assert(clients[0].room.activeClue.hotPotatoExpiresAt > Date.now(), 'pass resets the server-owned fuse');
-    await sleep(6800);
-    assert(clients[0].room.players.find((p) => p.id === holderAfterPass).score <= -100, 'fuse timeout penalizes the holder and passes the potato');
-    assert.notEqual(clients[0].room.activeClue.hotPotatoHolderId, holderAfterPass, 'expired fuse passes to another contestant');
-    pass('Hot Potato manual pass, visible fuse deadline, timeout penalty, and automatic pass');
+    await sleep(4300);
+    assert(clients[0].room.players.find((p) => p.id === holderAfterPass).score <= -500, 'configured fuse penalty is applied to the holder');
+    const afterExplosionHolderId = clients[0].room.activeClue.hotPotatoHolderId;
+    assert.notEqual(afterExplosionHolderId, holderAfterPass, 'expired fuse passes to another contestant');
+    const correctPlayer = locateClient(clients, afterExplosionHolderId);
+    const answer = findAnswer(clue.clue);
+    assert(answer && correctPlayer, 'a live contestant and official answer are available');
+    await answerClue(clients, correctPlayer, answer);
+    await waitClueResult(clients);
+    await clients[0].waitFor((client) => client.room?.phase === 'board', 'next board after correct potato answer');
+    const nextClue = await selectClue(clients);
+    assert.equal(nextClue.hotPotatoHolderId, correctPlayer.playerId, 'correct answer carries the potato into the next clue');
+    pass('Hot Potato randomized start, configurable timer and penalty, synchronized pass/explosion, and correct-answer carry');
   } finally {
     clients.forEach((client) => client.close());
     await sleep(180);
@@ -389,7 +278,6 @@ async function main() {
   });
   try {
     await waitReady();
-    await runJudgeScenario();
     await runDoubleOrNothingScenario();
     await runHotPotatoScenario();
     await runTeamScenario();
@@ -397,7 +285,7 @@ async function main() {
     server.kill();
     await sleep(150);
   }
-  console.log('\nALL MODE AND JUDGE CHECKS PASSED');
+  console.log('\nALL MODE CHECKS PASSED');
 }
 
 main().catch((error) => { fail('verification suite', error); process.exitCode = 1; });

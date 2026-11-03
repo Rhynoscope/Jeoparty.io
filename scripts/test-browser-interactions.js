@@ -264,41 +264,42 @@ async function main() {
   const touchAfter = await pSend('Runtime.evaluate', { expression: 'window.state.avatar.color', returnByValue: true });
   console.log('Mobile avatar tap:', JSON.stringify({ ...touchArrow, before: touchBefore.result?.value, after: touchAfter.result?.value, changed: touchBefore.result?.value !== touchAfter.result?.value }, null, 2));
   check(touchArrow.tapped && touchBefore.result?.value !== touchAfter.result?.value, 'avatar arrow responds to a mobile touch tap');
+  const mobilePlayTap = await physicalTap('#play-btn');
+  const mobilePublicDialog = await pSend('Runtime.evaluate', {
+    expression: 'document.getElementById("public-rooms-dialog")?.open',
+    returnByValue: true
+  });
+  await pSend('Runtime.evaluate', { expression: 'document.getElementById("public-rooms-dialog")?.close()' });
+  check(mobilePlayTap.tapped && mobilePublicDialog.result?.value === true, 'Play opens Public Rooms with a mobile touchscreen tap');
   await pSend('Emulation.setTouchEmulationEnabled', { enabled: false });
   await pSend('Emulation.clearDeviceMetricsOverride');
 
-  // Public-room browser was implemented but its opener was missing from the home page.
-  console.log('\n--- TEST 2: Public Room Browser and Join Dialog ---');
-  const publicBrowserClick = await physicalClick('#open-public-browser-btn');
+  // Play opens the public-room browser; it must not create a room by itself.
+  console.log('\n--- TEST 2: Play opens Public Rooms and Join Dialog ---');
+  const prepareName = await pSend('Runtime.evaluate', {
+    expression: `(() => { const input = document.getElementById('player-name-input'); input.value = 'PlayTester'; input.dispatchEvent(new Event('input', { bubbles: true })); return input.value; })()`,
+    returnByValue: true
+  });
+  const publicBrowserClick = await physicalClick('#play-btn');
   const publicDialogOpen = await pSend('Runtime.evaluate', { expression: 'document.getElementById("public-rooms-dialog")?.open', returnByValue: true });
+  const stillOnMenu = await pSend('Runtime.evaluate', { expression: '!document.getElementById("home-screen")?.hidden && !window.state.room', returnByValue: true });
   const refreshClick = await physicalClick('#refresh-public-rooms-btn');
   await new Promise(r => setTimeout(r, 250));
   const publicBrowserClose = await physicalClick('#close-public-rooms-btn');
-  check(publicBrowserClick.clicked && publicDialogOpen.result?.value === true, 'home button opens the public-room browser');
+  check(publicBrowserClick.clicked && publicDialogOpen.result?.value === true, 'Play opens the public-room browser');
+  check(prepareName.result?.value === 'PlayTester' && stillOnMenu.result?.value === true, 'Play browsing does not create a room or leave the menu');
   check(refreshClick.clicked && publicBrowserClose.clicked, 'public-room refresh and close controls respond to clicks');
   const joinDialogClick = await physicalClick('#open-join-dialog-btn');
   const joinDialogOpen = await pSend('Runtime.evaluate', { expression: 'document.getElementById("join-code-dialog")?.open', returnByValue: true });
   const joinDialogClose = await physicalClick('#close-join-dialog-btn');
   check(joinDialogClick.clicked && joinDialogOpen.result?.value === true && joinDialogClose.clicked, 'join-room dialog opens and closes');
 
-  // TEST 3: Play Button (Quick Play / Auto Create Public Room)
-  console.log('\n--- TEST 3: Play! Button Quick Play ---');
-  const playBtnTest = await pSend('Runtime.evaluate', {
-    expression: `(() => {
-      const nameInput = document.getElementById('player-name-input');
-      nameInput.value = 'PlayTester';
-      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-      const playBtn = document.getElementById('play-btn');
-      return { ready: true, btnText: playBtn.textContent.trim() };
-    })()`,
-    returnByValue: true
-  });
+  // TEST 3: Create a public room from the browser opened by Play.
+  console.log('\n--- TEST 3: Public Room Creation from Play ---');
   const playClick = await physicalClick('#play-btn');
-  console.log('Play button physical click:', { ...playBtnTest.result?.value, ...playClick });
-
-  // Wait 1.5s for room state to arrive over WebSocket
-  await new Promise(r => setTimeout(r, 1500));
+  const playDialog = await pSend('Runtime.evaluate', { expression: 'document.getElementById("public-rooms-dialog")?.open', returnByValue: true });
+  const createPublicClick = await physicalClick('#create-public-room-btn');
+  await new Promise(r => setTimeout(r, 1200));
 
   const roomStateCheck = await pSend('Runtime.evaluate', {
     expression: `(() => {
@@ -322,16 +323,19 @@ async function main() {
     returnByValue: true
   });
 
-  console.log('Room State Check (after Play!):', JSON.stringify(roomStateCheck.result?.value, null, 2));
+  console.log('Room State Check (after choosing Create Public Room):', JSON.stringify(roomStateCheck.result?.value, null, 2));
   const playRoom = roomStateCheck.result?.value;
-  check(playClick.clicked && playRoom?.homeScreenHidden && !playRoom?.gameScreenHidden, 'Play opens the multiplayer lobby');
-  check(Boolean(playRoom?.roomCode) && playRoom?.isPrivate === false && playRoom?.playerIsHost, 'Play creates or joins a public room and assigns host');
+  check(playClick.clicked && playDialog.result?.value === true, 'Play reopens the public-room browser');
+  check(createPublicClick.clicked && playRoom?.homeScreenHidden && !playRoom?.gameScreenHidden, 'public-room create control opens the multiplayer lobby');
+  check(Boolean(playRoom?.roomCode) && playRoom?.isPrivate === false && playRoom?.playerIsHost, 'public room receives a code and assigns its creator as host');
   check(playRoom?.players?.some(p => p.name === 'PlayTester' && p.avatar?.color === (touchAfter.result?.value)), 'selected avatar appears on the player in the room');
 
-  // Capture Lobby screenshot
-  const lobbyScreenshot = await pSend('Page.captureScreenshot', { format: 'png' });
-  fs.writeFileSync('C:/Users/Administrator/.gemini/antigravity/brain/ff3a672f-5cbd-45ff-9514-77bfbeb492ae/lobby-after-play.png', Buffer.from(lobbyScreenshot.data, 'base64'));
-  console.log('Saved lobby-after-play.png');
+  const publicRoomDiscovery = await pSend('Runtime.evaluate', {
+    expression: `fetch('/api/public-rooms', { cache: 'no-store' }).then(r => r.json()).then(data => data.rooms.find(room => room.code === ${JSON.stringify(playRoom?.roomCode)}))`,
+    awaitPromise: true,
+    returnByValue: true
+  });
+  check(publicRoomDiscovery.result?.value?.gameMode === 'standard' && publicRoomDiscovery.result?.value?.playerCount === 1 && publicRoomDiscovery.result?.value?.maxPlayers, 'new public room appears in discovery with mode and seat counts');
 
   // TEST 4: Add Bot & Bot Difficulty
   console.log('\n--- TEST 4: Add Bot and Change Settings in Lobby ---');
@@ -362,6 +366,23 @@ async function main() {
   console.log('Mode physical-click test:', JSON.stringify({ ...modeClick, ...modeTest.result?.value }, null, 2));
   check(modeClick.clicked && modeTest.result?.value?.serverMode === 'survival', 'game mode selection reaches the server');
 
+  const potatoModeClick = await physicalClick('.mode-btn[data-mode="hot_potato"]');
+  await new Promise(r => setTimeout(r, 250));
+  const potatoSettingsVisible = await pSend('Runtime.evaluate', {
+    expression: '!document.getElementById("hot-potato-settings")?.hidden',
+    returnByValue: true
+  });
+  await pSend('Runtime.evaluate', {
+    expression: `(() => { const fuse = document.getElementById('set-hot-potato-fuse'); fuse.value = '4'; fuse.dispatchEvent(new Event('change', { bubbles: true })); const penalty = document.getElementById('set-hot-potato-penalty'); penalty.value = '300'; penalty.dispatchEvent(new Event('change', { bubbles: true })); })()`
+  });
+  await new Promise(r => setTimeout(r, 300));
+  const potatoSettings = await pSend('Runtime.evaluate', {
+    expression: '({ mode: window.state.room?.settings?.gameMode, fuse: window.state.room?.settings?.hotPotatoFuseSec, penalty: window.state.room?.settings?.hotPotatoPenalty })',
+    returnByValue: true
+  });
+  check(potatoModeClick.clicked && potatoSettingsVisible.result?.value === true, 'Hot Potato reveals its dedicated host settings');
+  check(potatoSettings.result?.value?.mode === 'hot_potato' && potatoSettings.result?.value?.fuse === 4 && potatoSettings.result?.value?.penalty === 300, 'Hot Potato settings synchronize through the room server');
+
   // TEST 6: Private and public room creation from their intended controls.
   console.log('\n--- TEST 6: Private and Public Room Creation ---');
   const leavePublic = await physicalClick('#leave-room-btn');
@@ -378,8 +399,8 @@ async function main() {
 
   await physicalClick('#leave-room-btn');
   await new Promise(r => setTimeout(r, 700));
-  await physicalClick('#open-public-browser-btn');
-  const hostPublicClick = await physicalClick('#create-public-from-header-btn');
+  await physicalClick('#play-btn');
+  const hostPublicClick = await physicalClick('#create-public-room-btn');
   await new Promise(r => setTimeout(r, 1200));
   const publicCreateState = await pSend('Runtime.evaluate', {
     expression: `({ roomCode: window.state.room?.code, isPrivate: window.state.room?.isPrivate, isHost: window.state.room?.hostId === window.state.playerId })`,

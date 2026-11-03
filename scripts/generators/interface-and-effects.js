@@ -663,6 +663,29 @@ function generateIconSprites(iconsDir, legacyDir) {
    ========================================================================= */
 
 function generateEffectSprites(effectsDir, legacyDir) {
+  // Four-frame hand-drawn potato with a flickering fuse. Each frame is 24x24.
+  const potatoStrip = buildHorizontalStrip(24, 24, 4, (c, f) => {
+    const bob = [0, -1, 0, 1][f];
+    c.line(12, 3 + bob, 12, 7 + bob, 2.0, B);
+    c.line(12, 3 + bob, 15, 2 + bob, 1.2, O);
+    c.filledOval(12, 14 + bob, 8.5, 6.2, BR_L, B, 1.35, 0.45, f + 1);
+    c.line(8, 11 + bob, 11, 10 + bob, 1.0, '#f2bb78');
+    c.brush(7 + (f % 2), 14 + bob, 0.65, BR);
+    c.brush(16 - (f % 2), 16 + bob, 0.65, BR);
+    c.brush(10, 14 + bob, 0.7, B);
+    c.brush(14, 14 + bob, 0.7, B);
+    c.line(10, 17 + bob, 12, 18 + bob, 0.8, B);
+    c.line(12, 18 + bob, 14, 17 + bob, 0.8, B);
+    if (f % 2 === 0) {
+      c.fillPolygon([[11, 4 + bob], [12, 1 + bob], [13, 4 + bob], [16, 1 + bob], [15, 6 + bob], [12, 7 + bob]], Y, B, 0.8);
+    } else {
+      c.fillPolygon([[11, 5 + bob], [12, 2 + bob], [13, 5 + bob], [16, 3 + bob], [15, 7 + bob], [12, 8 + bob]], O, B, 0.8);
+      c.brush(12, 4 + bob, 0.55, Y);
+    }
+  });
+  potatoStrip.save(path.join(effectsDir, 'potato-strip.png'));
+  if (legacyDir) potatoStrip.save(path.join(legacyDir, 'potato-strip.png'));
+
   // 4-frame Buzzer Dome Pressing + Sparks (36x36 x 4)
   const buzzerStrip = buildHorizontalStrip(36, 36, 4, (c, f) => {
     const press = [0, 3, 2, 0][f];

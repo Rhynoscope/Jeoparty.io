@@ -921,6 +921,19 @@ function drawMoodEffects(g, palette, mood, bobY, f) {
     g.brush(36, dropY, 2.0, BLACK);
     g.px(36, dropY - 2, BLACK);
     g.brush(36, dropY, 1.1, CYAN);
+  } else if (mood === 'thinking') {
+    // Little hand-drawn thought cloud and a searching side-glance.
+    g.line(39, 6, 45, 6, 1.1, BLACK);
+    g.line(45, 6, 47, 10, 1.1, BLACK);
+    g.line(47, 10, 45, 13, 1.1, BLACK);
+    g.line(45, 13, 39, 13, 1.1, BLACK);
+    g.line(39, 13, 37, 10, 1.1, BLACK);
+    g.line(37, 10, 39, 6, 1.1, BLACK);
+    g.px(41, 9, BLACK);
+    g.px(43, 9, BLACK);
+    g.px(42, 11, BLACK);
+    g.px(36, 16, BLACK);
+    g.px(34, 19, BLACK);
   } else if (mood === 'victory') {
     // Cheering little MS Paint hands waving + confetti stars
     const handWaveL = f % 2 === 0 ? -3 : 0;
@@ -963,6 +976,7 @@ const VALID_MOODS = new Set([
   'idle',
   'happy',
   'sad',
+  'thinking',
   'excited',
   'victory',
   'defeat',
@@ -998,6 +1012,7 @@ export function getSpriteStripUrl(avatar = {}, showCrown = false, mood = 'idle')
     happy: [0, -2, 0, -1],
     excited: [0, -2, -1, -3],
     sad: [1, 1, 2, 1],
+    thinking: [0, -1, 0, -1],
     victory: [-3, -1, -2, 0],
     defeat: [1, 2, 1, 2],
     speaking: [0, -1, 0, -1],
@@ -1021,6 +1036,9 @@ export function getSpriteStripUrl(avatar = {}, showCrown = false, mood = 'idle')
     } else if (safeMood === 'sad') {
       if (eIdx !== 7) frameEyes = 10;
       frameMouth = 3;
+    } else if (safeMood === 'thinking') {
+      if (eIdx !== 7) frameEyes = 1;
+      frameMouth = 8;
     } else if (safeMood === 'defeat') {
       frameEyes = 8;
       frameMouth = 2;
